@@ -1,11 +1,8 @@
-package com.example.examplemod;
+package com.gigongibus.hungrycows;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.ai.goal.Goal;
-
-import java.util.EnumSet;
 
 /**
  * Стать, спарювання, вагітність і пологи корови.
@@ -172,41 +169,5 @@ public class CowReproduction {
         pregnant = tag.getBoolean("Pregnant");
         pregnantSeconds = tag.getInt("PregnantSeconds");
         laborTicksLeft = tag.getInt("LaborTicks");
-    }
-}
-
-// Корова під час пологів стоїть на місці (перебиває навіть страх)
-class LaborGoal extends Goal {
-    private final HungryCow cow;
-
-    LaborGoal(HungryCow cow) {
-        this.cow = cow;
-        this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
-    }
-
-    // викликати tick() кожного тіку, а не раз на два
-    @Override
-    public boolean requiresUpdateEveryTick() {
-        return true;
-    }
-
-    @Override
-    public boolean canUse() {
-        return cow.repro.inLabor();
-    }
-
-    @Override
-    public boolean canContinueToUse() {
-        return cow.repro.inLabor();
-    }
-
-    @Override
-    public void start() {
-        cow.getNavigation().stop();
-    }
-
-    @Override
-    public void tick() {
-        cow.repro.laborTick();
     }
 }

@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.gigongibus.hungrycows;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;

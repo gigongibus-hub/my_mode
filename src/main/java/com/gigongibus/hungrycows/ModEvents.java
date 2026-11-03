@@ -1,6 +1,7 @@
-package com.example.examplemod;
+package com.gigongibus.hungrycows;
 
 import net.minecraft.client.renderer.entity.CowRenderer;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.api.distmarker.Dist;
@@ -10,12 +11,12 @@ import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = ExampleMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@Mod.EventBusSubscriber(modid = HungryCowsMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModEvents {
 
     @SubscribeEvent
     public static void registerAttributes(EntityAttributeCreationEvent event) {
-        event.put(ModEntities.HUNGRY_COW.get(), Cow.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.FOLLOW_RANGE, 32.0).build());
+        event.put(ModEntities.HUNGRY_COW.get(), Cow.createAttributes().add(Attributes.FOLLOW_RANGE, 32.0).build());
     }
 
     @SubscribeEvent
@@ -25,7 +26,7 @@ public class ModEvents {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = ExampleMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = HungryCowsMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientEvents {
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {

@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.gigongibus.hungrycows;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
