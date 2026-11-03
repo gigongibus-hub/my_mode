@@ -36,6 +36,10 @@ public class SeekGrassGoal extends Goal {
     // Апетит до квіток: чим більше число, тим частіше корова обирає цей вид
     private static final Map<Block, Integer> FLOWER_APPETITE = new HashMap<>();
 
+    // Квіти, які корова їсть лише тоді, коли звичайної їжі (трави тощо) поруч немає.
+    // Щоб так поводилися й інші квіти, додай їх сюди (наприклад, Blocks.RED_TULIP).
+    private static final Set<Block> ONLY_WITHOUT_GRASS = Set.of(Blocks.POPPY);
+
     static {
         FLOWER_APPETITE.put(Blocks.DANDELION, 10);    // кульбаба: найчастіше
         FLOWER_APPETITE.put(Blocks.ALLIUM, 4);        // різанець
@@ -375,9 +379,15 @@ public class SeekGrassGoal extends Goal {
         checksLeft = MAX_PATH_CHECKS;
         boolean emergency = cow.hunger >= HungryCow.STARVE_AT;
 
-        // 1) іноді корові хочеться квітки: кульбаба частіше за мак
-        if (!emergency && !flowers.isEmpty() && cow.getRandom().nextFloat() < FLOWER_CHANCE) {
-            BlockPos p = pickFlower(flowers);
+        // 1) іноді корові хочеться квітки: кульбаба частіше за інші (мак сюди не входить)
+        List<Candidate> whimFlowers = new ArrayList<>();
+        List<Candidate> lastResortFlowers = new ArrayList<>();
+        for (Candidate c : flowers) {
+            if (ONLY_WITHOUT_GRASS.contains(c.block)) lastResortFlowers.add(c);
+            else whimFlowers.add(c);
+        }
+        if (!emergency && !whimFlowers.isEmpty() && cow.getRandom().nextFloat() < FLOWER_CHANCE) {
+            BlockPos p = pickFlower(whimFlowers);
             if (p != null) return p;
         }
         // 2) звичайна їжа (трава, трав'яний і моховий блок, блоки гравця)
@@ -395,6 +405,11 @@ public class SeekGrassGoal extends Goal {
         }
         if (!safeFlowers.isEmpty()) {
             BlockPos p = pickFlower(safeFlowers);
+            if (p != null) return p;
+        }
+        // 3б) мак: лише коли трави й безпечних квітів немає
+        if (!lastResortFlowers.isEmpty()) {
+            BlockPos p = pickFlower(lastResortFlowers);
             if (p != null) return p;
         }
         // 4) черемша, лише коли трави майже немає

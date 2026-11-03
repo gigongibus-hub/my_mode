@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 
 public class HungryCow extends Cow {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
-    public static final int HUNGER_EVERY_SECONDS = 10;   // голод росте на 1 раз на стільки секунд (для швидких тестів постав 1)
+    public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
     public static final int STARVE_AT = 60;              // з цього голоду корова отримує урон
     public static final int GRASS_BLOCK_FOOD = 30;       // трав'яний блок: скільки голоду знімає
