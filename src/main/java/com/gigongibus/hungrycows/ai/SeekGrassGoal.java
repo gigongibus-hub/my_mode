@@ -25,6 +25,7 @@ public class SeekGrassGoal extends Goal {
     private static final int SEARCH_RADIUS = 15;          // радіус пошуку їжі по горизонталі
     private static final int SEARCH_HEIGHT = 3;           // радіус пошуку по висоті
     private static final float FLOWER_CHANCE = 0.30F;     // шанс, що голодна корова піде до квітки замість звичайної їжі
+    private static final float POPPY_CHANCE = 0.15F;      // шанс, що піде саме до маку замість звичайної їжі (входить у FLOWER_CHANCE)
     private static final int PLACED_BONUS = 30;           // бонус привабливості блоків, поставлених гравцем
     private static final int PLACED_EAT_TICKS = 200;      // скільки їсть такий блок (10 сек)
     private static final double DISTANCE_PENALTY = 2.0;   // скільки поживності «коштує» кожен блок шляху
@@ -35,10 +36,6 @@ public class SeekGrassGoal extends Goal {
 
     // Апетит до квіток: чим більше число, тим частіше корова обирає цей вид
     private static final Map<Block, Integer> FLOWER_APPETITE = new HashMap<>();
-
-    // Квіти, які корова їсть лише тоді, коли звичайної їжі (трави тощо) поруч немає.
-    // Щоб так поводилися й інші квіти, додай їх сюди (наприклад, Blocks.RED_TULIP).
-    private static final Set<Block> ONLY_WITHOUT_GRASS = Set.of(Blocks.POPPY);
 
     static {
         FLOWER_APPETITE.put(Blocks.DANDELION, 10);    // кульбаба: найчастіше
@@ -379,16 +376,23 @@ public class SeekGrassGoal extends Goal {
         checksLeft = MAX_PATH_CHECKS;
         boolean emergency = cow.hunger >= HungryCow.STARVE_AT;
 
-        // 1) іноді корові хочеться квітки: кульбаба частіше за інші (мак сюди не входить)
-        List<Candidate> whimFlowers = new ArrayList<>();
-        List<Candidate> lastResortFlowers = new ArrayList<>();
-        for (Candidate c : flowers) {
-            if (ONLY_WITHOUT_GRASS.contains(c.block)) lastResortFlowers.add(c);
-            else whimFlowers.add(c);
-        }
-        if (!emergency && !whimFlowers.isEmpty() && cow.getRandom().nextFloat() < FLOWER_CHANCE) {
-            BlockPos p = pickFlower(whimFlowers);
-            if (p != null) return p;
+        // 1) іноді корові хочеться квітки замість трави:
+        //    мак з шансом POPPY_CHANCE (15%), інші квіти — решта до FLOWER_CHANCE (кульбаба частіше за інші)
+        if (!emergency && !flowers.isEmpty()) {
+            List<Candidate> poppies = new ArrayList<>();
+            List<Candidate> otherFlowers = new ArrayList<>();
+            for (Candidate c : flowers) {
+                if (c.block == Blocks.POPPY) poppies.add(c);
+                else otherFlowers.add(c);
+            }
+            float roll = cow.getRandom().nextFloat();
+            if (!poppies.isEmpty() && roll < POPPY_CHANCE) {
+                BlockPos p = pickFlower(poppies);
+                if (p != null) return p;
+            } else if (!otherFlowers.isEmpty() && roll < FLOWER_CHANCE) {
+                BlockPos p = pickFlower(otherFlowers);
+                if (p != null) return p;
+            }
         }
         // 2) звичайна їжа (трава, трав'яний і моховий блок, блоки гравця)
         BlockPos best = chooseNormal(normal, emergency);
@@ -405,11 +409,6 @@ public class SeekGrassGoal extends Goal {
         }
         if (!safeFlowers.isEmpty()) {
             BlockPos p = pickFlower(safeFlowers);
-            if (p != null) return p;
-        }
-        // 3б) мак: лише коли трави й безпечних квітів немає
-        if (!lastResortFlowers.isEmpty()) {
-            BlockPos p = pickFlower(lastResortFlowers);
             if (p != null) return p;
         }
         // 4) черемша, лише коли трави майже немає
