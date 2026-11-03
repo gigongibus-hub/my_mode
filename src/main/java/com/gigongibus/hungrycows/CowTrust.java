@@ -11,7 +11,9 @@ import java.util.UUID;
 
 /**
  * Довіра однієї корови до кожного гравця окремо.
- * Шкала від -100 до +100. Усі числа зібрані на початку файлу.
+ * Шкала від -100 до +200. Звичайними способами довіра не піднімається вище +100;
+ * +200 буває лише в корови, яку гравець вигодував молоком, поки вона була телям.
+ * Усі числа зібрані на початку файлу.
  */
 public class CowTrust {
 
@@ -22,7 +24,9 @@ public class CowTrust {
 
     // ================= ШКАЛА =================
     public static final int MIN = -100;
-    public static final int MAX = 100;
+    public static final int MAX = 200;                   // «найкращий друг»: лише вигодуване гравцем теля
+    public static final int NORMAL_MAX = 100;            // стеля для годування та інших звичайних способів
+    public static final int BOND_FROM = 200;             // з цієї довіри корова ходить за гравцем і дає «Друга корови»
     public static final int FRIEND_FROM = 50;            // з цієї довіри корова не лякається гравця й підходить
 
     // ================= СКІЛЬКИ ДОДАЄТЬСЯ =================
@@ -76,10 +80,19 @@ public class CowTrust {
 
     public int add(UUID id, int delta) {
         Entry e = map.computeIfAbsent(id, k -> new Entry());
-        e.value = Math.max(MIN, Math.min(MAX, e.value + delta));
+        // вище +100 піднятися не можна; якщо довіра вже вища (вигодуване теля), стеля +200
+        int cap = e.value > NORMAL_MAX ? MAX : NORMAL_MAX;
+        e.value = Math.max(MIN, Math.min(cap, e.value + delta));
         int result = e.value;
         trim();
         return result;
+    }
+
+    // Гравець вигодував цю корову телям: максимальна довіра
+    public void bond(UUID id) {
+        Entry e = map.computeIfAbsent(id, k -> new Entry());
+        e.value = MAX;
+        trim();
     }
 
     // true, якщо сьогодні це перше годування, що дає довіру
@@ -134,8 +147,9 @@ public class CowTrust {
     // Скільки страху дає удар гравця
     public static int hitFear(int trust) {
         if (trust < FRIEND_FROM) return HIT_FEAR_NORMAL;
+        int t = Math.min(trust, NORMAL_MAX);
         return HIT_FEAR_FRIEND_START
-                - (trust - FRIEND_FROM) * (HIT_FEAR_FRIEND_START - HIT_FEAR_FRIEND_END) / (MAX - FRIEND_FROM);
+                - (t - FRIEND_FROM) * (HIT_FEAR_FRIEND_START - HIT_FEAR_FRIEND_END) / (NORMAL_MAX - FRIEND_FROM);
     }
 
     // Пауза між кидками ворожої корови: від 20 сек (-1) до 2 сек (-99); при -100 лише пауза між ударами

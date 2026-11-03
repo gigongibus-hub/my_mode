@@ -16,7 +16,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
@@ -33,11 +32,17 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
+import com.gigongibus.hungrycows.ai.DefendCalfGoal;
+import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
+import com.gigongibus.hungrycows.ai.FindFosterGoal;
+import com.gigongibus.hungrycows.ai.FollowMotherGoal;
+import com.gigongibus.hungrycows.ai.NurseGoal;
 import com.gigongibus.hungrycows.ai.AvoidBluetGoal;
 import com.gigongibus.hungrycows.ai.FearGoal;
 import com.gigongibus.hungrycows.ai.LaborGoal;
@@ -63,6 +68,21 @@ public class HungryCow extends Cow {
     public static final float CHOKE_DAMAGE = 1.0F;       // урон від подавлення кожні 4 секунди
     public static final int CHOKE_SLOWNESS = 1;          // сповільнення: 0 = I, 1 = II
     public static final int CURE_FEAR = 10;              // скільки страху, якщо вдарити подавлену корову
+    public static final int CALF_BUCKET_FOOD = 175;      // скільки голоду теляти знімає відро молока з рук гравця (≈25 одиниць)
+
+    // ================= ЗАХИСТ ТЕЛЯТИ =================
+    public static final int DEFEND_TICKS = 140;          // скільки корови б'ють того, хто вдарив теля (7 сек)
+    public static final double DEFEND_RADIUS = 10.0;     // з якої відстані інші корови заступаються
+    public static final float DEFEND_CHANCE = 0.5F;      // шанс, що інша доросла корова заступиться (мати завжди)
+    public static final float MOTHER_DAMAGE_MULTIPLIER = 2.0F; // мати б'є вдвічі сильніше
+    public static final int DEFEND_TRUST_MOTHER = 30;    // скільки довіри втрачає мати
+    public static final int DEFEND_TRUST_OTHERS = 10;    // скільки довіри втрачають інші
+    public static final int FEAR_AFTER_DEFEND = 60;      // страх після захисту: корова тікає
+
+    // ================= ДРУГ КОРОВИ =================
+    public static final double FRIEND_EFFECT_RANGE = 8.0;    // з якої відстані корова з довірою 200 дає ефект
+    public static final int FRIEND_EFFECT_TICKS = 6000;      // скільки діє ефект після того, як гравець відійшов (5 хв)
+
     public static final boolean DEBUG_MESSAGES = true;   // писати в чат про подавлення, довіру, напади та пологи
 
     public int hunger = 0;
@@ -73,6 +93,14 @@ public class HungryCow extends Cow {
 
     public final CowTrust trust = new CowTrust();   // довіра до кожного гравця
     public final CowReproduction repro = new CowReproduction(this);   // стать, вагітність, пологи
+    public final CowMilk milk = new CowMilk(this);                    // шкала молока і якість
+    public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
+    public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
+
+    private Player defendTarget = null;             // кого б'є, захищаючи теля (не зберігається)
+    private int defendUntil = 0;
+    private float defendDamage = 0;
+    private String lastLabel = null;                // останній напис над коровою (щоб помітити бирку з іменем)
 
     private boolean charging = false;               // ворожа корова зараз біжить на гравця
     private int chargeStartTick = 0;
@@ -96,18 +124,22 @@ public class HungryCow extends Cow {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));                 // пливти, щоб не втопитися
         this.goalSelector.addGoal(1, new LaborGoal(this));                 // пологи: стоїть на місці
-        this.goalSelector.addGoal(2, new FearGoal(this));                  // страх і напади ворожої корови
-        this.goalSelector.addGoal(3, new FirePanicGoal(this));             // паніка лише від вогню й морозу
-        this.goalSelector.addGoal(4, new SeekGrassGoal(this));             // пошук їжі
-        this.goalSelector.addGoal(5, new BreedGoal(this, 1.0));            // розмноження
-        this.goalSelector.addGoal(6, new RestGoal(this));                  // відпочинок
-        this.goalSelector.addGoal(7, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
-        this.goalSelector.addGoal(8, new AvoidBluetGoal(this));            // відходить від черемші
-        this.goalSelector.addGoal(9, new ApproachPlayerGoal(this));        // підходить до друга
-        this.goalSelector.addGoal(10, new FollowParentGoal(this, 1.25));   // теля йде за матір'ю
-        this.goalSelector.addGoal(11, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(13, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(2, new DefendCalfGoal(this));            // б'є того, хто вдарив теля
+        this.goalSelector.addGoal(3, new FearGoal(this));                  // страх і напади ворожої корови
+        this.goalSelector.addGoal(4, new FirePanicGoal(this));             // паніка лише від вогню й морозу
+        this.goalSelector.addGoal(5, new NurseGoal(this));                 // мати стоїть, поки теля п'є
+        this.goalSelector.addGoal(6, new DrinkMilkGoal(this));             // теля йде пити молоко
+        this.goalSelector.addGoal(7, new SeekGrassGoal(this));             // пошук їжі
+        this.goalSelector.addGoal(8, new BreedGoal(this, 1.0));            // розмноження
+        this.goalSelector.addGoal(9, new RestGoal(this));                  // відпочинок
+        this.goalSelector.addGoal(10, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
+        this.goalSelector.addGoal(11, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
+        this.goalSelector.addGoal(12, new AvoidBluetGoal(this));           // відходить від черемші
+        this.goalSelector.addGoal(13, new ApproachPlayerGoal(this));       // підходить до друга
+        this.goalSelector.addGoal(14, new FollowMotherGoal(this));         // теля тримається біля матері
+        this.goalSelector.addGoal(15, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(16, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(17, new RandomLookAroundGoal(this));
     }
 
     // За чим корова йде (замість пшениці, яку вона більше не їсть): ласощі, що дають довіру
@@ -151,6 +183,9 @@ public class HungryCow extends Cow {
 
             long second = this.tickCount / 20;
             repro.secondTick();
+            milk.secondTick();
+            family.secondTick();
+            giveFriendEffect();
             if (second % HUNGER_EVERY_SECONDS == 0) hunger += TIME_SPEED;
             if (second % FATIGUE_EVERY_SECONDS == 0) fatigue += TIME_SPEED;
             if (hunger > STARVE_AT && this.tickCount % 80 == 0) {
@@ -179,13 +214,20 @@ public class HungryCow extends Cow {
             if (eatingTicksLeft > 0) {
                 name = "ЇСТЬ ще " + (eatingTicksLeft / 20 + 1) + " с | " + name;
             }
+            // хтось назвав корову биркою: беремо це ім'я
+            Component current = this.getCustomName();
+            if (current != null && lastLabel != null && !current.getString().equals(lastLabel)) {
+                family.name = current.getString();
+                tell("Корову назвали: " + family.name);
+            }
             name = repro.decorate(name);
+            lastLabel = name;
             this.setCustomName(Component.literal(name));
             this.setCustomNameVisible(true);
         }
     }
 
-    private void tell(String text) {
+    public void tell(String text) {
         if (!DEBUG_MESSAGES) return;
         Component msg = Component.literal(text);
         this.level().players().forEach(p -> p.sendSystemMessage(msg));
@@ -290,7 +332,7 @@ public class HungryCow extends Cow {
         double reach = CowTrust.ATTACK_REACH;
         if (this.distanceToSqr(player) < reach * reach
                 && this.tickCount - lastAttackTick >= CowTrust.ATTACK_COOLDOWN_TICKS) {
-            attackPlayer(player);
+            attackPlayer(player, CowTrust.ATTACK_DAMAGE);
             lastAttackTick = this.tickCount;
             if (t > CowTrust.MIN) {          // при -100 переслідує далі, інакше відскакує
                 charging = false;
@@ -300,13 +342,129 @@ public class HungryCow extends Cow {
         return true;
     }
 
-    private void attackPlayer(Player player) {
+    private void attackPlayer(Player player, float damage) {
         // у творчому режимі й на «Мирній» складності удар не проходить, тоді й не відкидаємо
-        if (!player.hurt(this.damageSources().mobAttack(this), CowTrust.ATTACK_DAMAGE)) return;
+        if (!player.hurt(this.damageSources().mobAttack(this), damage)) return;
         player.knockback(CowTrust.ATTACK_KNOCKBACK, this.getX() - player.getX(), this.getZ() - player.getZ());
         player.hurtMarked = true;
         this.playSound(SoundEvents.COW_HURT, 1.0F, 0.8F);
         tell("Корова вдарила " + player.getName().getString());
+    }
+
+    // ===================== ЗАХИСТ ТЕЛЯТИ =====================
+
+    // Гравець ударив теля: мати (завжди) та інші дорослі поруч (з шансом) б'ють його 7 секунд
+    private void callForHelp(Player player) {
+        HungryCow mother = family.findMother();
+        if (mother != null && mother.distanceToSqr(this) <= CowFamily.MOTHER_RANGE * CowFamily.MOTHER_RANGE) {
+            mother.startDefending(player, CowTrust.ATTACK_DAMAGE * MOTHER_DAMAGE_MULTIPLIER,
+                    DEFEND_TRUST_MOTHER, "вдарив її теля");
+        }
+        for (HungryCow other : this.level().getEntitiesOfClass(HungryCow.class,
+                this.getBoundingBox().inflate(DEFEND_RADIUS),
+                c -> c != this && c != mother && c.isAlive() && !c.isBaby())) {
+            if (this.getRandom().nextFloat() < DEFEND_CHANCE) {
+                other.startDefending(player, CowTrust.ATTACK_DAMAGE, DEFEND_TRUST_OTHERS, "вдарив теля");
+            }
+        }
+    }
+
+    public void startDefending(Player player, float damage, int trustPenalty, String reason) {
+        if (player.isSpectator()) return;   // у творчому режимі теж нападають (удар не пройде), щоб було видно в тестах
+        boolean already = defendTarget == player && this.tickCount < defendUntil;
+        defendTarget = player;
+        defendUntil = this.tickCount + DEFEND_TICKS;
+        defendDamage = damage;
+        if (!already) {
+            addTrust(player, -trustPenalty, reason, false);
+            tell(family.name + " захищає теля від " + player.getName().getString());
+        }
+    }
+
+    // кого зараз б'є, захищаючи теля (null, якщо нікого)
+    public Player defendTarget() {
+        if (defendTarget == null || !defendTarget.isAlive() || this.tickCount >= defendUntil) return null;
+        return defendTarget;
+    }
+
+    // викликається з DefendCalfGoal щотіку
+    public void defendTick(Player player) {
+        if (this.tickCount % 5 == 0 || this.getNavigation().isDone()) {
+            this.getNavigation().moveTo(player, 1.5);
+        }
+        this.getLookControl().setLookAt(player, 30.0F, 30.0F);
+        double reach = CowTrust.ATTACK_REACH;
+        if (this.distanceToSqr(player) < reach * reach
+                && this.tickCount - lastAttackTick >= CowTrust.ATTACK_COOLDOWN_TICKS) {
+            attackPlayer(player, defendDamage);
+            lastAttackTick = this.tickCount;
+        }
+    }
+
+    // 7 секунд минуло: корова тікає
+    public void stopDefending() {
+        defendTarget = null;
+        defendUntil = 0;
+        fear = Math.max(fear, FEAR_AFTER_DEFEND);
+        this.getNavigation().stop();
+    }
+
+    // ===================== ДРУГ КОРОВИ =====================
+
+    // Корова з довірою 200 дає гравцям поруч ефект «Друг корови»
+    private void giveFriendEffect() {
+        if (this.isBaby()) return;
+        for (Player p : this.level().players()) {
+            if (p.isSpectator() || this.distanceToSqr(p) > FRIEND_EFFECT_RANGE * FRIEND_EFFECT_RANGE) continue;
+            if (trustOf(p) >= CowTrust.BOND_FROM) {
+                p.addEffect(new MobEffectInstance(ModEffects.COW_FRIEND.get(), FRIEND_EFFECT_TICKS, 0, false, true, true));
+            }
+        }
+    }
+
+    // ===================== МОЛОКО =====================
+
+    // ПКМ відром: молоко дає лише самка після пологів
+    private void tryMilk(Player player, InteractionHand hand, ItemStack stack) {
+        if (this.isBaby() || !repro.isFemale()) {
+            tell(family.name + " не дає молока: " + (this.isBaby() ? "це теля" : "це бик"));
+            return;
+        }
+        if (!milk.isLactating()) {
+            tell(family.name + " ще не має молока: воно з'являється лише після пологів");
+            return;
+        }
+        boolean friend = player.hasEffect(ModEffects.COW_FRIEND.get());
+        int cost = friend ? CowMilk.FRIEND_BUCKET_COST : CowMilk.BUCKET_COST;
+        if (!milk.take(cost)) {
+            tell("У " + family.name + " замало молока: " + milk.amount() + " з " + cost + " потрібних");
+            return;
+        }
+        player.playSound(SoundEvents.COW_MILK, 1.0F, 1.0F);
+        ItemStack result = ItemUtils.createFilledResult(stack, player, QualityMilkBucketItem.create(milk.quality()));
+        player.setItemInHand(hand, result);
+        tell("Подоєно " + family.name + ": якість " + milk.quality().letter + ", лишилось " + milk.amount());
+    }
+
+    // ПКМ по теляті відром молока: теля наїдається; сирота вважає гравця матір'ю
+    private void feedCalfMilk(Player player, InteractionHand hand, ItemStack stack) {
+        hunger = Math.max(0, hunger - CALF_BUCKET_FOOD);
+        this.playSound(SoundEvents.GENERIC_DRINK, 1.0F, 1.0F);
+        player.setItemInHand(hand, ItemUtils.createFilledResult(stack, player, new ItemStack(Items.BUCKET)));
+        if (family.isOrphan()) {
+            family.adoptByPlayer(player);
+        } else {
+            tell(player.getName().getString() + " напоїв(ла) теля " + family.name);
+        }
+    }
+
+    // Теля виросло
+    @Override
+    protected void ageBoundaryReached() {
+        super.ageBoundaryReached();
+        if (!this.level().isClientSide && !this.isBaby()) {
+            family.onGrownUp();
+        }
     }
 
     // ===================== ГОДУВАННЯ =====================
@@ -316,9 +474,33 @@ public class HungryCow extends Cow {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         Item item = stack.getItem();
+        boolean server = !this.level().isClientSide;
+
+        // присісти + ПКМ порожньою рукою: родинне дерево в чат (поки для тестів)
+        if (player.isShiftKeyDown() && stack.isEmpty()) {
+            if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
+            if (server) family.showTo(player);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+        // доїння: замість ванільного молока для будь-якої корови
+        if (stack.is(Items.BUCKET)) {
+            if (server) tryMilk(player, hand, stack);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+        // теля п'є молоко з відра
+        if (this.isBaby() && (stack.is(Items.MILK_BUCKET) || stack.is(ModItems.QUALITY_MILK_BUCKET.get()))) {
+            if (server) feedCalfMilk(player, hand, stack);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+
         CowFood food = CowFood.get(item);
         if (food == null) {
             return super.mobInteract(player, hand);
+        }
+        // теля, поки мале, п'є лише молоко
+        if (this.isBaby()) {
+            if (server) tell("Теля " + family.name + " п'є лише молоко");
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
         // подавлена корова нічого не бере
         if (choking) {
@@ -356,6 +538,7 @@ public class HungryCow extends Cow {
         foodCounts.putInt(key, count);
 
         hunger = Math.max(0, hunger - food.hunger);
+        milk.recordDiet(item);
         if (food.heal > 0) {
             this.heal(food.heal);
         }
@@ -426,7 +609,7 @@ public class HungryCow extends Cow {
     // Вагітна корова не може знову увійти в режим розмноження
     @Override
     public boolean canFallInLove() {
-        return super.canFallInLove() && !repro.isPregnant();
+        return super.canFallInLove() && !repro.isPregnant() && !repro.isExhausted();
     }
 
     // Замість миттєвого теляти: після 15 секунд разом корова вагітніє (див. CowReproduction)
@@ -489,7 +672,9 @@ public class HungryCow extends Cow {
 
     private int fearFrom(LivingEntity e) {
         if (e instanceof Player player) {
-            return fearFromPlayer(player);
+            int f = fearFromPlayer(player);
+            // з ефектом «Друг корови» корови бояться вдвічі менше
+            return player.hasEffect(ModEffects.COW_FRIEND.get()) ? f / 2 : f;
         }
         return 10;
     }
@@ -530,6 +715,9 @@ public class HungryCow extends Cow {
         if (result && !this.level().isClientSide && attacker != null) {
             if (attacker instanceof Player player) {
                 lastPlayerHitTick = this.tickCount;
+                if (this.isBaby()) {
+                    callForHelp(player);
+                }
                 if (choking) {
                     // удар гравця рятує подавлену корову: без штрафу довіри, страх невеликий
                     stopChoking();
@@ -557,6 +745,10 @@ public class HungryCow extends Cow {
             if (source.getEntity() instanceof Player killer) {
                 punishWitnesses(killer);
             }
+            if (this.isBaby()) {
+                HungryCow mother = family.findMother();
+                if (mother != null) mother.milk.onCalfDied();
+            }
         }
         super.die(source);
     }
@@ -575,6 +767,8 @@ public class HungryCow extends Cow {
         tag.putInt("DyingLeft", dyingLeft);
         tag.put("Trust", trust.save());
         repro.save(tag);
+        milk.save(tag);
+        family.save(tag);
     }
 
     @Override
@@ -590,6 +784,8 @@ public class HungryCow extends Cow {
         toxinDamage = tag.getFloat("ToxinDamage");
         dyingLeft = tag.getInt("DyingLeft");
         trust.load(tag.getList("Trust", Tag.TAG_COMPOUND));
-        repro.load(tag);
+        repro.load(tag);   // спершу стать, від неї залежить ім'я старої корови
+        milk.load(tag);
+        family.load(tag);
     }
 }

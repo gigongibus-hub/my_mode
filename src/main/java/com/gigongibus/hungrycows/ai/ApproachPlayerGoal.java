@@ -7,12 +7,15 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
 import java.util.EnumSet;
 
-// Корова з довірою від +50 сама підходить до гравця, коли спокійна
+// Корова з довірою від +50 сама підходить до гравця, коли спокійна.
+// Корова з довірою +200 (вигодувана гравцем) ходить біля нього весь час, поки він поруч (у загоні).
 public class ApproachPlayerGoal extends Goal {
     private static final double SEE_RANGE = 12.0;     // з якої відстані помічає друга
     private static final double STOP_DISTANCE = 3.0;  // на скільки блоків підходить
     private static final int STAY_TICKS = 200;        // скільки стоїть поруч (10 сек)
     private static final int PAUSE_TICKS = 400;       // пауза перед наступним підходом (20 сек)
+    private static final int BOND_PAUSE_TICKS = 40;   // для корови з довірою 200 (2 сек)
+    private static final double BOND_RANGE = 16.0;    // з якої відстані корова з довірою 200 іде до гравця
     private final HungryCow cow;
     private Player player;
     private int stayTicks = 0;
@@ -48,7 +51,7 @@ public class ApproachPlayerGoal extends Goal {
                 && player.isAlive()
                 && cow.trustOf(player) >= CowTrust.FRIEND_FROM
                 && cow.distanceToSqr(player) < 16.0 * 16.0
-                && stayTicks < STAY_TICKS;
+                && (stayTicks < STAY_TICKS || bonded());
     }
 
     @Override
@@ -72,10 +75,15 @@ public class ApproachPlayerGoal extends Goal {
 
     @Override
     public void stop() {
+        boolean wasBonded = bonded();
         player = null;
         cow.getNavigation().stop();
         stayTicks = 0;
-        pauseUntil = cow.tickCount + PAUSE_TICKS;
+        pauseUntil = cow.tickCount + (wasBonded ? BOND_PAUSE_TICKS : PAUSE_TICKS);
+    }
+
+    private boolean bonded() {
+        return player != null && cow.trustOf(player) >= CowTrust.BOND_FROM;
     }
 
     // Найближчий видимий гравець, якому корова довіряє
@@ -84,8 +92,10 @@ public class ApproachPlayerGoal extends Goal {
         double bestDist = SEE_RANGE * SEE_RANGE;
         for (Player p : cow.level().players()) {
             if (p.isSpectator() || p.hasEffect(MobEffects.INVISIBILITY)) continue;
-            if (cow.trustOf(p) < CowTrust.FRIEND_FROM) continue;
+            int t = cow.trustOf(p);
+            if (t < CowTrust.FRIEND_FROM) continue;
             double d = cow.distanceToSqr(p);
+            if (t >= CowTrust.BOND_FROM && d < BOND_RANGE * BOND_RANGE) return p;   // найкращий друг важливіший
             if (d < bestDist) {
                 bestDist = d;
                 best = p;

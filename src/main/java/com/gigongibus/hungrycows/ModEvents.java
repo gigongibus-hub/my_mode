@@ -24,6 +24,12 @@ public class ModEvents {
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModEntities.HUNGRY_COW_SPAWN_EGG);
         }
+        // молоко кожної якості (поки для тестів)
+        if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
+            for (MilkQuality q : MilkQuality.values()) {
+                event.accept(QualityMilkBucketItem.create(q));
+            }
+        }
     }
 
     @Mod.EventBusSubscriber(modid = HungryCowsMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)

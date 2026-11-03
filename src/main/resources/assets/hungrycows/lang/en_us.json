@@ -1,4 +1,6 @@
 {
   "entity.hungrycows.hungry_cow": "Hungry Cow",
-  "item.hungrycows.hungry_cow_spawn_egg": "Hungry Cow Spawn Egg"
+  "item.hungrycows.hungry_cow_spawn_egg": "Hungry Cow Spawn Egg",
+  "item.hungrycows.quality_milk_bucket": "Milk Bucket (quality %s)",
+  "effect.hungrycows.cow_friend": "Cow Friend"
 }

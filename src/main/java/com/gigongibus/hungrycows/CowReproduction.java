@@ -2,7 +2,14 @@ package com.gigongibus.hungrycows;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+
+import java.util.UUID;
 
 /**
  * Стать, спарювання, вагітність і пологи корови.
@@ -18,11 +25,25 @@ public class CowReproduction {
     public static final float CALF_DEATH_CHANCE = 0.5F;   // шанс, що теля народиться мертвим (50% для тестів, у готовому моді 0.02F)
     public static final int BREED_COOLDOWN_TICKS = 6000;  // пауза перед наступним розмноженням (5 хв)
 
+    // ================= СКІЛЬКИ ТЕЛЯТ =================
+    public static final int BIRTHS_MIN = 5;               // звичайна самка: від 5 до 7 пологів за життя
+    public static final int BIRTHS_MAX = 7;
+    public static final float BIG_FAMILY_CHANCE = 0.05F;  // 5% самок: від 10 до 12 пологів
+    public static final int BIG_BIRTHS_MIN = 10;
+    public static final int BIG_BIRTHS_MAX = 12;
+    public static final double EXHAUSTED_SLOWDOWN = 0.30; // після останніх пологів назавжди повільніша на 30%
+    private static final UUID EXHAUSTED_MODIFIER_ID = UUID.fromString("7d3f5f0e-3c1b-4b8e-9a51-6b1f2c9e4a10");
+
     private final HungryCow cow;
     private int sex;                       // 1 = жіноча, 2 = чоловіча
     private boolean pregnant = false;
     private int pregnantSeconds = 0;
     private int laborTicksLeft = 0;
+    private int births = 0;                // скільки разів народжувала (мертві телята теж рахуються)
+    private int birthLimit;                // скільки пологів можливо за життя
+    private boolean exhausted = false;     // більше не може народжувати і давати молоко після останньої лактації
+    private CompoundTag fatherNode = null; // батько поточної вагітності для родинного дерева
+    private UUID fatherId = null;
 
     // зустріч пари (не зберігається)
     private int matingSince = 0;
@@ -31,6 +52,9 @@ public class CowReproduction {
     public CowReproduction(HungryCow cow) {
         this.cow = cow;
         this.sex = cow.getRandom().nextBoolean() ? 1 : 2;
+        this.birthLimit = cow.getRandom().nextFloat() < BIG_FAMILY_CHANCE
+                ? BIG_BIRTHS_MIN + cow.getRandom().nextInt(BIG_BIRTHS_MAX - BIG_BIRTHS_MIN + 1)
+                : BIRTHS_MIN + cow.getRandom().nextInt(BIRTHS_MAX - BIRTHS_MIN + 1);
     }
 
     // ---------- стан ----------
@@ -47,9 +71,22 @@ public class CowReproduction {
         return laborTicksLeft > 0;
     }
 
+    public int births() {
+        return births;
+    }
+
+    public int birthLimit() {
+        return birthLimit;
+    }
+
+    public boolean isExhausted() {
+        return exhausted;
+    }
+
     // Можуть розмножуватися: різні статі, ніхто не вагітний
     public boolean canMateWith(HungryCow other) {
-        return isFemale() != other.repro.isFemale() && !pregnant && !other.repro.pregnant;
+        return isFemale() != other.repro.isFemale() && !pregnant && !other.repro.pregnant
+                && !exhausted && !other.repro.exhausted;
     }
 
     private void say(String text) {
@@ -82,6 +119,8 @@ public class CowReproduction {
     private void conceive(HungryCow father) {
         pregnant = true;
         pregnantSeconds = PREGNANCY_SECONDS;
+        fatherId = father.getUUID();
+        fatherNode = father.family.asNode();
         cow.resetLove();
         father.resetLove();
         cow.setAge(BREED_COOLDOWN_TICKS);
@@ -125,26 +164,64 @@ public class CowReproduction {
         pregnant = false;
         pregnantSeconds = 0;
         laborTicksLeft = 0;
+        births++;
 
+        HungryCow baby = null;
         if (cow.getRandom().nextFloat() < CALF_DEATH_CHANCE) {
             cow.playSound(SoundEvents.COW_DEATH, 0.8F, 1.3F);
             say("Теля народилося мертвим...");
-            return;
+        } else {
+            baby = ModEntities.HUNGRY_COW.get().create(cow.level());
         }
-        HungryCow baby = ModEntities.HUNGRY_COW.get().create(cow.level());
         if (baby != null) {
             baby.setBaby(true);
             baby.moveTo(cow.getX(), cow.getY(), cow.getZ(), cow.getYRot(), 0.0F);
+            baby.family.setupNewborn(cow, fatherNode);
+            cow.family.addChild(baby.family.name);
+            HungryCow father = findFather();
+            if (father != null) father.family.addChild(baby.family.name);
             cow.level().addFreshEntity(baby);
             cow.level().broadcastEntityEvent(cow, (byte) 18);
-            say("Народилося теля!");
+            say("Народилося теля " + baby.family.name + "!");
+        }
+        // молоко з'являється після пологів; якщо теля мертве, воно все дістанеться гравцю
+        cow.milk.startLactation(baby != null);
+        fatherNode = null;
+        fatherId = null;
+
+        if (births >= birthLimit) {
+            exhausted = true;
+            applyExhaustion();
+            say(cow.family.name + " більше не зможе народжувати: це були останні пологи (" + births + ")");
+        }
+    }
+
+    private HungryCow findFather() {
+        if (fatherId == null || !(cow.level() instanceof ServerLevel level)) return null;
+        Entity e = level.getEntity(fatherId);
+        return e instanceof HungryCow father ? father : null;
+    }
+
+    // Виснажена корова назавжди повільніша (модифікатор зберігається разом з атрибутами)
+    public void applyExhaustion() {
+        AttributeInstance speed = cow.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed != null && speed.getModifier(EXHAUSTED_MODIFIER_ID) == null) {
+            speed.addPermanentModifier(new AttributeModifier(EXHAUSTED_MODIFIER_ID, "Exhausted cow",
+                    -EXHAUSTED_SLOWDOWN, AttributeModifier.Operation.MULTIPLY_TOTAL));
         }
     }
 
     // ---------- напис над коровою ----------
 
     public String decorate(String name) {
-        String result = "[" + (isFemale() ? "Ж" : "Ч") + "] " + name;
+        String result = "[" + (isFemale() ? "Ж" : "Ч") + "] " + cow.family.name + " | " + name;
+        if (cow.isBaby()) {
+            result += " | " + cow.family.calfLabel();
+        } else if (isFemale()) {
+            result += " | Пологи: " + births + "/" + birthLimit + (exhausted ? " (все)" : "");
+            String milk = cow.milk.label();
+            if (milk != null) result += " | " + milk;
+        }
         if (laborTicksLeft > 0) {
             result += " | ПОЛОГИ ще " + (laborTicksLeft / 20 + 1) + " с";
         } else if (pregnant) {
@@ -160,6 +237,11 @@ public class CowReproduction {
         tag.putBoolean("Pregnant", pregnant);
         tag.putInt("PregnantSeconds", pregnantSeconds);
         tag.putInt("LaborTicks", laborTicksLeft);
+        tag.putInt("Births", births);
+        tag.putInt("BirthLimit", birthLimit);
+        tag.putBoolean("Exhausted", exhausted);
+        if (fatherNode != null) tag.put("FatherNode", fatherNode);
+        if (fatherId != null) tag.putUUID("FatherId", fatherId);
     }
 
     public void load(CompoundTag tag) {
@@ -169,5 +251,11 @@ public class CowReproduction {
         pregnant = tag.getBoolean("Pregnant");
         pregnantSeconds = tag.getInt("PregnantSeconds");
         laborTicksLeft = tag.getInt("LaborTicks");
+        births = tag.getInt("Births");
+        if (tag.contains("BirthLimit")) birthLimit = tag.getInt("BirthLimit");
+        exhausted = tag.getBoolean("Exhausted");
+        fatherNode = tag.contains("FatherNode") ? tag.getCompound("FatherNode") : null;
+        fatherId = tag.hasUUID("FatherId") ? tag.getUUID("FatherId") : null;
+        if (exhausted) applyExhaustion();
     }
 }

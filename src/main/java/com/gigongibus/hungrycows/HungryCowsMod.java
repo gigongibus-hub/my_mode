@@ -16,7 +16,9 @@ public class HungryCowsMod {
 
     public HungryCowsMod(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
+        ModItems.init();
         ITEMS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
+        ModEffects.EFFECTS.register(modEventBus);
     }
 }

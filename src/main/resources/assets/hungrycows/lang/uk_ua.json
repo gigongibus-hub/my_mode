@@ -1,4 +1,6 @@
 {
   "entity.hungrycows.hungry_cow": "Голодна корова",
-  "item.hungrycows.hungry_cow_spawn_egg": "Яйце призову голодної корови"
+  "item.hungrycows.hungry_cow_spawn_egg": "Яйце призову голодної корови",
+  "item.hungrycows.quality_milk_bucket": "Відро молока (якість %s)",
+  "effect.hungrycows.cow_friend": "Друг корови"
 }

@@ -97,6 +97,7 @@ public class SeekGrassGoal extends Goal {
 
     @Override
     public boolean canUse() {
+        if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
         if (cow.choking) return false;   // подавлена корова не шукає їжі
         if (cow.hunger < HUNGRY_AT) return false;
         // раз на 10 секунд забуваємо, що вважали недосяжним
@@ -205,15 +206,18 @@ public class SeekGrassGoal extends Goal {
         Block block = state.getBlock();
         if (block == Blocks.GRASS_BLOCK) {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());
+            cow.milk.recordDiet(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - HungryCow.GRASS_BLOCK_FOOD);
             cow.heal(HungryCow.GRASS_BLOCK_HEAL);
         } else if (block == Blocks.MOSS_BLOCK) {
             Block[] soils = { Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.ROOTED_DIRT };
             Block soil = soils[cow.getRandom().nextInt(soils.length)];
             cow.level().setBlockAndUpdate(target, soil.defaultBlockState());
+            cow.milk.recordDiet(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - HungryCow.MOSS_BLOCK_FOOD);
         } else if (block == Blocks.GRASS || block == Blocks.TALL_GRASS) {
             cow.level().destroyBlock(target, false);
+            cow.milk.recordDiet(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - HungryCow.PLANT_FOOD);
             cow.heal(HungryCow.PLANT_HEAL);
         } else {
