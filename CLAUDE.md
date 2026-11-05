@@ -30,7 +30,7 @@
 - `QualityMilkBucketItem`: предмет «Відро молока (якість X)».
 - `CowFamily`: ім'я, мати (корова або гравець), забування матері, родинне дерево, діти. `CowNames`: імена.
 - `CowCharacter`: 14 рис (ген 35% + досвід 65%), спадковість з мутацією, таблиця подій досвіду.
-- `ModForgeEvents`: зомбі полюють на корів, вибух поруч дає досвід. `META-INF/accesstransformer.cfg`: доступ до `Mob.targetSelector`.
+- `ModForgeEvents`: зомбі полюють на корів (доступ до `Mob.targetSelector` через рефлексію, поле `f_21346_`), вибух поруч дає досвід.
 - `ai/`: 12 цілей: `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
@@ -63,6 +63,8 @@
 - Порядок полів у `HungryCow` не змінювати: `repro` перед `milk` і `family` (`CowFamily` у конструкторі читає стать).
 - У `readAdditionalSaveData` спершу `repro.load`, потім `family.load`.
 - `ageBoundaryReached()` спрацьовує лише при переході теля ↔ доросла, і `isBaby()` там уже новий.
+- Не вмикати access transformer у `build.gradle`: у ForgeGradle 6 після нього з компіляції зникають бібліотеки Forge
+  (`net.minecraftforge.eventbus`, `fml`, `brigadier` «does not exist»). Закриті поля брати через `ObfuscationReflectionHelper`.
 
 ## Тестові значення: повернути перед релізом
 - `CowTrust.TEST_MULTIPLIER = 25` → 1; `CowTrust.ONE_FEED_PER_DAY = false` → true.
