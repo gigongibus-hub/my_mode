@@ -175,7 +175,9 @@ public class SleepGoal extends Goal {
             return;
         }
         // розбудили: стоїть на місці без сну (і не відпочиває), прислухається, потім засинає знову
-        if (cow.tickCount < awakeUntil) {
+        // (лише вдома: надворі, коли дім є, неспання не заважає йти додому)
+        boolean settled = home == null || CowHome.hasRoof(cow.level(), cow.blockPosition()) || (claimed != null && atSpot(claimed));
+        if (cow.tickCount < awakeUntil && settled) {
             cow.getNavigation().stop();
             cow.sleeping = false;
             cow.resting = false;
@@ -263,9 +265,18 @@ public class SleepGoal extends Goal {
             cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);
             net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
             cow.getNavigation().resetMaxVisitedNodesMultiplier();
-            if (path != null && path.getEndNode() != null && path.getEndNode().asBlockPos().distManhattan(p) <= 1) return p;
+            if (path != null && path.getEndNode() != null) {
+                BlockPos end = path.getEndNode().asBlockPos();
+                if (end.distManhattan(p) <= 1) return p;
+                // до самого місця не пролізти (вузький куток), але шлях закінчується теж усередині й вільно — годиться
+                boolean endInside = building ? CowHome.shelterScore(cow.level(), end) > 0 : CowHome.shaded(cow.level(), end);
+                if (endInside && CowHome.standable(cow.level(), end) && !claimedByOther(end) && !excluded.contains(end)) {
+                    return end.immutable();
+                }
+            }
             excluded.add(p);
         }
+        if (!spots.isEmpty()) cow.tell(cow.family.name + " не знайшла вільного місця в домі, до якого можна дійти");
         return null;   // вільних місць усередині немає — спить, де є
     }
 
