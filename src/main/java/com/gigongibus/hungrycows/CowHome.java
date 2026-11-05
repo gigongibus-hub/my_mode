@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Дім і тінь (ідея 9).
@@ -20,6 +21,7 @@ public class CowHome {
     public static final int SEARCH_RADIUS = 32;         // як далеко шукає дім
     public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди ...
     public static final int SWEEP_PER_SECOND = 80;      // ... і скільки ще по черзі (так менше ніж за хвилину огляне всю околицю)
+    public static final double LOW_BLOCK = 0.5;         // неповний блок до пів блока заввишки — на ньому можна стояти
     public static final int BEST_SCORE = 13;            // найкращий можливий дім (дах + 4 стіни)
     public static final int COLUMN_UP = 6;              // у кожному місці перевіряє висоти від y+6 ...
     public static final int COLUMN_DOWN = 6;            // ... до y−6 (і дах, і підлогу всередині будівлі)
@@ -58,9 +60,16 @@ public class CowHome {
     // ---------- перевірки місць ----------
 
     // Чи може корова тут стояти: тверде під ногами, два блоки повітря (корова ~1,4 блока)
+    // Чи може корова тут стояти, як у звичайній грі: можна стати на неповний блок (килим, люк, нажимна плита,
+    // плита-півблок), а трава й квіти під ногами не заважають; над головою має бути вільно
     public static boolean standable(Level level, BlockPos pos) {
-        BlockState below = level.getBlockState(pos.below());
-        return below.isSolid() && level.getBlockState(pos).isAir() && level.getBlockState(pos.above()).isAir();
+        if (!level.getFluidState(pos).isEmpty()) return false;   // не у воді
+        VoxelShape at = level.getBlockState(pos).getCollisionShape(level, pos);
+        boolean low = at.isEmpty() || at.max(Direction.Axis.Y) <= LOW_BLOCK;
+        if (!low) return false;
+        boolean ground = !at.isEmpty() || !level.getBlockState(pos.below()).getCollisionShape(level, pos.below()).isEmpty();
+        boolean head = level.getBlockState(pos.above()).getCollisionShape(level, pos.above()).isEmpty();
+        return ground && head;
     }
 
     // Тінь: над головою не видно неба
@@ -92,8 +101,9 @@ public class CowHome {
     public static boolean hasRoof(Level level, BlockPos pos) {
         for (int i = 2; i <= ROOF_HEIGHT; i++) {
             BlockState s = level.getBlockState(pos.above(i));
-            if (s.isAir()) continue;
-            return building(s);
+            // повітря, ліхтар, смолоскип, ланцюг тощо — пропускає; дах = перший справжній блок угорі
+            if (building(s)) return true;
+            if (s.is(BlockTags.LEAVES)) return false;   // листя: тінь, але не дах
         }
         return false;
     }
