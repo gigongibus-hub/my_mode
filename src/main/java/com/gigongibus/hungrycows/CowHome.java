@@ -22,6 +22,7 @@ public class CowHome {
     public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди ...
     public static final int SWEEP_PER_SECOND = 80;      // ... і скільки ще по черзі (так менше ніж за хвилину огляне всю околицю)
     public static final double LOW_BLOCK = 0.5;         // неповний блок до пів блока заввишки — на ньому можна стояти
+    public static final int BURST_CHECKS = 400;         // перед сном без місця: стільки місць за секунду (≈ вся околиця за 10 с)
     public static final int BEST_SCORE = 13;            // найкращий можливий дім (дах + 4 стіни)
     public static final int COLUMN_UP = 6;              // у кожному місці перевіряє висоти від y+6 ...
     public static final int COLUMN_DOWN = 6;            // ... до y−6 (і дах, і підлогу всередині будівлі)
@@ -204,6 +205,18 @@ public class CowHome {
         if (homeScore >= BEST_SCORE) return;
         int checks = SAMPLES_PER_SECOND + SWEEP_PER_SECOND;
         if (home != null) checks /= 4;
+        scan(checks);
+    }
+
+    // Перед сном, якщо ще не знає, де спати: оглядає околицю в кілька разів швидше
+    public void searchHard() {
+        if (homeScore >= BEST_SCORE) return;
+        scan(BURST_CHECKS);
+    }
+
+    private void scan(int checks) {
+        BlockPos o = cow.blockPosition();
+        int side = SEARCH_RADIUS * 2 + 1;
         for (int i = 0; i < checks; i++) {
             int x, z;
             if (i < checks * SAMPLES_PER_SECOND / (SAMPLES_PER_SECOND + SWEEP_PER_SECOND)) {

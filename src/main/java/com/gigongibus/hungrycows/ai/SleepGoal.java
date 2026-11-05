@@ -35,6 +35,11 @@ public class SleepGoal extends Goal {
     private int awakeUntil = 0;
     private final HungryCow cow;
     private int walkTicks = 0;
+    private int seekTicks = 0;
+    private int failedPaths = 0;
+    private static final int SEEK_TICKS = 600;          // без місця для сну шукає щонайбільше 30 с
+    private static final double STAY_NEAR_LEADER = 6;   // під час пошуку тримається не далі 6 блоків від ватажка
+    private static final int MAX_FAILED_PATHS = 5;      // стільки разів не знайшла шляху — спить, де є
     private int ticks = 0;
 
     public SleepGoal(HungryCow cow) {
@@ -61,6 +66,8 @@ public class SleepGoal extends Goal {
     public void start() {
         walkTicks = 0;
         ticks = 0;
+        seekTicks = 0;
+        failedPaths = 0;
     }
 
     @Override
@@ -73,6 +80,21 @@ public class SleepGoal extends Goal {
                 && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
             home = leader.home.sleepSpot();
         }
+        // ще не знає, де спати: до пів хвилини активно шукає (будівлю, потім дерево), тримаючись стада
+        if (home == null && seekTicks < SEEK_TICKS) {
+            seekTicks++;
+            cow.sleeping = false;
+            cow.resting = false;
+            if (seekTicks % 20 == 1) {
+                cow.home.searchHard();
+                HungryCow l = cow.herd.leader();
+                if (l != null && l != cow && cow.distanceToSqr(l) > STAY_NEAR_LEADER * STAY_NEAR_LEADER) {
+                    cow.getNavigation().moveTo(l, 1.0);
+                }
+            }
+            if (seekTicks == SEEK_TICKS) cow.tell(cow.family.name + " не знайшла, де спати, — спить тут");
+            return;
+        }
         // кожна корова — своє місце поруч зі спільним (щоб стадо не збивалось у купу)
         BlockPos spot = home != null ? personalSpot(home) : null;
         if (spot != null && walkTicks < MAX_WALK_TICKS && !arrived(home, spot)) {
@@ -80,7 +102,10 @@ public class SleepGoal extends Goal {
             cow.sleeping = false;
             cow.resting = false;
             if (walkTicks == 1 || walkTicks % 20 == 0) {
-                cow.getNavigation().moveTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 1.0);
+                // шлях не знаходиться (зачинено, далеко) — кілька спроб, потім просто до спільного місця
+                boolean ok = cow.getNavigation().moveTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 1.0);
+                if (!ok) ok = cow.getNavigation().moveTo(home.getX() + 0.5, home.getY(), home.getZ() + 0.5, 1.0);
+                if (!ok && ++failedPaths >= MAX_FAILED_PATHS) walkTicks = MAX_WALK_TICKS;   // не дійти — спить, де є
             }
             return;
         }

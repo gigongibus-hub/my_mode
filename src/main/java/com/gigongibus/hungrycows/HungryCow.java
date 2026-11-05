@@ -96,6 +96,8 @@ public class HungryCow extends Cow {
     public static final int DRINK_AMOUNT = 50;           // одне пиття знімає стільки спраги
     public static final int CALF_MILK_THIRST = 35;       // теля: один раз попити молока знімає стільки спраги
 
+    public static final int SLEEP_FROM_TIME = 12000;     // з сутінків (12000 — захід сонця) іде на ночівлю
+    public static final int SLEEP_UNTIL_TIME = 23500;    // до світанку
     public static final double SLEEP_FEAR = 0.5;         // сплячу корову гравець лякає вдвічі менше
     public static final double FIELD_BONUS = 10;         // вдень трава на відкритому місці (поле) привабливіша на стільки балів
 
@@ -325,9 +327,11 @@ public class HungryCow extends Cow {
     }
 
     // Ніч (лише у світах зі сходом і заходом сонця)
+    // Ніч для сну — за часом доби, з сутінків (щоб устигнути дійти); дощ і гроза — не ніч
     public boolean isNightTime() {
-        return this.level().dimensionType().hasSkyLight() && !this.level().dimensionType().hasFixedTime()
-                && !this.level().isDay();
+        if (!this.level().dimensionType().hasSkyLight() || this.level().dimensionType().hasFixedTime()) return false;
+        long t = this.level().getDayTime() % 24000L;
+        return t >= SLEEP_FROM_TIME && t < SLEEP_UNTIL_TIME;
     }
 
     public boolean shouldRest() {
