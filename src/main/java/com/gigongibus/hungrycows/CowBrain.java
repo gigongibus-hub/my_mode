@@ -51,6 +51,23 @@ public class CowBrain {
     public static final int HIDDEN = 12;
     public static final double INIT_WEIGHT = 0.05;       // початкові ваги малі: мозок поводиться майже як інстинкт
 
+    // ================= НАВЧАННЯ (7б) =================
+    // Спроба = одна дія від початку до кінця. Нагорода = наскільки корові стало краще (самопочуття після − до).
+    public static final double LEARN_RATE = 0.02;        // швидкість навчання (повільно: помітно за кілька діб)
+    public static final double LEARN_SLOW = 0.5;         // риса «здатність вчитися» 0 — ×0.5 ...
+    public static final double LEARN_FAST = 1.5;         // ... 100 — ×1.5
+    public static final double CALF_LEARN = 3.0;         // теля вчиться втричі швидше
+    public static final int EPISODE_MAX_TICKS = 600;     // довга дія оцінюється щонайменше раз на 30 с
+    public static final double REWARD_AVG_RATE = 0.05;   // як швидко звикає до «звичайної» нагороди
+    public static final float WEIGHT_LIMIT = 3.0F;       // ваги не більші за це (щоб мозок не «зламався»)
+    // самопочуття = комфорт − голод·0.5 − втома·0.5 − страх·0.7 − біль − нездужання·0.5 − самотність·0.3
+    public static final double W_HUNGER = 0.5, W_TIRED = 0.5, W_FEAR = 0.7, W_PAIN = 1.0, W_UNWELL = 0.5, W_LONELY = 0.3;
+
+    // ================= ТЕЛЯ ПЕРЕЙМАЄ ЗВИЧКИ МАТЕРІ =================
+    public static final double IMITATE_RANGE = 10;       // мати ближче цього — теля дивиться на неї
+    public static final double IMITATE_BONUS = 1.0;      // + до балу тієї дії, яку зараз робить мати
+    public static final double IMITATE_RATE = 0.005;     // і потроху запам'ятовує це (на кожне рішення)
+
     public enum Action {
         EAT("їсти", Gene.BRAIN_EAT),
         REST("відпочивати", Gene.BRAIN_REST),
@@ -105,6 +122,19 @@ public class CowBrain {
     private float[] w1 = new float[HIDDEN * (INPUTS + 1)];
     private float[] w2 = new float[ACTIONS.length * (HIDDEN + 1)];
     private final double[] hidden = new double[HIDDEN];
+    private final double[] lastNet = new double[ACTIONS.length];   // що «підказує досвід» зараз (для книги)
+
+    // поточна спроба
+    private boolean epActive = false;
+    private Action epAction = Action.WANDER;
+    private final double[] epInput = new double[INPUTS];
+    private final double[] epProbs = new double[ACTIONS.length];
+    private double epStartWellbeing = 0;
+    private int epStartTick = 0;
+    private double avgReward = 0;
+    private double lastReward = 0;
+    private int episodes = 0;
+    private Action imitated = null;   // що теля зараз переймає від матері
 
     public CowBrain(HungryCow cow) {
         this.cow = cow;
@@ -286,17 +316,102 @@ public class CowBrain {
         };
     }
 
-    private double network(int action) {
+    // Прихований шар для входу x (результат у hidden[])
+    private void computeHidden(double[] x) {
         int stride = INPUTS + 1;
         for (int h = 0; h < HIDDEN; h++) {
             double s = w1[h * stride + INPUTS];   // зсув
-            for (int i = 0; i < INPUTS; i++) s += w1[h * stride + i] * input[i];
+            for (int i = 0; i < INPUTS; i++) s += w1[h * stride + i] * x[i];
             hidden[h] = Math.tanh(s);
         }
+    }
+
+    // Вихід мережі для дії (після computeHidden)
+    private double outputOf(int action) {
         int stride2 = HIDDEN + 1;
         double out = w2[action * stride2 + HIDDEN];
         for (int h = 0; h < HIDDEN; h++) out += w2[action * stride2 + h] * hidden[h];
         return out;
+    }
+
+    // ---------- навчання ----------
+
+    // Наскільки корові зараз добре (приблизно від −150 до +100)
+    public double wellbeing() {
+        CowChemistry ch = cow.chem;
+        return ch.feelComfort() - W_HUNGER * ch.hungerFelt() - W_TIRED * ch.fatigueFelt() - W_FEAR * ch.fearFelt()
+                - W_PAIN * ch.feelPain() - W_UNWELL * ch.feelUnwell() - W_LONELY * ch.loneliness();
+    }
+
+    private double learnRate() {
+        double k = LEARN_SLOW + (LEARN_FAST - LEARN_SLOW) * cow.character.fraction(Trait.LEARNING);
+        return LEARN_RATE * k * (cow.isBaby() ? CALF_LEARN : 1.0);
+    }
+
+    // Зміна ваг: g[k] — у який бік штовхнути вихід дії k (зворотне поширення через прихований шар)
+    private void train(double[] x, double[] g) {
+        computeHidden(x);
+        int stride = INPUTS + 1;
+        int stride2 = HIDDEN + 1;
+        double[] dh = new double[HIDDEN];
+        for (int k = 0; k < ACTIONS.length; k++) {
+            if (g[k] == 0) continue;
+            for (int h = 0; h < HIDDEN; h++) {
+                dh[h] += g[k] * w2[k * stride2 + h];
+                w2[k * stride2 + h] = clampW(w2[k * stride2 + h] + g[k] * hidden[h]);
+            }
+            w2[k * stride2 + HIDDEN] = clampW(w2[k * stride2 + HIDDEN] + g[k]);
+        }
+        for (int h = 0; h < HIDDEN; h++) {
+            double dz = dh[h] * (1 - hidden[h] * hidden[h]);
+            if (dz == 0) continue;
+            for (int i = 0; i < INPUTS; i++) w1[h * stride + i] = clampW(w1[h * stride + i] + dz * x[i]);
+            w1[h * stride + INPUTS] = clampW(w1[h * stride + INPUTS] + dz);
+        }
+    }
+
+    private static float clampW(double v) {
+        return (float) Math.max(-WEIGHT_LIMIT, Math.min(WEIGHT_LIMIT, v));
+    }
+
+    private void startEpisode() {
+        epActive = true;
+        epAction = current;
+        System.arraycopy(input, 0, epInput, 0, INPUTS);
+        System.arraycopy(probs, 0, epProbs, 0, probs.length);
+        epStartWellbeing = wellbeing();
+        epStartTick = cow.tickCount;
+    }
+
+    // Спроба закінчилась: стало краще — частіше так робити в схожій ситуації, гірше — рідше
+    private void endEpisode() {
+        if (!epActive) return;
+        epActive = false;
+        if (epProbs[epAction.ordinal()] <= 0) return;
+        double reward = (wellbeing() - epStartWellbeing) / 100.0;
+        double advantage = reward - avgReward;
+        avgReward += REWARD_AVG_RATE * (reward - avgReward);
+        lastReward = reward;
+        episodes++;
+        double lr = learnRate();
+        double[] g = new double[ACTIONS.length];
+        for (int k = 0; k < g.length; k++) {
+            double target = k == epAction.ordinal() ? 1.0 : 0.0;
+            g[k] = lr * advantage * (target - epProbs[k]);
+        }
+        train(epInput, g);
+    }
+
+    // Теля запам'ятовує, що робить мати
+    private void imitate(Action target) {
+        double[] g = new double[ACTIONS.length];
+        double lr = IMITATE_RATE * (LEARN_SLOW + (LEARN_FAST - LEARN_SLOW) * cow.character.fraction(Trait.LEARNING));
+        for (int k = 0; k < g.length; k++) {
+            if (!possible[k]) continue;
+            double t = k == target.ordinal() ? 1.0 : 0.0;
+            g[k] = lr * (t - probs[k]);
+        }
+        train(input, g);
     }
 
     private void decide() {
@@ -311,6 +426,16 @@ public class CowBrain {
         }
         fillInputs();
         fillPossible();
+        computeHidden(input);
+        // теля дивиться на матір (корову) поруч і частіше робить те саме
+        imitated = null;
+        if (cow.isBaby()) {
+            HungryCow mother = cow.family.findMother();
+            if (mother != null && cow.distanceToSqr(mother) < IMITATE_RANGE * IMITATE_RANGE
+                    && possible[mother.brain.current().ordinal()]) {
+                imitated = mother.brain.current();
+            }
+        }
         double max = Double.NEGATIVE_INFINITY;
         double[] score = new double[ACTIONS.length];
         for (Action a : ACTIONS) {
@@ -320,7 +445,9 @@ public class CowBrain {
                 continue;
             }
             double geneBias = GENE_BIAS * (cow.genes.value(a.gene) - 50) / 50.0;
-            score[i] = (instinct(a) + geneBias + network(i)) / TEMPERATURE;
+            lastNet[i] = outputOf(i);
+            double copy = a == imitated ? IMITATE_BONUS : 0;
+            score[i] = (instinct(a) + geneBias + lastNet[i] + copy) / TEMPERATURE;
             max = Math.max(max, score[i]);
         }
         double sum = 0;
@@ -329,6 +456,13 @@ public class CowBrain {
             sum += probs[i];
         }
         for (int i = 0; i < probs.length; i++) probs[i] = sum > 0 ? probs[i] / sum : 0;
+        if (imitated != null) imitate(imitated);
+        // довга дія: оцінити спробу й почати нову
+        if (epActive && cow.tickCount - epStartTick > EPISODE_MAX_TICKS) {
+            endEpisode();
+            startEpisode();
+        }
+        if (!epActive) startEpisode();
 
         // вибір з шансами
         double roll = cow.getRandom().nextDouble();
@@ -348,9 +482,11 @@ public class CowBrain {
             return;
         }
         if (pick != current) {
+            endEpisode();   // попередня дія закінчилась: чи стало краще?
             current = pick;
             heldTicks = 0;
             lastDoingTick = cow.tickCount;
+            startEpisode();
         }
     }
 
@@ -385,7 +521,16 @@ public class CowBrain {
             out.add("   " + a.title + ": " + (possible[i] ? Math.round(probs[i] * 100) + "%" : "неможливо"));
         }
         out.add("Схильності з генів: див. «Гени → Мозок»");
-        out.add("Навчання: ще ні (крок 7б)");
+        out.add("#Навчання");
+        out.add("Спроб: " + episodes + ", швидкість ×" + String.format("%.1f", learnRate() / LEARN_RATE)
+                + (cow.isBaby() ? " (теля)" : ""));
+        out.add("Остання нагорода: " + String.format("%+.2f", lastReward) + ", звичайна: " + String.format("%+.2f", avgReward));
+        out.add("Самопочуття зараз: " + Math.round(wellbeing()));
+        if (imitated != null) out.add("Переймає від матері: " + imitated.title);
+        out.add("Що підказує досвід зараз:");
+        for (Action a : ACTIONS) {
+            if (possible[a.ordinal()]) out.add("   " + a.title + ": " + String.format("%+.2f", lastNet[a.ordinal()]));
+        }
         return out;
     }
 
@@ -396,6 +541,8 @@ public class CowBrain {
         c.putIntArray("W1", toBits(w1));
         c.putIntArray("W2", toBits(w2));
         c.putInt("Inputs", INPUTS);
+        c.putDouble("AvgReward", avgReward);
+        c.putInt("Episodes", episodes);
         tag.put("Brain", c);
     }
 
@@ -407,6 +554,8 @@ public class CowBrain {
         int[] b = c.getIntArray("W2");
         if (a.length == w1.length) w1 = fromBits(a);
         if (b.length == w2.length) w2 = fromBits(b);
+        avgReward = c.getDouble("AvgReward");
+        episodes = c.getInt("Episodes");
     }
 
     private static int[] toBits(float[] f) {
