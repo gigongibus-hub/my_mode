@@ -26,19 +26,24 @@ public class FearGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!cow.wantsToFlee()) return false;   // 6б: вирішує відчуття страху
         scary = cow.findScary(10.0);
-        return scary != null;
+        if (scary == null) return false;
+        // ворожа корова (довіра < 0) — рефлекс поза мозком; інакше тікати чи ні вирішує мозок (або старе правило)
+        return hostile() ? cow.wantsToFlee() : cow.shouldFlee();
     }
 
     // Шукати заново кожні 10 тіків, а не щотіку: пошук істот поруч дорогий
     @Override
     public boolean canContinueToUse() {
-        if (!cow.stillAfraid()) return false;   // заспокоюється на половині порогу
+        if (!(hostile() ? cow.stillAfraid() : cow.keepFleeing())) return false;   // заспокоюється на половині порогу
         if (scary == null || !scary.isAlive() || cow.tickCount % 10 == 0) {
             scary = cow.findScary(14.0);
         }
         return scary != null;
+    }
+
+    private boolean hostile() {
+        return scary instanceof Player p && cow.trustOf(p) < 0;
     }
 
     @Override

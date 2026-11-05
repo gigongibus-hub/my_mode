@@ -31,7 +31,8 @@ public class CowGenes {
         MILK("Молоко"),
         BODY("Тіло"),
         HORMONES("Гормони й стрес (діятимуть пізніше)"),
-        IMMUNITY("Імунітет (діятиме з хворобами)");
+        IMMUNITY("Імунітет (діятиме з хворобами)"),
+        BRAIN("Мозок: схильності до дій");
 
         public final String title;
 
@@ -119,7 +120,18 @@ public class CowGenes {
         RECOVERY_SPEED(Group.IMMUNITY, "швидкість одужання"),
         FEVER(Group.IMMUNITY, "температура при хворобі"),
         COLOSTRUM_IMMUNITY(Group.IMMUNITY, "імунітет телятам з молоком"),
-        SICK_STRESS_RESIST(Group.IMMUNITY, "спокій під час хвороби");
+        SICK_STRESS_RESIST(Group.IMMUNITY, "спокій під час хвороби"),
+        // ---- мозок: схильність до кожної дії (10) ----
+        BRAIN_EAT(Group.BRAIN, "схильність їсти"),
+        BRAIN_REST(Group.BRAIN, "схильність відпочивати"),
+        BRAIN_HERD(Group.BRAIN, "схильність до стада"),
+        BRAIN_FRIEND(Group.BRAIN, "схильність до друга"),
+        BRAIN_WANDER(Group.BRAIN, "схильність гуляти"),
+        BRAIN_WARY(Group.BRAIN, "схильність стерегтися"),
+        BRAIN_MATE(Group.BRAIN, "схильність шукати пару"),
+        BRAIN_FAMILY(Group.BRAIN, "схильність до рідних"),
+        BRAIN_RUMINATE(Group.BRAIN, "схильність ремигати"),
+        BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися");
 
         public final Group group;
         public final String title;

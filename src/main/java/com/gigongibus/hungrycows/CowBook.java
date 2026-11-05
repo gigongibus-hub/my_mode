@@ -92,6 +92,9 @@ public final class CowBook {
         for (CowCharacter.Trait trait : CowCharacter.Trait.values()) {
             out.add(trait.title + ": " + cow.character.get(trait));
         }
+        // 6б. Мозок
+        out.addAll(cow.brain.lines());
+
         // 7. Гени
         out.add("#Гени");
         out.add("Число = середнє двох копій (від матері / від батька).");

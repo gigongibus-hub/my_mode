@@ -52,6 +52,9 @@ import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
 import com.gigongibus.hungrycows.ai.BullCourtGoal;
 import com.gigongibus.hungrycows.ai.HerdUpGoal;
+import com.gigongibus.hungrycows.ai.InvestigateGoal;
+import com.gigongibus.hungrycows.ai.MotherCalfGoal;
+import com.gigongibus.hungrycows.ai.RuminateGoal;
 import com.gigongibus.hungrycows.ai.MateGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
 import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
@@ -163,6 +166,8 @@ public class HungryCow extends Cow {
     public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
     public final CowCharacter character = new CowCharacter(genes, this.getRandom()); // 14 рис: гени + досвід
     public final CowChemistry chem = new CowChemistry(this);          // речовини в крові й відчуття
+    public final CowBrain brain = new CowBrain(this);                 // мозок: вибирає дії (крок 7)
+    private int lastMealTick = -100000;                               // коли востаннє їла (для ремигання)
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
 
@@ -225,6 +230,37 @@ public class HungryCow extends Cow {
     }
 
     // 6б: чи тікає корова. Вирішує відчуття страху (адреналін, кортизол, окситоцин); паніка — рефлекс.
+    // ===================== МОЗОК + РЕФЛЕКСИ (крок 7) =====================
+    // Коли мозок увімкнено, дію вибирає він; рефлекси спрацьовують завжди.
+
+    public boolean shouldSeekFood() {
+        if (hunger >= STARVE_AT) return true;   // рефлекс: голодування
+        return CowBrain.enabled ? brain.is(CowBrain.Action.EAT) && hunger >= CowBrain.EAT_MIN_HUNGER : wantsFood();
+    }
+
+    public boolean shouldRest() {
+        if (fatigue >= EXHAUSTED_AT) return true;   // рефлекс: виснаження
+        return CowBrain.enabled ? brain.is(CowBrain.Action.REST) : wantsRest();
+    }
+
+    public boolean shouldFlee() {
+        if (fear >= PANIC_AT) return true;   // рефлекс: паніка
+        return CowBrain.enabled ? brain.is(CowBrain.Action.WARY) && chem.fearFelt() >= scaredAt() / 2 : wantsToFlee();
+    }
+
+    public boolean keepFleeing() {
+        if (fear >= PANIC_AT) return true;
+        return CowBrain.enabled ? brain.is(CowBrain.Action.WARY) && chem.fearFelt() >= scaredAt() / 2 : stillAfraid();
+    }
+
+    public void onAte() {
+        lastMealTick = this.tickCount;
+    }
+
+    public boolean recentlyAte(int ticks) {
+        return this.tickCount - lastMealTick < ticks;
+    }
+
     public boolean wantsToFlee() {
         return fear >= PANIC_AT || chem.fearFelt() >= scaredAt();
     }
@@ -364,21 +400,69 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(8, new MateGoal(this));                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
-        this.goalSelector.addGoal(11, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
-        this.goalSelector.addGoal(12, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
-        this.goalSelector.addGoal(13, new AvoidBluetGoal(this));           // відходить від черемші
-        this.goalSelector.addGoal(14, new HerdUpGoal(this));               // проеструс/тічка: тримається біля корів
-        this.goalSelector.addGoal(15, new ApproachPlayerGoal(this));       // підходить до друга
-        this.goalSelector.addGoal(16, new GrieveGoal(this));               // теля ходить біля місця смерті матері
-        this.goalSelector.addGoal(17, new FollowMotherGoal(this));         // теля тримається біля матері
-        this.goalSelector.addGoal(18, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(19, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(20, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(11, new RuminateGoal(this));             // ремигання після їжі (лише з мозком)
+        this.goalSelector.addGoal(12, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
+        this.goalSelector.addGoal(13, new BrainTemptGoal(this));           // йде за ласощами
+        this.goalSelector.addGoal(14, new AvoidBluetGoal(this));           // відходить від черемші
+        this.goalSelector.addGoal(15, new HerdUpGoal(this));               // до стада (з мозком) / проеструс і тічка (без)
+        this.goalSelector.addGoal(16, new ApproachPlayerGoal(this));       // підходить до друга
+        this.goalSelector.addGoal(17, new InvestigateGoal(this));          // цікавиться незнайомцем (лише з мозком)
+        this.goalSelector.addGoal(18, new MotherCalfGoal(this));           // мати йде до теляти (лише з мозком)
+        this.goalSelector.addGoal(19, new GrieveGoal(this));               // теля ходить біля місця смерті матері
+        this.goalSelector.addGoal(20, new FollowMotherGoal(this));         // теля тримається біля матері
+        this.goalSelector.addGoal(21, new BrainStrollGoal(this));          // гуляти
+        this.goalSelector.addGoal(22, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(23, new RandomLookAroundGoal(this));
     }
 
     // За чим корова йде (замість пшениці, яку вона більше не їсть): ласощі, що дають довіру
     private static final Ingredient TEMPT_ITEMS = Ingredient.of(
             Items.MELON, Items.PUMPKIN, Items.MELON_SLICE, Items.APPLE, Items.CARROT);
+
+    // Прогулянка: з мозком — лише коли він вибрав «гуляти» (і тоді частіше), без мозку — як ванільна
+    private static class BrainStrollGoal extends WaterAvoidingRandomStrollGoal {
+        private static final int BRAIN_INTERVAL = 20;    // з мозком: нова точка кожну ~секунду
+        private static final int NORMAL_INTERVAL = 120;  // без мозку: як ванільна корова
+        private final HungryCow cow;
+
+        BrainStrollGoal(HungryCow cow) {
+            super(cow, 1.0);
+            this.cow = cow;
+        }
+
+        @Override
+        public boolean canUse() {
+            if (CowBrain.enabled) {
+                if (!cow.brain.is(CowBrain.Action.WANDER)) return false;
+                setInterval(BRAIN_INTERVAL);
+            } else {
+                setInterval(NORMAL_INTERVAL);
+            }
+            return super.canUse();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return super.canContinueToUse() && cow.brain.allows(CowBrain.Action.WANDER);
+        }
+    }
+
+    // Іти за ласощами в руці гравця: з мозком — коли хоче їсти, цікавиться або йде до друга
+    private static class BrainTemptGoal extends TemptGoal {
+        private final HungryCow cow;
+
+        BrainTemptGoal(HungryCow cow) {
+            super(cow, 1.25, TEMPT_ITEMS, false);
+            this.cow = cow;
+        }
+
+        @Override
+        public boolean canUse() {
+            if (CowBrain.enabled && !(cow.brain.is(CowBrain.Action.EAT) || cow.brain.is(CowBrain.Action.CURIOUS)
+                    || cow.brain.is(CowBrain.Action.FRIEND))) return false;
+            return super.canUse();
+        }
+    }
 
     // Ванільна паніка спрацьовує й від ударів, а це вже робить FearGoal.
     // Тут лишається тільки втеча від вогню й замерзання.
@@ -396,6 +480,7 @@ public class HungryCow extends Cow {
     @Override
     public void aiStep() {
         super.aiStep();
+        if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             if (toxinLeft > 0) {
                 this.hurt(this.damageSources().magic(), toxinDamage);
@@ -806,6 +891,11 @@ public class HungryCow extends Cow {
         boolean server = !this.level().isClientSide;
 
         // книга «Корововедення»: ПКМ по корові відкриває сторінки про неї
+        // палиця налагодження: що корова зараз вирішила і з якими шансами (над хотбаром)
+        if (stack.is(ModItems.BRAIN_STICK.get())) {
+            if (server) player.displayClientMessage(Component.literal(brain.debugLine()), true);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         if (stack.is(ModItems.COW_BOOK.get())) {
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) CowBook.open(serverPlayer, this);
             return InteractionResult.sidedSuccess(this.level().isClientSide);
@@ -881,6 +971,7 @@ public class HungryCow extends Cow {
 
     // Їжа з таблиці CowFood: з руки гравця або з землі
     public void eatFood(CowFood food, Item item) {
+        onAte();
         // лічильники скидаються раз на ігрову добу
         long day = this.level().getDayTime() / 24000L;
         if (day != foodDay) {
@@ -1150,6 +1241,7 @@ public class HungryCow extends Cow {
         genes.save(tag);
         cycle.save(tag);
         chem.save(tag);
+        brain.save(tag);
     }
 
     @Override
@@ -1172,6 +1264,7 @@ public class HungryCow extends Cow {
         cycle.load(tag);
         character.load(tag);
         chem.load(tag);
+        brain.load(tag);
         onGenesChanged();
     }
 }

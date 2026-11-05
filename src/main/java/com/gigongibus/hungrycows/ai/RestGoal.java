@@ -1,6 +1,7 @@
 package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowGenes;
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.ai.goal.Goal;
 import java.util.EnumSet;
@@ -26,12 +27,13 @@ public class RestGoal extends Goal {
     // втомлена корова з режимом розмноження не відпочиває: втома не заважає розмноженню
     @Override
     public boolean canUse() {
-        return cow.wantsRest() && !cow.cycle.inEstrus();
+        return cow.shouldRest() && !cow.cycle.inEstrus();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return cow.fatigue > 0 && restTimer < MAX_REST_TICKS && !cow.cycle.inEstrus();
+        return cow.fatigue > 0 && restTimer < MAX_REST_TICKS && !cow.cycle.inEstrus()
+                && (cow.brain.allows(CowBrain.Action.REST) || cow.fatigue >= HungryCow.EXHAUSTED_AT);
     }
 
     @Override

@@ -46,16 +46,23 @@
   після пологів 15 діб). `TIME_SPEED` прискорює весь час розмноження (цикл, вагітність 90–110 діб, ріст теляти
   100 діб, молоко). Вагітність видно лише з діеструсу. Зачаття 60%, безпліддя 3% (ген «плідність»),
   фримартинізм 90% для телиці з двійні з биком.
-- `ai/`: 15 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
+- `CowBrain`: мозок (крок 7). 29 входів (відчуття, речовини, що навколо, риси), 10 дій (їсти, відпочивати, до стада,
+  до друга, гуляти, стерегтися, шукати пару, до рідних, ремигати, цікавитися). Бал = інстинкт + ген схильності (BRAIN_*)
+  + нейромережа 29→12→10 (ваги зберігаються; навчання в 7б). Вибір раз на 0,5 с, тримає дію ≥5 с.
+  Команда `/hungrycows brain on|off`, предмет «Палиця налагодження мозку», сторінка «Мозок» у книзі.
+- `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Float · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk · 7 SeekGrass · 8 Mate ·
-9 BullCourt · 10 Rest · 11 FindFoster · 12 Tempt (кавун, гарбуз, скибка, яблуко, морква) · 13 AvoidBluet ·
-14 HerdUp · 15 ApproachPlayer · 16 Grieve · 17 FollowMother · 18 WaterAvoidingRandomStroll · 19 LookAtPlayer ·
-20 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
+9 BullCourt · 10 Rest · 11 Ruminate · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
+14 AvoidBluet · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
+21 BrainStroll · 22 LookAtPlayer · 23 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається: усі ванільні цілі задано явно.
+Мозок (`CowBrain`) вибирає 1 з 10 дій; цілі питають `cow.brain.is/allows(Action)` або `shouldSeekFood/shouldRest/
+shouldFlee/keepFleeing` (рефлекси обходять мозок). Без мозку (`CowBrain.enabled = false`) — старі правила.
+Ruminate, Investigate, MotherCalf працюють лише з мозком.
 
 ## Зроблено
 - Голод, втома, страх, пошук їжі з вибором за вигодою, квіти за апетитом (мак 15%).
@@ -120,7 +127,8 @@
    окситоцин заспокоює до −30%; страх 80+ — паніка-рефлекс). **Крок 6 завершено.** Список речовин: глюкоза, аденозин, адреналін, кортизол, окситоцин, дофамін, біль/токсин, естроген,
    прогестерон, пролактин, температура → голод, втома, страх, самотність, біль, бажання пари, материнство,
    комфорт, нездужання.
-7. **Нейромережа** (≈25 входів, 12 прихованих, ≈8 виходів): ймовірнісний вибір раз на 0,5 с, повільне навчання.
+7. **Нейромережа**: **7а зроблено** (мозок вибирає дії, без навчання). Далі 7б: навчання (повільне, риса
+   «здатність вчитися»), теля в дитинстві вчиться швидше й переймає звички матері (Fij погодився). (≈25 входів, 12 прихованих, ≈8 виходів): ймовірнісний вибір раз на 0,5 с, повільне навчання.
    Рефлекси (голодування, пологи, подавлення, отрута, напад при −100, захист теляти) поза мережею.
    Перемикач вимкнення мережі, палиця налагодження.
 8. **Відкладене**: тривалість життя (ген `LIFESPAN` уже є), витривалість (`STAMINA`), імунітет і хвороби (коли Fij зробить блоки), погане молоко від різанця, анімації (Blockbench),

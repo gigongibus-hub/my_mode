@@ -2,6 +2,7 @@ package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowCharacter;
 import com.gigongibus.hungrycows.CowTrust;
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -37,6 +38,7 @@ public class ApproachPlayerGoal extends Goal {
 
     // корова спокійна: не голодна, не втомлена, не подавилась
     private boolean calm() {
+        if (CowBrain.enabled) return cow.brain.is(CowBrain.Action.FRIEND) && !cow.choking;   // вирішує мозок
         return !cow.wantsFood() && !cow.wantsRest() && !cow.choking;
     }
 

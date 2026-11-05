@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.CowGenes;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -28,7 +29,7 @@ public class MateGoal extends Goal {
     }
 
     private boolean wants() {
-        return cow.repro.isFemale() && !cow.isBaby() && cow.cycle.inEstrus()
+        return cow.brain.allows(CowBrain.Action.MATE) && cow.repro.isFemale() && !cow.isBaby() && cow.cycle.inEstrus()
                 && !cow.cycle.matedThisEstrus() && !cow.repro.isPregnant();
     }
 

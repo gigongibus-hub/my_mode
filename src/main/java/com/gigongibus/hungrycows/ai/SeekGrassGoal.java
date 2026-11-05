@@ -104,7 +104,7 @@ public class SeekGrassGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
         if (cow.choking) return false;   // подавлена корова не шукає їжі
-        if (!cow.wantsFood()) return false;   // 6б: вирішує відчуття голоду
+        if (!cow.shouldSeekFood()) return false;   // вирішує мозок (або відчуття голоду, якщо мозок вимкнено)
         // раз на 10 секунд забуваємо, що вважали недосяжним
         if (cow.tickCount - lastClearTick > 200) {
             unreachable.clear();
@@ -125,7 +125,7 @@ public class SeekGrassGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return !cow.choking && cow.wantsFood() && target != null;
+        return !cow.choking && cow.shouldSeekFood() && target != null;
     }
 
     private void resetEating() {
@@ -214,6 +214,7 @@ public class SeekGrassGoal extends Goal {
 
     private void eatTarget(BlockState state) {
         Block block = state.getBlock();
+        cow.onAte();   // для ремигання
         ServerLevel server = cow.level() instanceof ServerLevel sl ? sl : null;
         if (block == Blocks.GRASS_BLOCK) {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());

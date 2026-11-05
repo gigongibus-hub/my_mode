@@ -76,6 +76,10 @@ public class CowChemistry {
     public static final double STRESS_JUMPY = 0.3;      // кожна одиниця кортизолу понад базу додає 0.3 до страху (нервова)
     public static final double CALM_COMPANY = 0.3;      // окситоцин 100 (компанія, теля, друг) — страх на 30% менший
 
+    // ================= РЕМИГАННЯ (жуйка) =================
+    public static final double RUMINATE_CALM = 0.3;     // за секунду ремигання кортизол −0.3
+    public static final double RUMINATE_PLEASURE = 1.0; // і дофамін +1
+
     // ================= СТРЕС І МОЛОКО =================
     public static final double STRESS_MILK_SLOWDOWN = 0.5; // кортизол 100 → молоко відновлюється вдвічі повільніше
 
@@ -159,7 +163,17 @@ public class CowChemistry {
         temperature += (t - temperature) * 0.1;
     }
 
+    public double adrenalineLevel() { return adrenaline; }
+    public double oxytocinLevel() { return oxytocin; }
+    public double dopamineLevel() { return dopamine; }
+
     // ---------- події ----------
+
+    // Ремигання: корова спокійно жує жуйку — стрес трохи спадає, задоволення росте
+    public void onRuminate() {
+        cortisol = clamp(cortisol - RUMINATE_CALM);
+        dopamine = clamp(dopamine + RUMINATE_PLEASURE);
+    }
 
     public void onHurt(float damage) {
         double k = g(Gene.HORMONE_SENSITIVITY);

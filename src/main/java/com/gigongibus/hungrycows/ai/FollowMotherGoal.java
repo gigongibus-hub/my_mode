@@ -1,6 +1,7 @@
 package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowFamily;
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -12,6 +13,7 @@ import java.util.EnumSet;
 public class FollowMotherGoal extends Goal {
     private static final double START_DISTANCE = 5.0;   // далі цього теля йде до матері
     private static final double STOP_DISTANCE = 3.0;    // ближче цього зупиняється
+    private static final double ALWAYS_DISTANCE = 10.0; // далі цього теля йде до матері за будь-якого рішення мозку
     private final HungryCow cow;
     private LivingEntity mother;
 
@@ -42,7 +44,11 @@ public class FollowMotherGoal extends Goal {
     public boolean canUse() {
         if (!cow.isBaby()) return false;
         mother = findMother();
-        return mother != null && inRange(START_DISTANCE);
+        if (mother == null) return false;
+        // з мозком: іде до матері, коли мозок вибрав «до рідних», або завжди, якщо відійшло далі ALWAYS_DISTANCE
+        if (CowBrain.enabled && !cow.brain.is(CowBrain.Action.FAMILY)
+                && cow.distanceToSqr(mother) < ALWAYS_DISTANCE * ALWAYS_DISTANCE) return false;
+        return inRange(START_DISTANCE);
     }
 
     @Override

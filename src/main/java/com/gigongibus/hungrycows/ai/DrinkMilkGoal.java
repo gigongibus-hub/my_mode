@@ -45,7 +45,7 @@ public class DrinkMilkGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!cow.isBaby() || !cow.wantsFood()) return false;
+        if (!cow.isBaby() || !cow.shouldSeekFood()) return false;
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = 20;
         mother = cow.family.findMother();
@@ -79,6 +79,7 @@ public class DrinkMilkGoal extends Goal {
         if (drinkTicks >= DRINK_TICKS && mother.milk.take(drinkUnits())) {
             cow.hunger = Math.max(0, cow.hunger - (int) Math.round(DRINK_HUNGER * cow.gene(CowGenes.Gene.CALF_DRINK)));
             cow.chem.onNursing();
+            cow.onAte();
             mother.chem.onNursing();
             cow.tell("Теля " + cow.family.name + " попило молока в " + mother.family.name
                     + " (лишилось " + mother.milk.amount() + ")");

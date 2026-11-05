@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.ai.goal.Goal;
 
@@ -24,7 +25,7 @@ public class BullCourtGoal extends Goal {
     }
 
     private boolean ready() {
-        return !cow.repro.isFemale() && !cow.isBaby() && cow.getAge() == 0;
+        return cow.brain.allows(CowBrain.Action.MATE) && !cow.repro.isFemale() && !cow.isBaby() && cow.getAge() == 0;
     }
 
     private boolean stillWanted() {

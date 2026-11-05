@@ -71,9 +71,21 @@ public class ModForgeEvents {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("hungrycows")
                 .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("brain")
+                        .then(Commands.literal("on").executes(c -> setBrain(c.getSource(), true)))
+                        .then(Commands.literal("off").executes(c -> setBrain(c.getSource(), false))))
                 .then(Commands.literal("birth")
                         .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
                         .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
+    }
+
+    // /hungrycows brain on|off — увімкнути чи вимкнути мозок усіх корів (до перезапуску гри)
+    private static int setBrain(CommandSourceStack source, boolean on) {
+        CowBrain.enabled = on;
+        source.sendSuccess(() -> Component.literal(on
+                ? "Мозок корів увімкнено"
+                : "Мозок корів вимкнено: діють старі правила"), true);
+        return 1;
     }
 
     private static int spawnPregnant(CommandSourceStack source, int calves) {

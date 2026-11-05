@@ -3,5 +3,6 @@
   "item.hungrycows.hungry_cow_spawn_egg": "Яйце призову голодної корови",
   "item.hungrycows.quality_milk_bucket": "Відро молока (якість %s)",
   "effect.hungrycows.cow_friend": "Друг корови",
-  "item.hungrycows.cow_book": "Корововедення"
+  "item.hungrycows.cow_book": "Корововедення",
+  "item.hungrycows.brain_stick": "Палиця налагодження мозку"
 }

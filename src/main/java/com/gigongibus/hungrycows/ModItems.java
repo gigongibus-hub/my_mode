@@ -13,6 +13,10 @@ public class ModItems {
     public static final RegistryObject<Item> COW_BOOK =
             HungryCowsMod.ITEMS.register("cow_book", () -> new Item(new Item.Properties().stacksTo(1)));
 
+    // Палиця налагодження мозку: ПКМ по корові показує над хотбаром її рішення й шанси (лише у творчому режимі)
+    public static final RegistryObject<Item> BRAIN_STICK =
+            HungryCowsMod.ITEMS.register("brain_stick", () -> new Item(new Item.Properties().stacksTo(1)));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }

@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.ai.goal.Goal;
 
@@ -34,6 +35,7 @@ public class HerdUpGoal extends Goal {
     }
 
     private boolean active() {
+        if (CowBrain.enabled) return cow.brain.is(CowBrain.Action.HERD);   // вирішує мозок (будь-яка корова)
         return cow.repro.isFemale() && !cow.isBaby()
                 && (cow.cycle.inProestrus() || cow.cycle.inEstrus() || cow.cycle.inMetestrus());
     }
