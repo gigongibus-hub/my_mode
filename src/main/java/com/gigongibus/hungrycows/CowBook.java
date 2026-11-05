@@ -96,6 +96,9 @@ public final class CowBook {
         // 6б. Мозок
         out.addAll(cow.brain.lines());
 
+        // 6в. Пам'ять
+        out.addAll(cow.memory.lines(reader));
+
         // 7. Гени
         out.add("#Гени");
         out.add("Число = середнє двох копій (від матері / від батька).");

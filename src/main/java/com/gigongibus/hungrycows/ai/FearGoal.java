@@ -48,6 +48,7 @@ public class FearGoal extends Goal {
 
     @Override
     public void start() {
+        cow.spreadAlarm(scary);   // корови поруч теж лякаються
         if (scary instanceof Player player) {
             cow.onScaredBy(player);
         }

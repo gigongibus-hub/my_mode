@@ -51,6 +51,7 @@ import java.util.EnumMap;
 import java.util.UUID;
 import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
+import com.gigongibus.hungrycows.ai.AvoidBadPlaceGoal;
 import com.gigongibus.hungrycows.ai.BullCourtGoal;
 import com.gigongibus.hungrycows.ai.HerdUpGoal;
 import com.gigongibus.hungrycows.ai.InvestigateGoal;
@@ -95,6 +96,9 @@ public class HungryCow extends Cow {
     public static final double FEAR_CROUCH_FACTOR = 0.67; // присівши — страх у півтора раза менший
     public static final double FEAR_PUMPKIN_FACTOR = 1.5; // у вирізаному гарбузі — страх у півтора раза більший (і корова не впізнає)
     public static final double STILL_MOVE = 0.5;         // «стоїть на місці» = за секунду зрушив менше ніж на пів блока
+    public static final double ALARM_RADIUS = 8;         // корова тікає — корови ближче цього лякаються теж
+    public static final int ALARM_FEAR = 15;             // скільки страху передається (× чутливість до стресу 0.5–1.5)
+    public static final int ALARM_COOLDOWN_TICKS = 100;  // одна корова «заражається» страхом не частіше раз на 5 с
     public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
 
@@ -181,6 +185,7 @@ public class HungryCow extends Cow {
     public final CowCharacter character = new CowCharacter(genes, this.getRandom()); // 14 рис: гени + досвід
     public final CowChemistry chem = new CowChemistry(this);          // речовини в крові й відчуття
     public final CowBrain brain = new CowBrain(this);                 // мозок: вибирає дії (крок 7)
+    public final CowMemory memory = new CowMemory(this);              // відраза до їжі, звикання, місця
     private int lastMealTick = -100000;                               // коли востаннє їла (для ремигання)
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
@@ -284,6 +289,29 @@ public class HungryCow extends Cow {
                 case CURIOUS -> g instanceof InvestigateGoal || g instanceof BrainTemptGoal;
             };
         });
+    }
+
+    // ===================== 3. СТРАХ ПЕРЕДАЄТЬСЯ СТАДУ =====================
+
+    private int lastAlarmTick = -1000;
+
+    // Корова почала тікати: корови поруч теж лякаються (лише на один «крок», без ланцюжка)
+    public void spreadAlarm(LivingEntity threat) {
+        double r = ALARM_RADIUS;
+        for (HungryCow other : this.level().getEntitiesOfClass(HungryCow.class, this.getBoundingBox().inflate(r),
+                c -> c != this && c.isAlive() && c.distanceToSqr(this) <= r * r)) {
+            other.receiveAlarm(threat);
+        }
+    }
+
+    private void receiveAlarm(LivingEntity threat) {
+        if (this.tickCount - lastAlarmTick < ALARM_COOLDOWN_TICKS) return;
+        lastAlarmTick = this.tickCount;
+        double k = 0.5 + character.fraction(Trait.STRESS_SENSITIVITY);
+        fear = (int) Math.min(100, fear + ALARM_FEAR * k);
+        chem.onAlarm();
+        // вчиться від стада: від цього гравця інша корова втекла — до нього звикає менше
+        if (threat instanceof Player p) memory.familiarityHit(p, CowMemory.HABIT_LOSS_ALARM);
     }
 
     public void onAte() {
@@ -437,6 +465,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(12, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
         this.goalSelector.addGoal(13, new BrainTemptGoal(this));           // йде за ласощами
         this.goalSelector.addGoal(14, new AvoidBluetGoal(this));           // відходить від черемші
+        this.goalSelector.addGoal(14, new AvoidBadPlaceGoal(this));        // іде з місця, де її били чи лякали
         this.goalSelector.addGoal(15, new HerdUpGoal(this));               // до стада (з мозком) / проеструс і тічка (без)
         this.goalSelector.addGoal(16, new ApproachPlayerGoal(this));       // підходить до друга
         this.goalSelector.addGoal(17, new InvestigateGoal(this));          // цікавиться незнайомцем (лише з мозком)
@@ -540,6 +569,7 @@ public class HungryCow extends Cow {
             family.secondTick();
             giveFriendEffect();
             chem.secondTick();
+            memory.secondTick();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
@@ -986,6 +1016,11 @@ public class HungryCow extends Cow {
         if (choking) {
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
+        // після цієї їжі їй уже ставало погано: не бере
+        if (memory.avoids(item)) {
+            if (server) tell(family.name + " відвертається: пам'ятає, що від цього було погано");
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         if (!this.level().isClientSide) {
             // ласощі (що дають довіру) беруться завжди, іншу безпечну їжу сита здорова корова відкидає
             boolean treat = CowTrust.feedGain(item) > 0;
@@ -1032,6 +1067,7 @@ public class HungryCow extends Cow {
         hunger = Math.max(0, hunger - foodHunger);
         milk.recordDiet(item);
         chem.onEat();
+        memory.rememberMeal(item);
         if (food.heal > 0) {
             this.heal(food.heal);
         }
@@ -1214,6 +1250,7 @@ public class HungryCow extends Cow {
         gain += closer * (FEAR_PER_BLOCK + FEAR_PER_BLOCK_CLOSE * close);
         if (player.isCrouching()) gain *= FEAR_CROUCH_FACTOR;
         if (isDisguised(player)) gain *= FEAR_PUMPKIN_FACTOR;
+        else gain *= memory.habituationFactor(player);   // звикла до цього гравця — боїться менше
         int base = (int) Math.round(gain);
 
         if (t < 0) {
@@ -1235,8 +1272,11 @@ public class HungryCow extends Cow {
         if (result && !this.level().isClientSide) chem.onHurt(amount);   // біль і адреналін від будь-якого урону
         Entity attacker = source.getEntity();
         if (result && !this.level().isClientSide && attacker != null) {
+            // пам'ять місця: тут ударили (окрім удару, що рятує подавлену корову)
+            if (!(attacker instanceof Player && choking)) memory.addPlace(this.blockPosition(), CowMemory.PLACE_HURT);
             if (attacker instanceof Player player) {
                 lastPlayerHitTick = this.tickCount;
+                if (!choking) memory.familiarityHit(player, CowMemory.HABIT_LOSS_HIT);
                 if (this.isBaby()) {
                     callForHelp(player);
                 }
@@ -1321,6 +1361,7 @@ public class HungryCow extends Cow {
         cycle.save(tag);
         chem.save(tag);
         brain.save(tag);
+        memory.save(tag);
     }
 
     @Override
@@ -1344,6 +1385,7 @@ public class HungryCow extends Cow {
         character.load(tag);
         chem.load(tag);
         brain.load(tag);
+        memory.load(tag);
         onGenesChanged();
     }
 }

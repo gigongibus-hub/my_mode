@@ -63,6 +63,24 @@ public class CowBrain {
     // самопочуття = комфорт − голод·0.5 − втома·0.5 − страх·0.7 − біль − нездужання·0.5 − самотність·0.3
     public static final double W_HUNGER = 0.5, W_TIRED = 0.5, W_FEAR = 0.7, W_PAIN = 1.0, W_UNWELL = 0.5, W_LONELY = 0.3;
 
+    // ================= 4. ВІДКЛАДЕНІ НАСЛІДКИ =================
+    public static final int TRACE_LENGTH = 3;            // нагорода частково дістається ще 3 попереднім діям ...
+    public static final double TRACE_DECAY = 0.5;        // ... кожній наступній удвічі менше (½, ¼, ⅛)
+    public static final int TRACE_WINDOW_TICKS = 1200;   // ... якщо вони були не давніше 1 хв тому
+
+    // ================= 6. ЗАБУВАННЯ =================
+    public static final double WEIGHT_DECAY = 0.0005;    // після кожної спроби всі ваги трохи слабшають (непідтверджене забувається)
+
+    // ================= 5. ПАМ'ЯТЬ МІСЦЬ ВІД СПРОБ =================
+    public static final double PLACE_GOOD_REWARD = 0.1;  // спроба з нагородою більше цього — місце «добре»
+    public static final double PLACE_BAD_REWARD = -0.2;  // менше цього — «погане»
+    public static final double PLACE_BAD_EPISODE = -0.1;
+
+    // ================= 3. ВЧИТЬСЯ ВІД СТАДА =================
+    public static final double HERD_IMITATE_RANGE = 6;   // доросла корова дивиться на найближчу корову
+    public static final double HERD_IMITATE_BONUS = 0.3; // + до балу її дії (слабше, ніж теля від матері)
+    public static final double HERD_IMITATE_RATE = 0.001;
+
     // ================= ТЕЛЯ ПЕРЕЙМАЄ ЗВИЧКИ МАТЕРІ =================
     public static final double IMITATE_RANGE = 10;       // мати ближче цього — теля дивиться на неї
     public static final double IMITATE_BONUS = 1.0;      // + до балу тієї дії, яку зараз робить мати
@@ -134,7 +152,26 @@ public class CowBrain {
     private double avgReward = 0;
     private double lastReward = 0;
     private int episodes = 0;
-    private Action imitated = null;   // що теля зараз переймає від матері
+    private Action imitated = null;   // що теля зараз переймає від матері (або доросла — від сусідки)
+    private boolean imitatingMother = false;
+    private HungryCow nearestCowEntity = null;
+
+    // попередні спроби (для відкладених наслідків)
+    private static class Past {
+        final double[] x;
+        final double[] p;
+        final int action;
+        final int tick;
+
+        Past(double[] x, double[] p, int action, int tick) {
+            this.x = x;
+            this.p = p;
+            this.action = action;
+            this.tick = tick;
+        }
+    }
+
+    private final java.util.ArrayDeque<Past> past = new java.util.ArrayDeque<>();
 
     public CowBrain(HungryCow cow) {
         this.cow = cow;
@@ -178,10 +215,14 @@ public class CowBrain {
         double r = COW_RANGE;
         double best = r * r;
         estrusFemaleNear = false;
+        nearestCowEntity = null;
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(r),
                 c -> c != cow && c.isAlive())) {
             double d = cow.distanceToSqr(c);
-            if (d < best) best = d;
+            if (d < best) {
+                best = d;
+                nearestCowEntity = c;
+            }
             if (!cow.repro.isFemale() && c.repro.isFemale() && c.cycle.inEstrus() && !c.cycle.matedThisEstrus()) {
                 estrusFemaleNear = true;
             }
@@ -394,18 +435,38 @@ public class CowBrain {
         lastReward = reward;
         episodes++;
         double lr = learnRate();
+        trainEpisode(epInput, epProbs, epAction.ordinal(), lr * advantage);
+        // 4. відкладені наслідки: частина нагороди — попереднім діям («пішла від стада → за хвилину напали»)
+        double share = TRACE_DECAY;
+        for (Past p : past) {
+            if (cow.tickCount - p.tick > TRACE_WINDOW_TICKS) break;
+            trainEpisode(p.x, p.p, p.action, lr * advantage * share);
+            share *= TRACE_DECAY;
+        }
+        past.addFirst(new Past(epInput.clone(), epProbs.clone(), epAction.ordinal(), cow.tickCount));
+        while (past.size() > TRACE_LENGTH) past.removeLast();
+        // 5. пам'ять місць: тут стало помітно краще чи гірше
+        if (reward > PLACE_GOOD_REWARD) cow.memory.addPlace(cow.blockPosition(), CowMemory.PLACE_GOOD);
+        else if (reward < PLACE_BAD_REWARD) cow.memory.addPlace(cow.blockPosition(), PLACE_BAD_EPISODE);
+        // 6. забування: непідтверджене поступово слабшає
+        for (int i = 0; i < w1.length; i++) w1[i] *= (float) (1.0 - WEIGHT_DECAY);
+        for (int i = 0; i < w2.length; i++) w2[i] *= (float) (1.0 - WEIGHT_DECAY);
+    }
+
+    private void trainEpisode(double[] x, double[] p, int action, double strength) {
+        if (strength == 0) return;
         double[] g = new double[ACTIONS.length];
         for (int k = 0; k < g.length; k++) {
-            double target = k == epAction.ordinal() ? 1.0 : 0.0;
-            g[k] = lr * advantage * (target - epProbs[k]);
+            double target = k == action ? 1.0 : 0.0;
+            g[k] = strength * (target - p[k]);
         }
-        train(epInput, g);
+        train(x, g);
     }
 
     // Теля запам'ятовує, що робить мати
-    private void imitate(Action target) {
+    private void imitate(Action target, double rate) {
         double[] g = new double[ACTIONS.length];
-        double lr = IMITATE_RATE * (LEARN_SLOW + (LEARN_FAST - LEARN_SLOW) * cow.character.fraction(Trait.LEARNING));
+        double lr = rate * (LEARN_SLOW + (LEARN_FAST - LEARN_SLOW) * cow.character.fraction(Trait.LEARNING));
         for (int k = 0; k < g.length; k++) {
             if (!possible[k]) continue;
             double t = k == target.ordinal() ? 1.0 : 0.0;
@@ -429,12 +490,20 @@ public class CowBrain {
         computeHidden(input);
         // теля дивиться на матір (корову) поруч і частіше робить те саме
         imitated = null;
+        imitatingMother = false;
         if (cow.isBaby()) {
             HungryCow mother = cow.family.findMother();
             if (mother != null && cow.distanceToSqr(mother) < IMITATE_RANGE * IMITATE_RANGE
                     && possible[mother.brain.current().ordinal()]) {
                 imitated = mother.brain.current();
+                imitatingMother = true;
             }
+        }
+        // 3. доросла дивиться на сусідку по стаду (слабше, ніж теля на матір)
+        if (imitated == null && nearestCowEntity != null && nearestCowEntity.isAlive()
+                && cow.distanceToSqr(nearestCowEntity) < HERD_IMITATE_RANGE * HERD_IMITATE_RANGE) {
+            Action a = nearestCowEntity.brain.current();
+            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY) imitated = a;
         }
         double max = Double.NEGATIVE_INFINITY;
         double[] score = new double[ACTIONS.length];
@@ -446,7 +515,7 @@ public class CowBrain {
             }
             double geneBias = GENE_BIAS * (cow.genes.value(a.gene) - 50) / 50.0;
             lastNet[i] = outputOf(i);
-            double copy = a == imitated ? IMITATE_BONUS : 0;
+            double copy = a == imitated ? (imitatingMother ? IMITATE_BONUS : HERD_IMITATE_BONUS) : 0;
             score[i] = (instinct(a) + geneBias + lastNet[i] + copy) / TEMPERATURE;
             max = Math.max(max, score[i]);
         }
@@ -456,7 +525,7 @@ public class CowBrain {
             sum += probs[i];
         }
         for (int i = 0; i < probs.length; i++) probs[i] = sum > 0 ? probs[i] / sum : 0;
-        if (imitated != null) imitate(imitated);
+        if (imitated != null) imitate(imitated, imitatingMother ? IMITATE_RATE : HERD_IMITATE_RATE);
         // довга дія: оцінити спробу й почати нову
         if (epActive && cow.tickCount - epStartTick > EPISODE_MAX_TICKS) {
             endEpisode();
@@ -526,7 +595,7 @@ public class CowBrain {
                 + (cow.isBaby() ? " (теля)" : ""));
         out.add("Остання нагорода: " + String.format("%+.2f", lastReward) + ", звичайна: " + String.format("%+.2f", avgReward));
         out.add("Самопочуття зараз: " + Math.round(wellbeing()));
-        if (imitated != null) out.add("Переймає від матері: " + imitated.title);
+        if (imitated != null) out.add((imitatingMother ? "Переймає від матері: " : "Дивиться на сусідку: ") + imitated.title);
         out.add("Що підказує досвід зараз:");
         for (Action a : ACTIONS) {
             if (possible[a.ordinal()]) out.add("   " + a.title + ": " + String.format("%+.2f", lastNet[a.ordinal()]));

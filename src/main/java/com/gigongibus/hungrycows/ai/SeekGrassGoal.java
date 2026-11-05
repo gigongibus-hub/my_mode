@@ -2,6 +2,7 @@ package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowFood;
 import com.gigongibus.hungrycows.CowGenes;
+import com.gigongibus.hungrycows.CowMemory;
 import com.gigongibus.hungrycows.HungryCow;
 import com.gigongibus.hungrycows.Regrowth;
 import net.minecraft.server.level.ServerLevel;
@@ -220,6 +221,7 @@ public class SeekGrassGoal extends Goal {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());
             if (server != null) Regrowth.grassEaten(server, target);   // через 4–6 хв знову трава
             cow.milk.recordDiet(block.asItem());
+            cow.memory.rememberMeal(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.GRASS_BLOCK_FOOD));
             cow.heal(HungryCow.GRASS_BLOCK_HEAL);
         } else if (block == Blocks.MOSS_BLOCK) {
@@ -228,6 +230,7 @@ public class SeekGrassGoal extends Goal {
             cow.level().setBlockAndUpdate(target, soil.defaultBlockState());
             if (server != null) Regrowth.mossEaten(server, target, soil);   // через 8–12 хв знову мох
             cow.milk.recordDiet(block.asItem());
+            cow.memory.rememberMeal(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.MOSS_BLOCK_FOOD));
         } else if (block == Blocks.GRASS || block == Blocks.TALL_GRASS) {
             boolean tall = block == Blocks.TALL_GRASS;
@@ -237,6 +240,7 @@ public class SeekGrassGoal extends Goal {
             cow.level().destroyBlock(target, false);
             if (server != null) Regrowth.plantEaten(server, plantPos);   // з шансом 30% знову виросте низька
             cow.milk.recordDiet(block.asItem());
+            cow.memory.rememberMeal(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(tall ? HungryCow.TALL_PLANT_FOOD : HungryCow.PLANT_FOOD));
             cow.heal(tall ? HungryCow.TALL_PLANT_HEAL : HungryCow.PLANT_HEAL);
         } else {
@@ -281,7 +285,15 @@ public class SeekGrassGoal extends Goal {
     // Привабливість їжі: поживність (і бонус за блок гравця) мінус довжина шляху
     private double score(Candidate c, double distance) {
         double bonus = c.kind == Kind.PLACED ? PLACED_BONUS : 0;
-        return c.value + bonus - DISTANCE_PENALTY * distance;
+        // пам'ять: відраза до цієї їжі й те, яке це місце (добре чи там били)
+        double memory = -CowMemory.AVERSION_SCORE * cow.memory.aversion(c.block.asItem())
+                + CowMemory.PLACE_SCORE * cow.memory.placeValue(c.pos);
+        return c.value + bonus - DISTANCE_PENALTY * distance + memory;
+    }
+
+    // «апетит» до виду квітки з урахуванням відрази
+    private double flowerWeight(Block b) {
+        return FLOWER_APPETITE.getOrDefault(b, 1) * (1.0 - cow.memory.aversion(b.asItem()));
     }
 
     // Шлях до їжі (null, якщо дійти не можна). Кожна перевірка зменшує ліміт.
@@ -348,14 +360,15 @@ public class SeekGrassGoal extends Goal {
             byType.computeIfAbsent(c.block, k -> new ArrayList<>()).add(c);
         }
         while (!byType.isEmpty() && checksLeft > 0) {
-            int total = 0;
+            double total = 0;
             for (Block b : byType.keySet()) {
-                total += FLOWER_APPETITE.getOrDefault(b, 1);
+                total += flowerWeight(b);
             }
-            int roll = cow.getRandom().nextInt(total);
+            if (total <= 0) break;   // до всіх цих квітів відраза
+            double roll = cow.getRandom().nextDouble() * total;
             Block chosen = null;
             for (Block b : byType.keySet()) {
-                roll -= FLOWER_APPETITE.getOrDefault(b, 1);
+                roll -= flowerWeight(b);
                 if (roll < 0) {
                     chosen = b;
                     break;
@@ -390,6 +403,8 @@ public class SeekGrassGoal extends Goal {
             if (k == Kind.NONE) continue;
             if (k == Kind.GRASS_BLOCK) grassBlocks++;
             if (unreachable.contains(p)) continue;
+            // відраза: цю їжу сама не їсть (хіба що голодує)
+            if (cow.hunger < HungryCow.STARVE_AT && cow.memory.avoids(state.getBlock().asItem())) continue;
             Candidate c = new Candidate(p.immutable(), k, p.distSqr(origin), nutrition(state), state.getBlock());
             if (k == Kind.FLOWER) flowers.add(c);
             else if (k == Kind.DESPERATE) desperate.add(c);

@@ -45,6 +45,7 @@ public class CowChemistry {
     // ================= ПОДІЇ (ген «чутливість до гормонів» ±30%) =================
     public static final double PAIN_PER_DAMAGE = 12;    // біль за 1 HP урону
     public static final double ADRENALINE_ON_HIT = 40;
+    public static final double ADRENALINE_ON_ALARM = 15; // інша корова поруч злякалась
     public static final double DOPAMINE_ON_TREAT = 30;
     public static final double DOPAMINE_ON_EAT = 8;
     public static final double OXYTOCIN_ON_NURSING = 30;
@@ -179,6 +180,11 @@ public class CowChemistry {
         double k = g(Gene.HORMONE_SENSITIVITY);
         pain = clamp(pain + damage * PAIN_PER_DAMAGE * (0.5 + cow.character.fraction(Trait.PAIN_SENSITIVITY)) * k);
         adrenaline = clamp(adrenaline + ADRENALINE_ON_HIT * k);
+    }
+
+    // інша корова поруч злякалась і тікає
+    public void onAlarm() {
+        adrenaline = clamp(adrenaline + ADRENALINE_ON_ALARM * g(Gene.HORMONE_SENSITIVITY));
     }
 
     public void onTreat() {
