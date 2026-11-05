@@ -514,7 +514,8 @@ public class CowBrain {
         if (imitated == null && !cow.isBaby() && leader != null && leader != cow && leader.isAlive()
                 && cow.distanceToSqr(leader) < LEADER_IMITATE_RANGE * LEADER_IMITATE_RANGE) {
             Action a = leader.brain.current();
-            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY && a != Action.FRIEND) {
+            // «стерегтися» не переймається: корова стережеться, лише коли сама відчуває страх
+            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY && a != Action.FRIEND && a != Action.WARY) {
                 imitated = a;
                 imitatingLeader = true;
             }
@@ -523,7 +524,7 @@ public class CowBrain {
         if (imitated == null && nearestCowEntity != null && nearestCowEntity.isAlive()
                 && cow.distanceToSqr(nearestCowEntity) < HERD_IMITATE_RANGE * HERD_IMITATE_RANGE) {
             Action a = nearestCowEntity.brain.current();
-            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY) imitated = a;
+            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY && a != Action.WARY) imitated = a;
         }
         double max = Double.NEGATIVE_INFINITY;
         double[] score = new double[ACTIONS.length];

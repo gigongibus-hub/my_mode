@@ -121,6 +121,8 @@ public class HungryCow extends Cow {
     public static final double ALARM_RADIUS = 8;         // корова тікає — корови ближче цього лякаються теж
     public static final int ALARM_FEAR = 25;             // скільки страху передається (× чутливість до стресу 0.5–1.5)
     public static final int ALARM_HIT_FEAR = 35;         // бачила, як гравець ударив корову: страх одразу
+    public static final double FRIEND_ALARM_FACTOR = 0.3; // стадо тікає від твого друга-гравця: корова лякається лише на 30% і не тікає
+    public static final int FRIEND_HIT_SCARY_TICKS = 100; // друг, що вдарив, страшний ще 5 с
     public static final int ALARM_MEMORY_TICKS = 200;    // 10 с пам'ятає, від кого тікати ...
     public static final double ALARM_MEMORY_RANGE = 20;  // ... навіть якщо він далі (до 20 блоків)
     public static final int ALARM_COOLDOWN_TICKS = 100;  // одна корова «заражається» страхом не частіше раз на 5 с
@@ -231,7 +233,8 @@ public class HungryCow extends Cow {
     private int chargeStartTick = 0;
     private int nextChargeTick = 0;
     private int lastAttackTick = -1000;
-    private int lastPlayerHitTick = -1000;          // коли гравець востаннє бив цю корову
+    private int lastPlayerHitTick = -1000;
+    private UUID lastHitBy = null;                  // хто востаннє бив (друг, що вдарив, кілька секунд страшний)          // коли гравець востаннє бив цю корову
 
     private CompoundTag foodCounts = new CompoundTag(); // скільки разів за добу з'їдено кожне
     private long foodDay = -1;                          // номер ігрової доби для лічильників
@@ -382,6 +385,12 @@ public class HungryCow extends Cow {
         if (this.tickCount - lastAlarmTick < ALARM_COOLDOWN_TICKS) return;
         lastAlarmTick = this.tickCount;
         double k = 0.5 + character.fraction(Trait.STRESS_SENSITIVITY);
+        // тривога щодо друга: лише трохи лякається і не тікає від нього
+        if (threat instanceof Player p && trustOf(p) >= CowTrust.FRIEND_FROM) {
+            fear = (int) Math.min(100, fear + amount * k * FRIEND_ALARM_FACTOR);
+            chem.onAlarm();
+            return;
+        }
         fear = (int) Math.min(100, fear + amount * k);
         if (threat != null) {
             alarmThreat = threat;
@@ -764,6 +773,9 @@ public class HungryCow extends Cow {
     public void onScaredBy(Player player) {
         if (this.tickCount - lastPlayerHitTick < 60) return;           // страх від удару вже враховано
         if (trustOf(player) < CowTrust.SCARE_MIN_TRUST) return;
+        // «налякав» лише якщо справді лякав: друг — лише коли бігав чи стрибав поруч
+        if (trustOf(player) >= CowTrust.FRIEND_FROM && !player.isSprinting()
+                && (player.onGround() || player.getAbilities().flying)) return;
         if (trust.tryScare(player.getUUID(), this.tickCount)) {
             addTrust(player, -CowTrust.SCARE_PENALTY, "налякав", false);
         }
@@ -1249,7 +1261,16 @@ public class HungryCow extends Cow {
 
     // Хто лякає корову
     public boolean isScary(LivingEntity e) {
-        if (e instanceof Player p) return !p.isSpectator() && !p.hasEffect(MobEffects.INVISIBILITY);
+        if (e instanceof Player p) {
+            if (p.isSpectator() || p.hasEffect(MobEffects.INVISIBILITY)) return false;
+            // друг не страшний — хіба що бігає, стрибає або щойно вдарив
+            if (trustOf(p) >= CowTrust.FRIEND_FROM) {
+                boolean jumping = !p.onGround() && !p.getAbilities().flying;
+                boolean justHit = p.getUUID().equals(lastHitBy) && this.tickCount - lastPlayerHitTick < FRIEND_HIT_SCARY_TICKS;
+                return p.isSprinting() || jumping || justHit;
+            }
+            return true;
+        }
         return e instanceof Zombie
                 || e instanceof AbstractSkeleton
                 || e instanceof Spider
@@ -1387,6 +1408,7 @@ public class HungryCow extends Cow {
             if (!(attacker instanceof Player && choking)) memory.addPlace(this.blockPosition(), CowMemory.PLACE_HURT);
             if (attacker instanceof Player player) {
                 lastPlayerHitTick = this.tickCount;
+                lastHitBy = player.getUUID();
                 if (!choking) memory.familiarityHit(player, CowMemory.HABIT_LOSS_HIT);
                 if (this.isBaby()) {
                     callForHelp(player);
