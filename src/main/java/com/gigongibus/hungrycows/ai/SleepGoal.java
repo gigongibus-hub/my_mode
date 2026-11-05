@@ -11,49 +11,64 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 // Вночі корова йде додому (укриття) і спить: стоїть, відпочиває, гірше помічає дрібниці.
-// Якщо дому немає — спить під деревом (будь-яке накриття); якщо й дерева немає — там, де є. Голод, спрага, страх і пологи важливіші (вищий пріоритет).
+// Якщо дому немає — спить під деревом (будь-яке накриття); якщо й дерева немає — там, де є.
+// Голод, спрага, страх і пологи важливіші (вищий пріоритет).
+//
+// Як корова йде спати:
+//   1) спільне місце = дім ватажка (якщо вона поруч), інакше свій дім чи дерево;
+//   2) своє місце біля спільного (усередині, найглибше, не зайняте іншою);
+//   3) якщо надворі — спершу до входу (вхід відомий або вона дізнається його сама), далі всередину;
+//   4) поблизу дому перевіряє, чи до місця справді можна дійти (здалеку гра часто не знаходить шляху);
+//   5) не дійшла — через 30 с пробує знову; без дому — знову шукає дім.
 public class SleepGoal extends Goal {
-    private static final double HOME_REACH = 1.0;       // «на своєму місці» = ближче цього
-    private static final int SPOT_RADIUS = 5;           // своє місце шукає до 5 блоків від спільного
-    private static final double CLAIM_RANGE = 16;       // чиї зайняті місця враховує
-    private static final int MAX_SPOT_CHECKS = 6;       // скільки найкращих місць перевіряє, чи можна дійти
-    private static final double SAME_SLEEP_RANGE = 32;  // ватажок ближче цього — стадо спить там, де вона
-    private static final int MAX_WALK_TICKS = 1200;     // іде додому щонайбільше 1 хв, потім спить, де є
-    private static final int RECOVER_EVERY_TICKS = 20;  // втома −2 щосекунди сну
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    private static final double HOME_REACH = 1.0;        // «на своєму місці» = ближче цього
+    private static final int SPOT_RADIUS = 5;            // своє місце шукає до 5 блоків від спільного
+    private static final double CLAIM_RANGE = 16;        // чиї зайняті місця враховує
+    private static final double CLAIM_SPACE = 1.5;       // своє місце + сусідні клітинки (квадрат відстані): спершу шукає з простором
+    private static final int MAX_SPOT_CHECKS = 6;        // скільки найкращих місць перевіряє, чи можна дійти
+    private static final double CHECK_NEAR_BASE = 12;    // шлях до місць перевіряє лише ближче 12 блоків від спільного місця
+    private static final double SAME_SLEEP_RANGE = 32;   // ватажок ближче цього — стадо спить там, де вона
+    private static final int MAX_WALK_TICKS = 2400;      // іде додому щонайбільше 2 хв, потім спить, де є (і пізніше пробує знову)
+    private static final int MAX_FAILED_PATHS = 5;       // стільки разів шляху немає / не наближається — інше місце
+    private static final int LEARN_DOOR_EVERY = 100;     // вхід невідомий — пробує дізнатися раз на 5 с
+    private static final int RETRY_HOME_TICKS = 600;     // спить надворі, хоча дім є — через 30 с знову йде додому
+    private static final int SEEK_TICKS = 600;           // без місця для сну шукає 30 с ...
+    private static final int RESEEK_TICKS = 1200;        // ... і, якщо не знайшла, ще раз через 1 хв
+    private static final double STAY_NEAR_LEADER = 6;    // під час пошуку тримається не далі 6 блоків від ватажка
+    private static final int RECOVER_EVERY_TICKS = 20;   // втома −2 щосекунди сну
     private static final int RECOVER = 2;
     // ================= СЛУХ УВІ СНІ =================
-    private static final double HEAR_RANGE = 5.0;      // чує, як хтось рухається, до 5 блоків
-    private static final double HEAR_SNEAK = 2.5;      // гравця, що крадеться присівши, — лише до 2,5
-    private static final double MOVE_HEARD = 0.3;      // «рухається» = за пів секунди зрушив більше ніж на 0,3 блока
-    private static final int LISTEN_EVERY = 10;        // прислухається раз на пів секунди
-    private static final int WAKE_TICKS = 600;         // прокинулась — пів хвилини не засинає
-    private static final int WAKE_FEAR = 40;           // небезпечний моб поруч: такий страх (тікає)
-    private final Map<Integer, Vec3> heardPos = new HashMap<>();
-    private int awakeUntil = 0;
+    private static final double HEAR_RANGE = 5.0;        // чує, як хтось рухається, до 5 блоків
+    private static final double HEAR_SNEAK = 2.5;        // гравця, що крадеться присівши, — лише до 2,5
+    private static final double MOVE_HEARD = 0.3;        // «рухається» = за пів секунди зрушив більше ніж на 0,3 блока
+    private static final int LISTEN_EVERY = 10;          // прислухається раз на пів секунди
+    private static final int WAKE_TICKS = 600;           // прокинулась — пів хвилини не засинає
+    private static final int WAKE_FEAR = 40;             // небезпечний моб поруч: такий страх (тікає)
+
     private final HungryCow cow;
+    private final Map<Integer, Vec3> heardPos = new HashMap<>();
+    private final Set<BlockPos> excluded = new HashSet<>();
+    private int awakeUntil = 0;
+    private int ticks = 0;
     private int walkTicks = 0;
     private int seekTicks = 0;
+    private int homelessSince = -1;      // коли заснула без дому (для повторного пошуку)
     private int failedPaths = 0;
-    private BlockPos claimed = null;      // своє місце цієї ночі
-    private BlockPos claimBase = null;
     private double lastDist = Double.MAX_VALUE;
-    private final java.util.Set<BlockPos> excluded = new java.util.HashSet<>();
-    private static final int SEEK_TICKS = 600;          // без місця для сну шукає щонайбільше 30 с
-    private static final double STAY_NEAR_LEADER = 6;   // під час пошуку тримається не далі 6 блоків від ватажка
-    private static final int MAX_FAILED_PATHS = 5;      // стільки разів не знайшла шляху — спить, де є
-    private int ticks = 0;
-    private static final int RETRY_SPOT_TICKS = 200;    // не знайшла свого місця — пробує знову через 10 с ...
-    private static final int MAX_SPOT_RETRIES = 3;      // ... щонайбільше 3 рази за ніч
-    private int retryAt = 0;
-    private static final double CHECK_PATHS_NEAR_DOOR = 10;   // шляхи до місць усередині перевіряє лише ближче 10 блоків від входу
-    private BlockPos door = null;          // вхід у дім, через який іде (спершу до нього, потім усередину)
+    private BlockPos claimed = null;     // своє місце цієї ночі
+    private BlockPos claimBase = null;   // спільне місце, біля якого вибрано своє
+    private boolean spotChecked = false; // чи перевірено, що до свого місця можна дійти
+    private BlockPos door = null;        // вхід, через який іде (спершу до нього, потім усередину)
     private boolean passedDoor = false;
-    private static final int RETRY_HOME_TICKS = 600;   // заснула надворі, хоча дім є — через 30 с знову пробує дійти додому
+    private int nextDoorTry = 0;
     private int outsideSince = -1;
-    private int retries = 0;
+    private boolean tight = false;       // у домі тісно: досить, щоб саме ця клітинка була вільна
 
     public SleepGoal(HungryCow cow) {
         this.cow = cow;
@@ -68,11 +83,7 @@ public class SleepGoal extends Goal {
     @Override
     public boolean canUse() {
         // настав ранок, а ціль перервали ще вночі: звільнити своє місце
-        if (!cow.isNightTime() && claimed != null) {
-            claimed = null;
-            claimBase = null;
-            cow.sleepClaim = null;
-        }
+        if (!cow.isNightTime() && claimed != null) forgetNight();
         // розбуджена корова з цілі не виходить: стоїть на своєму місці, поки не засне знову
         return cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus();
     }
@@ -84,134 +95,197 @@ public class SleepGoal extends Goal {
 
     @Override
     public void start() {
-        walkTicks = 0;
         ticks = 0;
+        walkTicks = 0;
         seekTicks = 0;
         failedPaths = 0;
-        // повернулась уночі (поїла, попила): якщо вона надворі, знову йде через вхід
-        if (door != null) passedDoor = CowHome.hasRoof(cow.level(), cow.blockPosition());
+        lastDist = Double.MAX_VALUE;
         outsideSince = -1;
+        // повернулась уночі (поїла, попила, злякалась): якщо вона не вдома — знову йде через вхід
+        passedDoor = isInside();
     }
 
     @Override
     public void tick() {
         ticks++;
-        // стадо спить разом: туди ж, де ватажок (якщо вона поруч і має де спати)
-        BlockPos home = cow.home.sleepSpot();
-        BlockPos homeDoor = cow.home.home() != null && cow.home.home().equals(home) ? cow.home.entrance() : null;
-        HungryCow leader = cow.herd.leader();
-        if (leader != null && leader != cow && leader.home.sleepSpot() != null
-                && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
-            home = leader.home.sleepSpot();
-            homeDoor = leader.home.home() != null && leader.home.home().equals(home) ? leader.home.entrance() : null;
-        }
-        // ще не знає, де спати: до пів хвилини активно шукає (будівлю, потім дерево), тримаючись стада
-        if (home == null && seekTicks < SEEK_TICKS) {
-            seekTicks++;
-            cow.sleeping = false;
-            cow.resting = false;
-            if (seekTicks % 20 == 1) {
-                cow.home.searchHard();
-                HungryCow l = cow.herd.leader();
-                if (l != null && l != cow && cow.distanceToSqr(l) > STAY_NEAR_LEADER * STAY_NEAR_LEADER) {
-                    cow.getNavigation().moveTo(l, 1.0);
+        BlockPos base = sharedSpot();
+
+        // 1. Ще не знає, де спати: 30 с активно шукає (будівлю, потім дерево), тримаючись стада
+        if (base == null) {
+            if (seekTicks < SEEK_TICKS) {
+                seekTicks++;
+                awake();
+                if (seekTicks % 20 == 1) {
+                    cow.home.searchHard();
+                    HungryCow l = cow.herd.leader();
+                    if (l != null && l != cow && cow.distanceToSqr(l) > STAY_NEAR_LEADER * STAY_NEAR_LEADER) {
+                        cow.getNavigation().moveTo(l, 1.0);
+                    }
                 }
+                if (seekTicks == SEEK_TICKS) {
+                    cow.tell(cow.family.name + " не знайшла, де спати, — спить тут");
+                    homelessSince = cow.tickCount;
+                }
+                return;
             }
-            if (seekTicks == SEEK_TICKS) cow.tell(cow.family.name + " не знайшла, де спати, — спить тут");
+            // не знайшла: спить, де є, а через хвилину шукає ще раз
+            if (homelessSince >= 0 && cow.tickCount - homelessSince >= RESEEK_TICKS) {
+                seekTicks = 0;
+                homelessSince = -1;
+                return;
+            }
+            sleepHere();
             return;
         }
-        // своє місце: усередині укриття, глибше, не зайняте іншою коровою, досяжне
-        if (home != null && (claimed == null || !home.equals(claimBase))) {
-            boolean newBase = !home.equals(claimBase);
-            // нове спільне місце — шукає одразу; не знайшла свого — ще кілька спроб через 10 с
-            if (newBase || (cow.tickCount >= retryAt && retries < MAX_SPOT_RETRIES)) {
-                if (newBase) retries = 0; else retries++;
-                claimBase = home;
-                door = homeDoor;
-                passedDoor = door == null || CowHome.hasRoof(cow.level(), cow.blockPosition());   // уже всередині — вхід не потрібен
-                excluded.clear();
-                claimed = chooseSpot(home);
-                retryAt = cow.tickCount + RETRY_SPOT_TICKS;
-                walkTicks = 0;
-                failedPaths = 0;
-                lastDist = Double.MAX_VALUE;
-            }
+
+        // 2. Своє місце біля спільного (нове спільне місце — вибирає заново)
+        if (!base.equals(claimBase)) {
+            claimBase = base;
+            claimed = null;
+            door = doorOf(base);
+            passedDoor = isInside();   // вхід невідомий — дізнається дорогою (walkStep)
+            excluded.clear();
+            claimed = chooseSpot(base);
+            walkTicks = 0;
+            failedPaths = 0;
+            lastDist = Double.MAX_VALUE;
         }
+
+        // 3. Іде до свого місця
         if (claimed != null && walkTicks < MAX_WALK_TICKS && !atSpot(claimed)) {
             walkTicks++;
-            cow.sleeping = false;
-            cow.resting = false;
+            awake();
             cow.sleepClaim = claimed;
-            if (walkTicks == 1 || walkTicks % 20 == 0) {
-                // спершу до входу (надворі шлях простий), біля входу — усередину й заново вибирає своє місце
-                if (!passedDoor && door != null && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5)
-                        <= CowHome.ENTRANCE_REACH * CowHome.ENTRANCE_REACH) {
-                    passedDoor = true;
-                    excluded.clear();
-                    BlockPos better = chooseSpot(home);
-                    if (better != null) claimed = better;
-                    lastDist = Double.MAX_VALUE;
-                    failedPaths = 0;
-                }
-                BlockPos goal = passedDoor ? claimed : door;
-                cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);   // довгий шлях: обійти будівлю до входу
-                boolean ok = cow.getNavigation().moveTo(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, 1.0);
-                cow.getNavigation().resetMaxVisitedNodesMultiplier();
-                // не наближається (ходить колом) або шляху немає — це місце відкладає і бере наступне
-                double d = cow.distanceToSqr(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5);
-                boolean airborne = !cow.onGround() && !cow.isInWater();   // у повітрі шлях не будується — не рахувати як невдачу
-                if ((!ok && !airborne) || (walkTicks % 60 == 0 && d > lastDist - 0.5)) failedPaths++;
-                if (walkTicks % 60 == 0) lastDist = d;
-                if (failedPaths >= MAX_FAILED_PATHS && !passedDoor) {
-                    passedDoor = true;   // до входу не дійти — пробує прямо до місця
-                    failedPaths = 0;
-                    lastDist = Double.MAX_VALUE;
-                } else if (failedPaths >= MAX_FAILED_PATHS) {
-                    excluded.add(claimed);
-                    claimed = chooseSpot(home);
-                    failedPaths = 0;
-                    lastDist = Double.MAX_VALUE;
-                }
-            }
+            if (walkTicks == 1 || walkTicks % 20 == 0) walkStep(base);
             return;
         }
-        // розбудили: стоїть на місці без сну (і не відпочиває), прислухається, потім засинає знову
-        // (лише вдома: надворі, коли дім є, неспання не заважає йти додому)
-        boolean settled = home == null || CowHome.hasRoof(cow.level(), cow.blockPosition()) || (claimed != null && atSpot(claimed));
-        if (cow.tickCount < awakeUntil && settled) {
+
+        // 4. Розбудили: стоїть на місці без сну, прислухається, потім засинає знову (лише вдома;
+        //    надворі неспання не заважає йти додому)
+        if (cow.tickCount < awakeUntil && isInside()) {
             cow.getNavigation().stop();
-            cow.sleeping = false;
-            cow.resting = false;
+            awake();
             cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
             if (ticks % LISTEN_EVERY == 0) listen();
             return;
         }
-        // дім є, а вона не дійшла (спить надворі): через 30 с починає шлях додому заново, а не спить так до ранку
-        if (home != null && (claimed == null || !atSpot(claimed)) && !CowHome.hasRoof(cow.level(), cow.blockPosition())) {
+
+        // 5. Не дійшла (надворі або на порозі): через 30 с починає шлях додому заново
+        if (!isInside()) {
             if (outsideSince < 0) {
                 outsideSince = cow.tickCount;
             } else if (cow.tickCount - outsideSince >= RETRY_HOME_TICKS) {
-                outsideSince = -1;
                 cow.tell(cow.family.name + " не дійшла додому, пробує знову");
-                claimed = null;
+                outsideSince = -1;
                 claimBase = null;   // наступного тіку — нове місце, шлях і лічильники з нуля
-                retries = 0;
+                claimed = null;
                 return;
             }
         } else {
             outsideSince = -1;
         }
-        // спить (і тримає своє місце, щоб інші його не займали)
-        cow.getNavigation().stop();
-        cow.sleeping = true;
-        cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
-        cow.resting = true;
-        if (ticks % RECOVER_EVERY_TICKS == 0) cow.fatigue = Math.max(0, cow.fatigue - RECOVER);
-        if (ticks % LISTEN_EVERY == 0) listen();
+
+        // 6. Спить
+        sleepHere();
+    }
+
+    // Один крок дороги (раз на секунду): вхід → своє місце; перевірка досяжності поблизу; заміна місця, якщо не виходить
+    private void walkStep(BlockPos base) {
+        boolean grounded = cow.onGround() || cow.isInWater();
+        // вхід невідомий, а корова надворі: пробує дізнатися його сама
+        if (door == null && !passedDoor && cow.tickCount >= nextDoorTry && grounded) {
+            nextDoorTry = cow.tickCount + LEARN_DOOR_EVERY;
+            door = doorOf(base);
+            if (door == null) door = cow.home.findEntrance(claimed);
+            if (door == null) passedDoor = true;   // не знайшла — іде прямо
+        }
+        // дійшла до входу — далі всередину
+        if (!passedDoor && door != null && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5)
+                <= CowHome.ENTRANCE_REACH * CowHome.ENTRANCE_REACH) {
+            passedDoor = true;
+            failedPaths = 0;
+            lastDist = Double.MAX_VALUE;
+        }
+        // уже близько до дому, а місце ще не перевірене: вибирає заново, тепер з перевіркою шляху
+        if (!spotChecked && grounded && nearBase(base)) {
+            excluded.clear();
+            BlockPos better = chooseSpot(base);
+            if (better != null) claimed = better;
+            failedPaths = 0;
+            lastDist = Double.MAX_VALUE;
+            if (claimed == null) return;
+        }
+        BlockPos goal = passedDoor || door == null ? claimed : door;
+        cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);   // довгий шлях: обійти будівлю до входу
+        boolean ok = cow.getNavigation().moveTo(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, 1.0);
+        cow.getNavigation().resetMaxVisitedNodesMultiplier();
+        // шляху немає (але не тому, що корова в повітрі) або за 3 с не наблизилась — невдача
+        double d = cow.distanceToSqr(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5);
+        if (!ok && grounded) failedPaths++;
+        if (walkTicks % 60 == 0) {
+            if (d > lastDist - 0.5) failedPaths++;
+            lastDist = d;
+        }
+        if (failedPaths < MAX_FAILED_PATHS) return;
+        failedPaths = 0;
+        lastDist = Double.MAX_VALUE;
+        if (!passedDoor) {
+            passedDoor = true;   // до входу не дійти — пробує прямо до місця
+        } else {
+            excluded.add(claimed);   // до цього місця не дійти — бере наступне
+            claimed = chooseSpot(base);
+        }
+    }
+
+    // Спільне місце: дім (чи дерево) ватажка, якщо вона поруч, інакше своє
+    private BlockPos sharedSpot() {
+        HungryCow leader = cow.herd.leader();
+        if (leader != null && leader != cow && leader.home.sleepSpot() != null
+                && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
+            return leader.home.sleepSpot();
+        }
+        return cow.home.sleepSpot();
+    }
+
+    // Відомий вхід до спільного місця (свого дому чи дому ватажка)
+    private BlockPos doorOf(BlockPos base) {
+        if (base.equals(cow.home.home())) return cow.home.entrance();
+        HungryCow leader = cow.herd.leader();
+        if (leader != null && base.equals(leader.home.home())) return leader.home.entrance();
+        return null;
+    }
+
+    // Чи корова вже вдома: на своєму місці, а якщо місця немає — справді в укритті (дах і стіни, не просто під навісом)
+    private boolean isInside() {
+        if (claimed != null) return atSpot(claimed);
+        BlockPos pos = cow.blockPosition();
+        if (claimBase != null && CowHome.shelterScore(cow.level(), claimBase) == 0) {
+            return CowHome.shaded(cow.level(), pos);   // спить під деревом: досить тіні
+        }
+        return CowHome.shelterScore(cow.level(), pos) > 0;
+    }
+
+    private boolean nearBase(BlockPos base) {
+        return cow.distanceToSqr(base.getX() + 0.5, base.getY(), base.getZ() + 0.5) <= CHECK_NEAR_BASE * CHECK_NEAR_BASE;
     }
 
     private boolean atSpot(BlockPos spot) {
         return cow.distanceToSqr(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5) <= HOME_REACH * HOME_REACH;
+    }
+
+    private void awake() {
+        cow.sleeping = false;
+        cow.resting = false;
+    }
+
+    // Спить на місці (і тримає своє місце, щоб інші його не займали)
+    private void sleepHere() {
+        cow.getNavigation().stop();
+        cow.sleeping = true;
+        cow.resting = true;
+        cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
+        if (ticks % RECOVER_EVERY_TICKS == 0) cow.fatigue = Math.max(0, cow.fatigue - RECOVER);
+        if (ticks % LISTEN_EVERY == 0) listen();
     }
 
     // Наскільки місце «глибоко» в укритті: більше стін і сусідніх місць під дахом — глибше (вхід — найменше)
@@ -229,9 +303,6 @@ public class SleepGoal extends Goal {
     }
 
     // Чи займає це місце інша корова (уже спить там або йде туди)
-    private static final double CLAIM_SPACE = 1.5;   // своє місце + сусідні клітинки (квадрат відстані): спершу шукає з простором
-    private boolean tight = false;                   // у домі тісно: досить, щоб саме ця клітинка була вільна
-
     private boolean claimedByOther(BlockPos p) {
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
                 c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
@@ -240,20 +311,22 @@ public class SleepGoal extends Goal {
         return false;
     }
 
-    // Вибрати своє місце біля спільного: усередині укриття (або в тіні дерева), найглибше вільне, до якого можна дійти
-    // Спершу місце з простором навколо; якщо в домі тісно — будь-яка вільна клітинка (корови лягають поруч одна з одною)
+    // Вибрати своє місце біля спільного: спершу з простором навколо; якщо тісно — будь-яка вільна клітинка
     private BlockPos chooseSpot(BlockPos base) {
         tight = false;
         BlockPos p = chooseSpotOnce(base);
-        if (p != null) return p;
-        tight = true;
-        excluded.clear();
-        p = chooseSpotOnce(base);
-        tight = false;
+        if (p == null) {
+            tight = true;
+            excluded.clear();
+            p = chooseSpotOnce(base);
+            tight = false;
+        }
         if (p == null) cow.tell(cow.family.name + " не знайшла вільного місця в домі, до якого можна дійти");
         return p;
     }
 
+    // Усередині укриття (або в тіні дерева), найглибше вільне. Близько до дому й на землі — ще й перевіряє шлях;
+    // здалеку гра шлях часто не знаходить, тому тоді бере найглибше без перевірки (перевірить, коли підійде)
     private BlockPos chooseSpotOnce(BlockPos base) {
         boolean building = CowHome.shelterScore(cow.level(), base) > 0;
         java.util.List<BlockPos> spots = new java.util.ArrayList<>();
@@ -265,21 +338,15 @@ public class SleepGoal extends Goal {
             if (excluded.contains(ip) || claimedByOther(ip)) continue;
             spots.add(ip);
         }
+        if (spots.isEmpty()) return null;
         BlockPos me = cow.blockPosition();
         spots.sort((x, y) -> {
             int c = Integer.compare(depth(y, building), depth(x, building));   // глибше — раніше
             return c != 0 ? c : Double.compare(x.distSqr(me), y.distSqr(me));
         });
-        // далеко від входу шлях до місця всередині гра часто не знаходить (задовгий обхід) — тоді бере найглибше без перевірки,
-        // а перевірить, коли дійде до входу
-        if (door != null && !passedDoor && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5)
-                > CHECK_PATHS_NEAR_DOOR * CHECK_PATHS_NEAR_DOOR) {
-            return spots.isEmpty() ? null : spots.get(0);
-        }
-        // корова в повітрі (сходинка, стрибок, поштовх): гра не будує шлях — бере найглибше місце без перевірки, дорогою перевірить
-        if (!cow.onGround() && !cow.isInWater()) {
-            return spots.isEmpty() ? null : spots.get(0);
-        }
+        boolean canCheck = (cow.onGround() || cow.isInWater()) && nearBase(base);
+        spotChecked = canCheck;
+        if (!canCheck) return spots.get(0);
         int checks = 0;
         for (BlockPos p : spots) {
             if (checks++ >= MAX_SPOT_CHECKS) break;
@@ -297,7 +364,7 @@ public class SleepGoal extends Goal {
             }
             excluded.add(p);
         }
-        return null;   // вільних місць усередині немає — спить, де є
+        return null;
     }
 
     // Слух: хтось рухається поруч — прокидається; небезпечний — ще й тікає
@@ -330,16 +397,20 @@ public class SleepGoal extends Goal {
         }
     }
 
-    @Override
-    public void stop() {
-        cow.sleeping = false;
-        cow.resting = false;
-        heardPos.clear();
-        // ціль перервали вночі (поїсти, попити, злякалась): своє місце тримає і потім повертається туди
-        if (cow.isNightTime()) return;
+    // Нова доба: забути своє місце й вхід
+    private void forgetNight() {
         cow.sleepClaim = null;
         claimed = null;
         claimBase = null;
         door = null;
+        homelessSince = -1;
+    }
+
+    @Override
+    public void stop() {
+        awake();
+        heardPos.clear();
+        // ціль перервали вночі (поїсти, попити, злякалась): своє місце тримає і потім повертається туди
+        if (!cow.isNightTime()) forgetNight();
     }
 }

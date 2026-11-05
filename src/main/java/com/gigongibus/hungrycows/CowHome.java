@@ -176,6 +176,16 @@ public class CowHome {
         return null;
     }
 
+    // Знайти вхід до місця target (корова надворі, на землі): шлях туди, остання точка надворі перед дахом.
+    // Якщо target — її дім і вхід ще невідомий, запам'ятовує. null — вхід не знайдено (або корова вже всередині).
+    public BlockPos findEntrance(BlockPos target) {
+        if (target == null || (!cow.onGround() && !cow.isInWater())) return null;
+        if (shelterScore(cow.level(), cow.blockPosition()) > 0) return null;   // уже всередині
+        if (reachableNear(target) == null || lastEntrance == null) return null;
+        if (target.equals(home) && entrance == null) entrance = lastEntrance;
+        return lastEntrance;
+    }
+
     // Оглянути одне місце: усі висоти (дах будівлі й підлогу всередині), найкраще укриття й тінь
     private void inspectColumn(int x, int y, int z, BlockPos o) {
         Level level = cow.level();
@@ -258,9 +268,7 @@ public class CowHome {
             } else {
                 homeScore = s;
                 // вхід ще невідомий (дім знайдено зсередини чи зі старого збереження): шукає його, коли сама надворі
-                if (entrance == null && !hasRoof(cow.level(), cow.blockPosition()) && reachableNear(home) != null) {
-                    entrance = lastEntrance;
-                }
+                if (entrance == null) findEntrance(home);
             }
         }
         // огляд околиць: шукає дім або кращий (закритіший) дім — навмання й по черзі
