@@ -147,6 +147,7 @@ public class HungryCow extends Cow {
     public final CowMilk milk = new CowMilk(this);                    // шкала молока і якість
     public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
     public final CowCharacter character = new CowCharacter(genes, this.getRandom()); // 14 рис: гени + досвід
+    public final CowChemistry chem = new CowChemistry(this);          // речовини в крові й відчуття
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
 
@@ -345,6 +346,7 @@ public class HungryCow extends Cow {
             milk.secondTick();
             family.secondTick();
             giveFriendEffect();
+            chem.secondTick();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
@@ -448,6 +450,7 @@ public class HungryCow extends Cow {
         if (!CowTrust.ONE_FEED_PER_DAY || trust.tryDailyFeed(player.getUUID(), day)) {
             addTrust(player, gain, "ласощі", true);
             experience(Experience.TREAT, 0);
+            chem.onTreat();
         } else {
             tell("Сьогодні вона вже брала ласощі від " + player.getName().getString());
         }
@@ -490,7 +493,8 @@ public class HungryCow extends Cow {
 
     // Поріг страху: полохлива корова тікає раніше
     public int scaredAt() {
-        return (int) Math.round(SCARED_AT_CALM - (SCARED_AT_CALM - SCARED_AT_TIMID) * character.fraction(Trait.FEARFULNESS));
+        double t = SCARED_AT_CALM - (SCARED_AT_CALM - SCARED_AT_TIMID) * character.fraction(Trait.FEARFULNESS);
+        return (int) Math.round(t * chem.fearThresholdFactor());   // самотня тікає раніше
     }
 
     // Як швидко минає страх: смілива заспокоюється швидше
@@ -787,6 +791,11 @@ public class HungryCow extends Cow {
         return InteractionResult.sidedSuccess(this.level().isClientSide);
     }
 
+    // чи діє зараз власний урон від їжі (токсин або повільна смерть)
+    public boolean toxinActive() {
+        return toxinLeft > 0 || dyingLeft > 0;
+    }
+
     // Тривалість отруєння з урахуванням гена «стійкість до отрути»
     private int poisonTicks(int seconds) {
         return Math.max(20, (int) Math.round(seconds * 20 * genes.inverse(CowGenes.Gene.POISON_RESIST)));
@@ -810,6 +819,7 @@ public class HungryCow extends Cow {
                 ? (int) Math.round(food.hunger * gene(CowGenes.Gene.PRODUCE_DIGEST)) : food.hunger;
         hunger = Math.max(0, hunger - foodHunger);
         milk.recordDiet(item);
+        chem.onEat();
         if (food.heal > 0) {
             this.heal(food.heal);
         }
@@ -985,6 +995,7 @@ public class HungryCow extends Cow {
     @Override
     public boolean hurt(DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
+        if (result && !this.level().isClientSide) chem.onHurt(amount);   // біль і адреналін від будь-якого урону
         Entity attacker = source.getEntity();
         if (result && !this.level().isClientSide && attacker != null) {
             if (attacker instanceof Player player) {
@@ -1070,6 +1081,7 @@ public class HungryCow extends Cow {
         family.save(tag);
         character.save(tag);
         genes.save(tag);
+        chem.save(tag);
     }
 
     @Override
@@ -1090,6 +1102,7 @@ public class HungryCow extends Cow {
         family.load(tag);
         genes.load(tag);       // перед character: гени характеру беруться звідси
         character.load(tag);
+        chem.load(tag);
         onGenesChanged();
     }
 }

@@ -114,7 +114,9 @@ public class CowMilk {
     // Раз на секунду
     public void secondTick() {
         if (isLactating()) {
-            int every = Math.max(1, (int) Math.round(REGEN_SECONDS / cow.gene(CowGenes.Gene.MILK_REGEN)));
+            // ген і стрес: кортизол 100 → удвічі повільніше
+            int every = Math.max(1, (int) Math.round(REGEN_SECONDS
+                    / (cow.gene(CowGenes.Gene.MILK_REGEN) * cow.chem.milkSpeedFactor())));
             if (milk < max() && ++regenSeconds >= every) {
                 regenSeconds = 0;
                 milk++;

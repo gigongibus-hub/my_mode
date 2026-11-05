@@ -217,6 +217,7 @@ public class CowReproduction {
         if (laborTicksLeft > 0 && laborTicksLeft % 20 == 0) {
             float pain = laborDamage() / (Math.max(20, laborTotalTicks) / 20.0F);
             if (assisted) pain *= ASSIST_PAIN_MULTIPLIER;
+            cow.chem.addPain(pain * CowChemistry.PAIN_PER_DAMAGE);
             cow.setHealth(Math.max(1.0F, cow.getHealth() - pain));   // не смертельно
             if ((laborTicksLeft / 20) % 3 == 0) {
                 cow.playSound(SoundEvents.COW_HURT, 0.8F, 0.8F);
@@ -269,6 +270,7 @@ public class CowReproduction {
             say("Народилося теля " + baby.family.name + "!");
             alive++;
         }
+        cow.chem.onBirth();
         // молоко з'являється після пологів; якщо всі телята мертві, воно все дістанеться гравцю
         cow.milk.startLactation(alive > 0);
         fatherNode = null;

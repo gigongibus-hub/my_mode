@@ -40,6 +40,9 @@ public final class CowBook {
         if (cow.choking) out.add("ПОДАВИЛАСЯ! Вдар її, щоб урятувати");
         if (cow.isBaby()) out.add("Теля п'є лише молоко");
 
+        // 2б. Самопочуття і речовини
+        out.addAll(cow.chem.lines());
+
         // 3. Довіра
         out.add("#Довіра");
         int t = cow.trustOf(reader);
