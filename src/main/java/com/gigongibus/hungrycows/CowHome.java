@@ -42,6 +42,12 @@ public class CowHome {
     private int seconds = 0;
     private int sweep = 0;
     private int lastUnreachableTell = -100000;
+    public static final float PATH_SEARCH_MULTIPLIER = 4F; // шлях додому шукає вчетверо довше за звичайний (обхід будівлі до входу)
+    public static final int PATHS_PER_SECOND = 6;           // скільки шляхів до кандидатів перевіряє за секунду (звичайно)
+    public static final int PATHS_PER_SECOND_HARD = 15;     // ... і перед сном без місця
+    public static final int RETRY_UNREACHABLE_TICKS = 600;  // недосяжне місце знову перевіряє лише через 30 с
+    private final java.util.Map<BlockPos, Integer> unreachable = new java.util.HashMap<>();
+    private int pathBudget = 0;
     private static final int UNREACHABLE_TELL_TICKS = 1200;   // підказку «не може дійти» — не частіше раз на хвилину   // по черзі оглядає околицю (номер клітинки)
 
     public CowHome(HungryCow cow) {
@@ -140,7 +146,10 @@ public class CowHome {
     // Досяжне місце в укритті біля p: саме p, а якщо впритул не підійти — точка, де закінчився шлях,
     // якщо вона теж усередині (під дахом між стінами) і не далі NEAR_REACH від p. Інакше null.
     private BlockPos reachableNear(BlockPos p) {
+        // довший пошук шляху: щоб обійти будівлю й знайти вхід з іншого боку
+        cow.getNavigation().setMaxVisitedNodesMultiplier(PATH_SEARCH_MULTIPLIER);
         net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, NEAR_REACH);
+        cow.getNavigation().resetMaxVisitedNodesMultiplier();
         lastPathEnd = null;
         if (path == null) return null;
         net.minecraft.world.level.pathfinder.Node end = path.getEndNode();
@@ -164,8 +173,14 @@ public class CowHome {
                 treeSpot = p.immutable();
             }
             if (s <= homeScore) continue;
+            BlockPos key = p.immutable();
+            Integer retry = unreachable.get(key);
+            if (retry != null && cow.tickCount < retry) continue;   // нещодавно не дійшла сюди: спершу інші місця
+            if (pathBudget <= 0) continue;                          // цієї секунди шляхів уже досить
+            pathBudget--;
             BlockPos r = reachableNear(p);
             if (r == null) {
+                unreachable.put(key, cow.tickCount + RETRY_UNREACHABLE_TICKS);
                 // для перевірки: бачить гарне укриття, але не може туди дійти (вхід закритий чи загороджений)
                 if (cow.tickCount - lastUnreachableTell > UNREACHABLE_TELL_TICKS) {
                     lastUnreachableTell = cow.tickCount;
@@ -243,6 +258,8 @@ public class CowHome {
 
     private void scan(int checks) {
         BlockPos o = cow.blockPosition();
+        pathBudget = checks >= BURST_CHECKS ? PATHS_PER_SECOND_HARD : PATHS_PER_SECOND;
+        if (unreachable.size() > 200) unreachable.entrySet().removeIf(e -> cow.tickCount >= e.getValue());
         int side = SEARCH_RADIUS * 2 + 1;
         for (int i = 0; i < checks; i++) {
             int x, z;

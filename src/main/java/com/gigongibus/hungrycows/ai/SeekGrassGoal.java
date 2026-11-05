@@ -131,19 +131,26 @@ public class SeekGrassGoal extends Goal {
         return !cow.choking && cow.shouldSeekFood() && target != null;
     }
 
-    // Ієрархія біля їжі: якщо сильніша корова йде до тієї ж трави (до 2 блоків від цілі), слабша поступається;
-    // сильніша трохи штовхає її головою (без шкоди)
-    private static final double SAME_FOOD = 2.0;
+    // Ієрархія біля їжі: слабша поступається, лише якщо сильніша йде до ТІЄЇ САМОЇ трави (для кавуна, гарбуза, сіна —
+    // до 2 блоків), сильніша ближче до їжі і корова ще не почала їсти; потім 10 с їсть спокійно.
+    // Сильніша трохи штовхає її головою (без шкоди)
+    private static final double SAME_FOOD = 2.0;          // для кавуна, гарбуза, сіна: «та сама їжа» — до 2 блоків
+    private static final int YIELD_CALM_TICKS = 200;      // поступилась — 10 с більше не поступається
+    private static final double YIELD_DOMINANCE_GAP = 5;  // сильніша = домінантність більша щонайменше на 5
     private int lastYieldTell = -100000;
+    private int calmUntil = 0;
     private static final double YIELD_PUSH = 0.4;
 
     private boolean yieldToStronger() {
-        if (target == null) return false;
+        if (target == null || eatTicks > 0 || cow.tickCount < calmUntil) return false;
         double mine = CowHerd.dominance(cow);
+        double myDist = cow.distanceToSqr(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+        double same = classify(cow.level().getBlockState(target)) == Kind.PLACED ? SAME_FOOD * SAME_FOOD : 0.5;   // трава: лише той самий блок
         for (HungryCow other : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(6),
                 c -> c != cow && c.isAlive() && c.foodTarget != null)) {
-            if (other.foodTarget.distSqr(target) > SAME_FOOD * SAME_FOOD) continue;
-            if (CowHerd.dominance(other) <= mine) continue;
+            if (other.foodTarget.distSqr(target) > same) continue;
+            if (CowHerd.dominance(other) < mine + YIELD_DOMINANCE_GAP) continue;
+            if (other.distanceToSqr(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) >= myDist) continue;
             if (cow.distanceToSqr(other) < 3 * 3) {
                 cow.knockback(YIELD_PUSH, other.getX() - cow.getX(), other.getZ() - cow.getZ());
                 cow.hurtMarked = true;
@@ -153,6 +160,7 @@ public class SeekGrassGoal extends Goal {
                 lastYieldTell = cow.tickCount;
                 cow.tell(cow.family.name + " поступилась їжею " + other.family.name);
             }
+            calmUntil = cow.tickCount + YIELD_CALM_TICKS;
             return true;
         }
         return false;
