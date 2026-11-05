@@ -134,6 +134,7 @@ public class SeekGrassGoal extends Goal {
     // Ієрархія біля їжі: якщо сильніша корова йде до тієї ж трави (до 2 блоків від цілі), слабша поступається;
     // сильніша трохи штовхає її головою (без шкоди)
     private static final double SAME_FOOD = 2.0;
+    private int lastYieldTell = -100000;
     private static final double YIELD_PUSH = 0.4;
 
     private boolean yieldToStronger() {
@@ -148,7 +149,10 @@ public class SeekGrassGoal extends Goal {
                 cow.hurtMarked = true;
                 other.playSound(net.minecraft.sounds.SoundEvents.COW_STEP, 0.8F, 0.8F);
             }
-            cow.tell(cow.family.name + " поступилась їжею " + other.family.name);
+            if (cow.tickCount - lastYieldTell > 600) {   // у чат — не частіше раз на 30 с
+                lastYieldTell = cow.tickCount;
+                cow.tell(cow.family.name + " поступилась їжею " + other.family.name);
+            }
             return true;
         }
         return false;

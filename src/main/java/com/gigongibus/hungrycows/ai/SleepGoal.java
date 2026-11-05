@@ -184,8 +184,8 @@ public class SleepGoal extends Goal {
         int checks = 0;
         for (BlockPos p : spots) {
             if (checks++ >= MAX_SPOT_CHECKS) break;
-            net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 0);
-            if (path != null && path.canReach()) return p;
+            net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
+            if (path != null && path.getEndNode() != null && path.getEndNode().asBlockPos().distManhattan(p) <= 1) return p;
             excluded.add(p);
         }
         return null;   // вільних місць усередині немає — спить, де є

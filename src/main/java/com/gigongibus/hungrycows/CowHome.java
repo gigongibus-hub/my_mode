@@ -22,6 +22,7 @@ public class CowHome {
     public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди ...
     public static final int SWEEP_PER_SECOND = 80;      // ... і скільки ще по черзі (так менше ніж за хвилину огляне всю околицю)
     public static final double LOW_BLOCK = 0.5;         // неповний блок до пів блока заввишки — на ньому можна стояти
+    public static final int NEAR_REACH = 3;             // шлях закінчився поруч усередині (до 3 блоків) — теж годиться
     public static final int BURST_CHECKS = 400;         // перед сном без місця: стільки місць за секунду (≈ вся околиця за 10 с)
     public static final int BEST_SCORE = 13;            // найкращий можливий дім (дах + 4 стіни)
     public static final int COLUMN_UP = 6;              // у кожному місці перевіряє висоти від y+6 ...
@@ -126,9 +127,21 @@ public class CowHome {
     }
 
     // Чи може корова туди дійти (наприклад, у хлів із зачиненими дверима — ні)
-    private boolean reachable(BlockPos p) {
-        net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
-        return path != null && path.canReach();
+    private BlockPos lastPathEnd = null;   // де обірвався останній шлях (для підказки)
+
+    // Досяжне місце в укритті біля p: саме p, а якщо впритул не підійти — точка, де закінчився шлях,
+    // якщо вона теж усередині (під дахом між стінами) і не далі NEAR_REACH від p. Інакше null.
+    private BlockPos reachableNear(BlockPos p) {
+        net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, NEAR_REACH);
+        lastPathEnd = null;
+        if (path == null) return null;
+        net.minecraft.world.level.pathfinder.Node end = path.getEndNode();
+        if (end == null) return null;
+        BlockPos e = end.asBlockPos();
+        lastPathEnd = e;
+        if (e.distManhattan(p) <= 1) return p;
+        if (e.distManhattan(p) <= NEAR_REACH && standable(cow.level(), e) && shelterScore(cow.level(), e) > 0) return e;
+        return null;
     }
 
     // Оглянути одне місце: усі висоти (дах будівлі й підлогу всередині), найкраще укриття й тінь
@@ -142,20 +155,26 @@ public class CowHome {
             if (s == 0 && shaded(level, p) && (treeSpot == null || p.distSqr(o) < treeSpot.distSqr(o))) {
                 treeSpot = p.immutable();
             }
-            if (s > homeScore && !reachable(p)) {
+            if (s <= homeScore) continue;
+            BlockPos r = reachableNear(p);
+            if (r == null) {
                 // для перевірки: бачить гарне укриття, але не може туди дійти (вхід закритий чи загороджений)
                 if (cow.tickCount - lastUnreachableTell > UNREACHABLE_TELL_TICKS) {
                     lastUnreachableTell = cow.tickCount;
+                    String end = lastPathEnd == null ? "шляху немає зовсім"
+                            : "шлях обривається за " + lastPathEnd.distManhattan(p) + " бл. (" + lastPathEnd.getX() + " "
+                            + lastPathEnd.getY() + " " + lastPathEnd.getZ() + ")";
                     cow.tell(cow.family.name + " бачить дім " + p.getX() + " " + p.getY() + " " + p.getZ()
-                            + " (бали " + s + "), але не може дійти — перевір вхід");
+                            + " (бали " + s + "), але не може дійти: " + end);
                 }
                 continue;
             }
-            if (s > homeScore) {
+            int rs = shelterScore(level, r);
+            if (rs > homeScore) {
                 cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
-                        + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
-                home = p.immutable();
-                homeScore = s;
+                        + r.getX() + " " + r.getY() + " " + r.getZ() + " (бали " + rs + ")");
+                home = r.immutable();
+                homeScore = rs;
             }
         }
     }
