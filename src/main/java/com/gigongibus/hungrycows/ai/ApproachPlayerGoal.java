@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowCharacter;
 import com.gigongibus.hungrycows.CowTrust;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.effect.MobEffects;
@@ -15,6 +16,8 @@ public class ApproachPlayerGoal extends Goal {
     private static final int STAY_TICKS = 200;        // скільки стоїть поруч (10 сек)
     private static final int PAUSE_TICKS = 400;       // пауза перед наступним підходом (20 сек)
     private static final int BOND_PAUSE_TICKS = 40;   // для корови з довірою 200 (2 сек)
+    private static final double PAUSE_SOCIABLE = 0.5; // товариськість 100: пауза ×0.5 (підходить частіше) ...
+    private static final double PAUSE_SHY = 1.5;      // ... товариськість 0: пауза ×1.5
     private static final double BOND_RANGE = 16.0;    // з якої відстані корова з довірою 200 іде до гравця
     private final HungryCow cow;
     private Player player;
@@ -79,7 +82,8 @@ public class ApproachPlayerGoal extends Goal {
         player = null;
         cow.getNavigation().stop();
         stayTicks = 0;
-        pauseUntil = cow.tickCount + (wasBonded ? BOND_PAUSE_TICKS : PAUSE_TICKS);
+        double k = PAUSE_SHY - (PAUSE_SHY - PAUSE_SOCIABLE) * cow.character.fraction(CowCharacter.Trait.SOCIABILITY);
+        pauseUntil = cow.tickCount + (wasBonded ? BOND_PAUSE_TICKS : (int) Math.round(PAUSE_TICKS * k));
     }
 
     private boolean bonded() {

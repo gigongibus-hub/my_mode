@@ -35,7 +35,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.Items;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import com.gigongibus.hungrycows.CowCharacter.Experience;
+import com.gigongibus.hungrycows.CowCharacter.Trait;
+import com.gigongibus.hungrycows.ai.GrieveGoal;
+import java.util.EnumMap;
 import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
@@ -73,7 +79,7 @@ public class HungryCow extends Cow {
     // ================= ЗАХИСТ ТЕЛЯТИ =================
     public static final int DEFEND_TICKS = 140;          // скільки корови б'ють того, хто вдарив теля (7 сек)
     public static final double DEFEND_RADIUS = 10.0;     // з якої відстані інші корови заступаються
-    public static final float DEFEND_CHANCE = 0.5F;      // шанс, що інша доросла корова заступиться (мати завжди)
+    // шанс, що інша доросла корова заступиться (мати завжди), залежить від материнського інстинкту: див. DEFEND_CHANCE_MIN/MAX
     public static final float MOTHER_DAMAGE_MULTIPLIER = 2.0F; // мати б'є вдвічі сильніше
     public static final int DEFEND_TRUST_MOTHER = 30;    // скільки довіри втрачає мати
     public static final int DEFEND_TRUST_OTHERS = 10;    // скільки довіри втрачають інші
@@ -82,6 +88,28 @@ public class HungryCow extends Cow {
     // ================= ДРУГ КОРОВИ =================
     public static final double FRIEND_EFFECT_RANGE = 8.0;    // з якої відстані корова з довірою 200 дає ефект
     public static final int FRIEND_EFFECT_TICKS = 6000;      // скільки діє ефект після того, як гравець відійшов (5 хв)
+
+    // ================= ХАРАКТЕР: як риси змінюють поведінку =================
+    public static final int SCARED_AT_CALM = 15;         // з якого страху тікає найменш полохлива (полохливість 0)
+    public static final int SCARED_AT_TIMID = 5;         // з якого страху тікає найполохливіша (полохливість 100)
+    public static final int FEAR_DECAY_MIN = 1;          // на скільки за секунду спадає страх: сміливість 0 ...
+    public static final int FEAR_DECAY_MAX = 3;          // ... і сміливість 100 (при 50 — 2, як було)
+    public static final double TRUST_GAIN_MIN = 0.5;     // множник росту довіри: прив'язаність до людей 0 ...
+    public static final double TRUST_GAIN_MAX = 1.5;     // ... і 100 (при 50 — ×1)
+    public static final double CHARGE_PAUSE_MAX = 1.5;   // пауза між нападами ворожої корови: агресивність 0 — ×1.5 ...
+    public static final double CHARGE_PAUSE_MIN = 0.5;   // ... агресивність 100 — ×0.5
+    public static final float DEFEND_CHANCE_MIN = 0.2F;  // шанс заступитися за чуже теля: материнський інстинкт 0 ...
+    public static final float DEFEND_CHANCE_MAX = 0.8F;  // ... і 100 (при 50 — 50%, як було)
+    public static final double PAIN_FEAR_MIN = 0.5;      // страх від удару: чутливість до болю 0 — ×0.5 ...
+    public static final double PAIN_FEAR_MAX = 1.5;      // ... і 100 — ×1.5
+
+    // ================= ДОСВІД: паузи, щоб повтори не накопичувались =================
+    public static final int HIT_EXPERIENCE_COOLDOWN = 20;      // удар гравця: не частіше раз на 1 с
+    public static final int SAW_HIT_EXPERIENCE_COOLDOWN = 200; // бачила удар іншої корови: раз на 10 с
+    public static final int EXPLOSION_EXPERIENCE_COOLDOWN = 100; // вибух поруч: раз на 5 с
+    public static final int FIRE_EXPERIENCE_COOLDOWN = 1200;   // вогонь поруч: раз на хвилину
+    public static final int FIRE_CHECK_SECONDS = 5;            // як часто дивитись, чи щось горить поруч
+    public static final int FIRE_RADIUS = 4;                   // на скільки блоків навколо
 
     public static final boolean DEBUG_MESSAGES = true;   // писати в чат про подавлення, довіру, напади та пологи
 
@@ -95,6 +123,8 @@ public class HungryCow extends Cow {
     public final CowReproduction repro = new CowReproduction(this);   // стать, вагітність, пологи
     public final CowMilk milk = new CowMilk(this);                    // шкала молока і якість
     public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
+    public final CowCharacter character = new CowCharacter(this.getRandom()); // 14 рис: гени + досвід
+    private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
 
     private Player defendTarget = null;             // кого б'є, захищаючи теля (не зберігається)
@@ -136,10 +166,11 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(11, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
         this.goalSelector.addGoal(12, new AvoidBluetGoal(this));           // відходить від черемші
         this.goalSelector.addGoal(13, new ApproachPlayerGoal(this));       // підходить до друга
-        this.goalSelector.addGoal(14, new FollowMotherGoal(this));         // теля тримається біля матері
-        this.goalSelector.addGoal(15, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(16, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(17, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(14, new GrieveGoal(this));               // теля ходить біля місця смерті матері
+        this.goalSelector.addGoal(15, new FollowMotherGoal(this));         // теля тримається біля матері
+        this.goalSelector.addGoal(16, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(17, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(18, new RandomLookAroundGoal(this));
     }
 
     // За чим корова йде (замість пшениці, яку вона більше не їсть): ласощі, що дають довіру
@@ -186,6 +217,9 @@ public class HungryCow extends Cow {
             milk.secondTick();
             family.secondTick();
             giveFriendEffect();
+            if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
+                experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
+            }
             if (second % HUNGER_EVERY_SECONDS == 0) hunger += TIME_SPEED;
             if (second % FATIGUE_EVERY_SECONDS == 0) fatigue += TIME_SPEED;
             if (hunger > STARVE_AT && this.tickCount % 80 == 0) {
@@ -195,7 +229,7 @@ public class HungryCow extends Cow {
             if (gain > 0) {
                 fear = Math.min(100, fear + gain);
             } else {
-                fear = Math.max(0, fear - 2);
+                fear = Math.max(0, fear - fearDecay());
             }
 
             // діагностика: показники й активні цілі
@@ -256,6 +290,11 @@ public class HungryCow extends Cow {
     // scaled = true: застосувати тестовий множник CowTrust.TEST_MULTIPLIER
     public void addTrust(Player player, int delta, String reason, boolean scaled) {
         int real = scaled ? delta * CowTrust.TEST_MULTIPLIER : delta;
+        if (real > 0) {
+            // прив'язаність до людей: довіра росте повільніше або швидше
+            double k = TRUST_GAIN_MIN + (TRUST_GAIN_MAX - TRUST_GAIN_MIN) * character.fraction(Trait.HUMAN_ATTACHMENT);
+            real = Math.max(1, (int) Math.round(real * k));
+        }
         int before = trust.get(player.getUUID());
         int after = trust.add(player.getUUID(), real);
         if (after != before) {
@@ -284,6 +323,7 @@ public class HungryCow extends Cow {
         long day = this.level().getDayTime() / 24000L;
         if (!CowTrust.ONE_FEED_PER_DAY || trust.tryDailyFeed(player.getUUID(), day)) {
             addTrust(player, gain, "ласощі", true);
+            experience(Experience.TREAT, 0);
         } else {
             tell("Сьогодні вона вже брала ласощі від " + player.getName().getString());
         }
@@ -301,6 +341,65 @@ public class HungryCow extends Cow {
         }
     }
 
+    // Корови, що бачать цю корову (у радіусі свідків і з прямою видимістю)
+    private java.util.List<HungryCow> witnesses() {
+        double r = CowTrust.WITNESS_RADIUS;
+        return this.level().getEntitiesOfClass(HungryCow.class, this.getBoundingBox().inflate(r),
+                c -> c != this && c.isAlive() && c.distanceToSqr(this) <= r * r && c.hasLineOfSight(this));
+    }
+
+    // Ця корова — мати тієї (рідна чи прийомна, поки та маленька)
+    private boolean isMotherOf(HungryCow calf) {
+        return calf.isBaby() && this.getUUID().equals(calf.family.motherIdOrNull());
+    }
+
+    // ===================== ХАРАКТЕР =====================
+
+    // Подія досвіду; cooldownTicks — не частіше за стільки тіків (0 = щоразу)
+    public void experience(Experience e, int cooldownTicks) {
+        Integer last = lastExperience.get(e);
+        if (cooldownTicks > 0 && last != null && this.tickCount - last < cooldownTicks) return;
+        lastExperience.put(e, this.tickCount);
+        String changes = character.apply(e);
+        tell(family.name + " (" + e.title + "): " + changes);
+    }
+
+    // Поріг страху: полохлива корова тікає раніше
+    public int scaredAt() {
+        return (int) Math.round(SCARED_AT_CALM - (SCARED_AT_CALM - SCARED_AT_TIMID) * character.fraction(Trait.FEARFULNESS));
+    }
+
+    // Як швидко минає страх: смілива заспокоюється швидше
+    private int fearDecay() {
+        return (int) Math.round(FEAR_DECAY_MIN + (FEAR_DECAY_MAX - FEAR_DECAY_MIN) * character.fraction(Trait.BRAVERY));
+    }
+
+    // Страх від удару: чутлива до болю лякається сильніше
+    private int painFear(int base) {
+        double k = PAIN_FEAR_MIN + (PAIN_FEAR_MAX - PAIN_FEAR_MIN) * character.fraction(Trait.PAIN_SENSITIVITY);
+        return (int) Math.round(base * k);
+    }
+
+    // Пауза між нападами ворожої корови: агресивна нападає частіше
+    private int chargeInterval(int trust) {
+        double k = CHARGE_PAUSE_MAX - (CHARGE_PAUSE_MAX - CHARGE_PAUSE_MIN) * character.fraction(Trait.AGGRESSION);
+        return (int) Math.round(CowTrust.attackInterval(trust) * k);
+    }
+
+    // Шанс заступитися за чуже теля
+    private float defendChance() {
+        return (float) (DEFEND_CHANCE_MIN + (DEFEND_CHANCE_MAX - DEFEND_CHANCE_MIN) * character.fraction(Trait.MATERNAL));
+    }
+
+    // Чи горить щось поруч (вогонь, вогонь душ)
+    private boolean fireNearby() {
+        BlockPos o = this.blockPosition();
+        for (BlockPos p : BlockPos.betweenClosed(o.offset(-FIRE_RADIUS, -1, -FIRE_RADIUS), o.offset(FIRE_RADIUS, 2, FIRE_RADIUS))) {
+            if (this.level().getBlockState(p).is(BlockTags.FIRE)) return true;
+        }
+        return false;
+    }
+
     // ===================== ВОРОЖА КОРОВА =====================
 
     public void cancelCharge() {
@@ -313,7 +412,7 @@ public class HungryCow extends Cow {
         int t = trustOf(player);
         if (charging && this.tickCount - chargeStartTick > CowTrust.CHARGE_TIMEOUT_TICKS) {
             charging = false;
-            nextChargeTick = this.tickCount + CowTrust.attackInterval(t);
+            nextChargeTick = this.tickCount + chargeInterval(t);
         }
         if (!charging) {
             boolean ready = t <= CowTrust.MIN || this.tickCount >= nextChargeTick;
@@ -336,7 +435,7 @@ public class HungryCow extends Cow {
             lastAttackTick = this.tickCount;
             if (t > CowTrust.MIN) {          // при -100 переслідує далі, інакше відскакує
                 charging = false;
-                nextChargeTick = this.tickCount + CowTrust.attackInterval(t);
+                nextChargeTick = this.tickCount + chargeInterval(t);
             }
         }
         return true;
@@ -363,7 +462,7 @@ public class HungryCow extends Cow {
         for (HungryCow other : this.level().getEntitiesOfClass(HungryCow.class,
                 this.getBoundingBox().inflate(DEFEND_RADIUS),
                 c -> c != this && c != mother && c.isAlive() && !c.isBaby())) {
-            if (this.getRandom().nextFloat() < DEFEND_CHANCE) {
+            if (this.getRandom().nextFloat() < other.defendChance()) {
                 other.startDefending(player, CowTrust.ATTACK_DAMAGE, DEFEND_TRUST_OTHERS, "вдарив теля");
             }
         }
@@ -377,6 +476,7 @@ public class HungryCow extends Cow {
         defendDamage = damage;
         if (!already) {
             addTrust(player, -trustPenalty, reason, false);
+            experience(Experience.DEFENDED_CALF, 0);
             tell(family.name + " захищає теля від " + player.getName().getString());
         }
     }
@@ -728,11 +828,17 @@ public class HungryCow extends Cow {
                 } else {
                     int before = trustOf(player);
                     addTrust(player, -CowTrust.HIT_PENALTY, "удар", true);
-                    fear = Math.min(100, fear + CowTrust.hitFear(before));
+                    fear = Math.min(100, fear + painFear(CowTrust.hitFear(before)));
+                    experience(Experience.HIT_BY_PLAYER, HIT_EXPERIENCE_COOLDOWN);
+                    if (!player.isSpectator() && !player.hasEffect(MobEffects.INVISIBILITY)) {
+                        for (HungryCow w : witnesses()) {
+                            if (w.hasLineOfSight(player)) w.experience(Experience.SAW_PLAYER_HIT_COW, SAW_HIT_EXPERIENCE_COOLDOWN);
+                        }
+                    }
                 }
             } else {
                 // страх лише від ударів істот, а не від голоду чи отрути
-                fear = Math.min(100, fear + 50);
+                fear = Math.min(100, fear + painFear(50));
             }
         }
         return result;
@@ -745,8 +851,27 @@ public class HungryCow extends Cow {
             Component msg = Component.literal("Корова померла від: " + source.getMsgId()
                     + " | голод " + hunger + " | втома " + fatigue + " | страх " + fear);
             this.level().players().forEach(p -> p.sendSystemMessage(msg));
-            if (source.getEntity() instanceof Player killer) {
+            Entity killerEntity = source.getEntity();
+            if (killerEntity instanceof Player killer) {
                 punishWitnesses(killer);
+            }
+            // хто бачив цю смерть, отримує досвід; телята цієї корови — окремий, сильніший
+            for (HungryCow w : witnesses()) {
+                if (isMotherOf(w)) {
+                    w.experience(killerEntity instanceof Player ? Experience.MOTHER_KILLED_BY_PLAYER : Experience.MOTHER_DIED, 0);
+                } else if (killerEntity instanceof Player p && !p.isSpectator() && !p.hasEffect(MobEffects.INVISIBILITY)) {
+                    w.experience(Experience.SAW_PLAYER_KILL, 0);
+                } else if (killerEntity instanceof Zombie) {
+                    w.experience(Experience.SAW_ZOMBIE_KILL, 0);
+                }
+            }
+            // телята цієї корови поруч сумують на місці смерті
+            if (!this.isBaby()) {
+                double mr = CowFamily.MOTHER_RANGE;
+                for (HungryCow calf : this.level().getEntitiesOfClass(HungryCow.class, this.getBoundingBox().inflate(mr),
+                        c -> isMotherOf(c) && c.distanceToSqr(this) <= mr * mr)) {
+                    calf.family.onMotherDied(this.blockPosition());
+                }
             }
             if (this.isBaby()) {
                 HungryCow mother = family.findMother();
@@ -772,6 +897,7 @@ public class HungryCow extends Cow {
         repro.save(tag);
         milk.save(tag);
         family.save(tag);
+        character.save(tag);
     }
 
     @Override
@@ -790,5 +916,6 @@ public class HungryCow extends Cow {
         repro.load(tag);   // спершу стать, від неї залежить ім'я старої корови
         milk.load(tag);
         family.load(tag);
+        character.load(tag);
     }
 }

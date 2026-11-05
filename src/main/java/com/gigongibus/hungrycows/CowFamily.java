@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -41,6 +42,8 @@ public class CowFamily {
     private UUID playerMotherId = null;     // гравець, що вигодував теля молоком
     private String playerMotherName = "";
     private int separatedSeconds = 0;
+    private BlockPos motherDeathPos = null; // де померла мати (теля ходить біля цього місця, поки не забуде)
+    private boolean lostMotherToDeath = false; // мати померла: інші самки приймають рідше
 
     // рідні предки: {M: {Name, M, F}, F: {Name, M, F}}
     private CompoundTag ancestors = new CompoundTag();
@@ -63,6 +66,25 @@ public class CowFamily {
         return playerMotherId == null ? null : cow.level().getPlayerByUUID(playerMotherId);
     }
 
+    public UUID motherIdOrNull() {
+        return motherId;
+    }
+
+    public BlockPos motherDeathPos() {
+        return motherDeathPos;
+    }
+
+    public boolean lostMotherToDeath() {
+        return lostMotherToDeath;
+    }
+
+    // Мати померла поруч: теля ходить біля місця смерті, поки не забуде її (FORGET_SECONDS)
+    public void onMotherDied(BlockPos where) {
+        motherDeathPos = where.immutable();
+        lostMotherToDeath = true;
+        cow.tell("Теля " + name + " залишилось без матері " + motherName);
+    }
+
     public boolean hasCowMother() {
         return motherId != null;
     }
@@ -81,6 +103,8 @@ public class CowFamily {
         motherName = foster.family.name;
         fosterMother = true;
         separatedSeconds = 0;
+        motherDeathPos = null;
+        lostMotherToDeath = false;
         cow.tell(foster.family.name + " прийняла теля " + name);
     }
 
@@ -88,6 +112,8 @@ public class CowFamily {
     public void adoptByPlayer(Player player) {
         playerMotherId = player.getUUID();
         playerMotherName = player.getName().getString();
+        motherDeathPos = null;
+        lostMotherToDeath = false;
         cow.tell(player.getName().getString() + " тепер мати теляти " + name);
     }
 
@@ -105,6 +131,7 @@ public class CowFamily {
             motherName = "";
             fosterMother = false;
             separatedSeconds = 0;
+            motherDeathPos = null;   // lostMotherToDeath лишається: інші самки приймуть рідше
         }
     }
 
@@ -187,6 +214,7 @@ public class CowFamily {
             for (int i = 0; i < children.size(); i++) names.add(children.getString(i));
             lines.add("Діти (" + names.size() + "): " + String.join(", ", names));
         }
+        lines.addAll(cow.character.lines());
         for (String line : lines) player.sendSystemMessage(Component.literal(line));
     }
 
@@ -218,6 +246,8 @@ public class CowFamily {
         if (playerMotherId != null) tag.putUUID("PlayerMotherId", playerMotherId);
         tag.putString("PlayerMotherName", playerMotherName);
         tag.putInt("SeparatedSeconds", separatedSeconds);
+        if (motherDeathPos != null) tag.putLong("MotherDeathPos", motherDeathPos.asLong());
+        tag.putBoolean("LostMotherToDeath", lostMotherToDeath);
         tag.put("Ancestors", ancestors);
         tag.put("Children", children);
     }
@@ -231,6 +261,8 @@ public class CowFamily {
         playerMotherId = tag.hasUUID("PlayerMotherId") ? tag.getUUID("PlayerMotherId") : null;
         playerMotherName = tag.getString("PlayerMotherName");
         separatedSeconds = tag.getInt("SeparatedSeconds");
+        motherDeathPos = tag.contains("MotherDeathPos") ? BlockPos.of(tag.getLong("MotherDeathPos")) : null;
+        lostMotherToDeath = tag.getBoolean("LostMotherToDeath");
         ancestors = tag.getCompound("Ancestors");
         children = tag.getList("Children", Tag.TAG_STRING);
     }

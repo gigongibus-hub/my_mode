@@ -9,8 +9,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.EnumSet;
 
 public class FearGoal extends Goal {
-    private static final int SCARED_AT = 10;
-    private static final int CALM_AT = 5;
+    // з якого страху корова тікає, залежить від полохливості: див. HungryCow.scaredAt() (5–15, при 50 — 10)
     private final HungryCow cow;
     private LivingEntity scary;
 
@@ -27,7 +26,7 @@ public class FearGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (cow.fear < SCARED_AT) return false;
+        if (cow.fear < cow.scaredAt()) return false;
         scary = cow.findScary(10.0);
         return scary != null;
     }
@@ -35,7 +34,7 @@ public class FearGoal extends Goal {
     // Шукати заново кожні 10 тіків, а не щотіку: пошук істот поруч дорогий
     @Override
     public boolean canContinueToUse() {
-        if (cow.fear < CALM_AT) return false;
+        if (cow.fear < cow.scaredAt() / 2) return false;   // заспокоюється на половині порогу
         if (scary == null || !scary.isAlive() || cow.tickCount % 10 == 0) {
             scary = cow.findScary(14.0);
         }

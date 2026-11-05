@@ -44,6 +44,7 @@ public class CowReproduction {
     private boolean exhausted = false;     // більше не може народжувати і давати молоко після останньої лактації
     private CompoundTag fatherNode = null; // батько поточної вагітності для родинного дерева
     private UUID fatherId = null;
+    private int[] fatherGenes = null;      // гени батька поточної вагітності (для теляти)
 
     // зустріч пари (не зберігається)
     private int matingSince = 0;
@@ -121,6 +122,7 @@ public class CowReproduction {
         pregnantSeconds = PREGNANCY_SECONDS;
         fatherId = father.getUUID();
         fatherNode = father.family.asNode();
+        fatherGenes = father.character.genesCopy();
         cow.resetLove();
         father.resetLove();
         cow.setAge(BREED_COOLDOWN_TICKS);
@@ -177,6 +179,7 @@ public class CowReproduction {
             baby.setBaby(true);
             baby.moveTo(cow.getX(), cow.getY(), cow.getZ(), cow.getYRot(), 0.0F);
             baby.family.setupNewborn(cow, fatherNode);
+            baby.character.inherit(cow.character.genesCopy(), fatherGenes, cow.getRandom());
             cow.family.addChild(baby.family.name);
             HungryCow father = findFather();
             if (father != null) father.family.addChild(baby.family.name);
@@ -188,6 +191,7 @@ public class CowReproduction {
         cow.milk.startLactation(baby != null);
         fatherNode = null;
         fatherId = null;
+        fatherGenes = null;
 
         if (births >= birthLimit) {
             exhausted = true;
@@ -242,6 +246,7 @@ public class CowReproduction {
         tag.putBoolean("Exhausted", exhausted);
         if (fatherNode != null) tag.put("FatherNode", fatherNode);
         if (fatherId != null) tag.putUUID("FatherId", fatherId);
+        if (fatherGenes != null) tag.putIntArray("FatherGenes", fatherGenes);
     }
 
     public void load(CompoundTag tag) {
@@ -256,6 +261,7 @@ public class CowReproduction {
         exhausted = tag.getBoolean("Exhausted");
         fatherNode = tag.contains("FatherNode") ? tag.getCompound("FatherNode") : null;
         fatherId = tag.hasUUID("FatherId") ? tag.getUUID("FatherId") : null;
+        fatherGenes = tag.contains("FatherGenes") ? tag.getIntArray("FatherGenes") : null;
         if (exhausted) applyExhaustion();
     }
 }

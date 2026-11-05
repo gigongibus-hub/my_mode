@@ -15,7 +15,8 @@ import java.util.UUID;
 public class FindFosterGoal extends Goal {
     private static final double SEARCH_RANGE = 16.0;    // з якої відстані помічає самку
     private static final double REACH = 2.0;
-    private static final float REJECT_CHANCE = 0.5F;    // шанс, що самка не прийме теля
+    private static final float REJECT_CHANCE = 0.5F;    // шанс, що самка не прийме теля, яке просто забуло матір
+    private static final float REJECT_CHANCE_DEAD_MOTHER = 0.7F; // шанс, що не прийме теля, чия мати померла
     private static final float REJECT_DAMAGE = 1.0F;    // удар самки (пів серця)
     private static final int FLEE_TICKS = 60;           // скільки теля тікає після удару
     private static final int MAX_RUN_TICKS = 400;
@@ -69,7 +70,8 @@ public class FindFosterGoal extends Goal {
             if (runTicks == 1 || runTicks % 10 == 0) cow.getNavigation().moveTo(target, 1.0);
             return;
         }
-        if (cow.getRandom().nextFloat() < REJECT_CHANCE) {
+        float reject = cow.family.lostMotherToDeath() ? REJECT_CHANCE_DEAD_MOTHER : REJECT_CHANCE;
+        if (cow.getRandom().nextFloat() < reject) {
             // не прийняла: б'є, теля тікає
             rejectedBy.add(target.getUUID());
             cow.hurt(target.damageSources().mobAttack(target), REJECT_DAMAGE);
