@@ -20,6 +20,12 @@ public class AvoidBluetGoal extends Goal {
         this.setFlags(EnumSet.of(Goal.Flag.MOVE));
     }
 
+    // правило мода: кожна ціль оновлюється щотіку
+    @Override
+    public boolean requiresUpdateEveryTick() {
+        return true;
+    }
+
     @Override
     public boolean canUse() {
         if (cooldown > 0) { cooldown--; return false; }
