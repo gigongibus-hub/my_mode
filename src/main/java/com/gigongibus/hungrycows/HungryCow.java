@@ -76,6 +76,8 @@ public class HungryCow extends Cow {
     public static final float GRASS_BLOCK_HEAL = 2.0F;   // трав'яний блок: скільки лікує
     public static final int PLANT_FOOD = 50;             // трава-рослина: скільки голоду знімає
     public static final float PLANT_HEAL = 4.0F;         // трава-рослина: скільки лікує
+    public static final int TALL_PLANT_FOOD = 65;        // висока трава: трохи більше за низьку
+    public static final float TALL_PLANT_HEAL = 5.0F;    // висока трава: скільки лікує
     public static final int MOSS_BLOCK_FOOD = 10;        // моховий блок: скільки голоду знімає
 
     public static final float CHOKE_MULTIPLIER = 100.0F; // множник шансу подавитися: 100 = завжди (для тестів), 1 = звичайно

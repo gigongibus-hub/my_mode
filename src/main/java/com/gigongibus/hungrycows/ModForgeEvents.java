@@ -9,6 +9,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -87,6 +89,26 @@ public class ModForgeEvents {
         source.sendSuccess(() -> Component.literal("Вагітна корова " + cow.family.name + ": через "
                 + TEST_LABOR_IN_SECONDS + " с пологи, народить " + what), true);
         return 1;
+    }
+
+    // Відростання трави й моху: раз на секунду в кожному світі
+    @SubscribeEvent
+    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
+            Regrowth.tick(level);
+        }
+    }
+
+    // Гравець зламав блок: на цьому місці нічого не відросте (наприклад, перекопав землю з-під моху)
+    @SubscribeEvent
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
+        if (event.getLevel() instanceof ServerLevel level) Regrowth.blockChanged(level, event.getPos());
+    }
+
+    // Гравець поставив блок: теж скасовує відростання на цьому місці
+    @SubscribeEvent
+    public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
+        if (event.getLevel() instanceof ServerLevel level) Regrowth.blockChanged(level, event.getPos());
     }
 
     // Вибух поруч: корови, яких він зачепив, отримують досвід «поруч вибух»

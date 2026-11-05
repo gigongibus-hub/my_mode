@@ -3,6 +3,10 @@ package com.gigongibus.hungrycows.ai;
 import com.gigongibus.hungrycows.CowFood;
 import com.gigongibus.hungrycows.CowGenes;
 import com.gigongibus.hungrycows.HungryCow;
+import com.gigongibus.hungrycows.Regrowth;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -210,8 +214,10 @@ public class SeekGrassGoal extends Goal {
 
     private void eatTarget(BlockState state) {
         Block block = state.getBlock();
+        ServerLevel server = cow.level() instanceof ServerLevel sl ? sl : null;
         if (block == Blocks.GRASS_BLOCK) {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());
+            if (server != null) Regrowth.grassEaten(server, target);   // через 4–6 хв знову трава
             cow.milk.recordDiet(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.GRASS_BLOCK_FOOD));
             cow.heal(HungryCow.GRASS_BLOCK_HEAL);
@@ -219,13 +225,19 @@ public class SeekGrassGoal extends Goal {
             Block[] soils = { Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.ROOTED_DIRT };
             Block soil = soils[cow.getRandom().nextInt(soils.length)];
             cow.level().setBlockAndUpdate(target, soil.defaultBlockState());
+            if (server != null) Regrowth.mossEaten(server, target, soil);   // через 8–12 хв знову мох
             cow.milk.recordDiet(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.MOSS_BLOCK_FOOD));
         } else if (block == Blocks.GRASS || block == Blocks.TALL_GRASS) {
+            boolean tall = block == Blocks.TALL_GRASS;
+            // у високої трави рослина «стоїть» на нижній половині
+            BlockPos plantPos = tall && state.hasProperty(DoublePlantBlock.HALF)
+                    && state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER ? target.below() : target;
             cow.level().destroyBlock(target, false);
+            if (server != null) Regrowth.plantEaten(server, plantPos);   // з шансом 30% знову виросте низька
             cow.milk.recordDiet(block.asItem());
-            cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.PLANT_FOOD));
-            cow.heal(HungryCow.PLANT_HEAL);
+            cow.hunger = Math.max(0, cow.hunger - grassFood(tall ? HungryCow.TALL_PLANT_FOOD : HungryCow.PLANT_FOOD));
+            cow.heal(tall ? HungryCow.TALL_PLANT_HEAL : HungryCow.PLANT_HEAL);
         } else {
             // кавун, гарбуз, сіно, квіти: за таблицею CowFood
             Item item = block.asItem();
@@ -257,7 +269,8 @@ public class SeekGrassGoal extends Goal {
     // Скільки голоду знімає ця їжа
     private int nutrition(BlockState state) {
         Block b = state.getBlock();
-        if (b == Blocks.GRASS || b == Blocks.TALL_GRASS) return HungryCow.PLANT_FOOD;
+        if (b == Blocks.TALL_GRASS) return HungryCow.TALL_PLANT_FOOD;
+        if (b == Blocks.GRASS) return HungryCow.PLANT_FOOD;
         if (b == Blocks.GRASS_BLOCK) return HungryCow.GRASS_BLOCK_FOOD;
         if (b == Blocks.MOSS_BLOCK) return HungryCow.MOSS_BLOCK_FOOD;
         CowFood f = CowFood.get(b.asItem());
