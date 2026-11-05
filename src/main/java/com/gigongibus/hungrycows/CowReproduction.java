@@ -39,12 +39,13 @@ public class CowReproduction {
     private boolean pregnant = false;
     private int pregnantSeconds = 0;
     private int laborTicksLeft = 0;
+    private int laborTotalTicks = LABOR_TICKS; // скільки тривають ці пологи (залежить від гена)
     private int births = 0;                // скільки разів народжувала (мертві телята теж рахуються)
     private int birthLimit;                // скільки пологів можливо за життя
     private boolean exhausted = false;     // більше не може народжувати і давати молоко після останньої лактації
     private CompoundTag fatherNode = null; // батько поточної вагітності для родинного дерева
     private UUID fatherId = null;
-    private int[] fatherGenes = null;      // гени батька поточної вагітності (для теляти)
+    private CompoundTag fatherGenes = null; // обидві копії генів батька поточної вагітності (для теляти)
 
     // зустріч пари (не зберігається)
     private int matingSince = 0;
@@ -53,9 +54,42 @@ public class CowReproduction {
     public CowReproduction(HungryCow cow) {
         this.cow = cow;
         this.sex = cow.getRandom().nextBoolean() ? 1 : 2;
-        this.birthLimit = cow.getRandom().nextFloat() < BIG_FAMILY_CHANCE
+        // birthLimit виставляє rollBirthLimit(), коли вже відомі гени
+    }
+
+    // Скільки телят за життя: 5–7 (5% самок 10–12), гени BIRTH_LIMIT і BIG_FAMILY змінюють це на ±30%
+    public void rollBirthLimit() {
+        boolean big = cow.getRandom().nextFloat() < BIG_FAMILY_CHANCE * cow.genes.factor(CowGenes.Gene.BIG_FAMILY);
+        int base = big
                 ? BIG_BIRTHS_MIN + cow.getRandom().nextInt(BIG_BIRTHS_MAX - BIG_BIRTHS_MIN + 1)
                 : BIRTHS_MIN + cow.getRandom().nextInt(BIRTHS_MAX - BIRTHS_MIN + 1);
+        birthLimit = Math.max(1, (int) Math.round(base * cow.genes.factor(CowGenes.Gene.BIRTH_LIMIT)));
+    }
+
+    // ---------- числа з урахуванням генів ----------
+
+    private int matingTicks() {
+        return (int) Math.round(MATING_TICKS * cow.genes.factor(CowGenes.Gene.MATING_TIME));
+    }
+
+    private int pregnancySeconds() {
+        return (int) Math.round(PREGNANCY_SECONDS * cow.genes.factor(CowGenes.Gene.PREGNANCY_LENGTH));
+    }
+
+    private int laborTicks() {
+        return (int) Math.round(LABOR_TICKS * cow.genes.factor(CowGenes.Gene.LABOR_LENGTH));
+    }
+
+    private float laborDamage() {
+        return (float) (LABOR_DAMAGE * cow.genes.factor(CowGenes.Gene.LABOR_PAIN));
+    }
+
+    private float calfDeathChance() {
+        return (float) (CALF_DEATH_CHANCE * cow.genes.factor(CowGenes.Gene.STILLBIRTH_RISK));
+    }
+
+    private int breedPause() {
+        return (int) Math.round(BREED_COOLDOWN_TICKS * cow.genes.factor(CowGenes.Gene.BREED_PAUSE));
     }
 
     // ---------- стан ----------
@@ -120,21 +154,21 @@ public class CowReproduction {
             m.matingSince = now;               // нова зустріч: відлік з початку
         }
         m.matingLastCall = now;
-        if (now - m.matingSince < MATING_TICKS) return;   // ще не 15 секунд разом
+        if (now - m.matingSince < m.matingTicks()) return;   // ще не 15 секунд разом
 
         m.conceive(father);
     }
 
     private void conceive(HungryCow father) {
         pregnant = true;
-        pregnantSeconds = PREGNANCY_SECONDS;
+        pregnantSeconds = pregnancySeconds();
         fatherId = father.getUUID();
         fatherNode = father.family.asNode();
-        fatherGenes = father.character.genesCopy();
+        fatherGenes = father.genes.saveTag();
         cow.resetLove();
         father.resetLove();
-        cow.setAge(BREED_COOLDOWN_TICKS);
-        father.setAge(BREED_COOLDOWN_TICKS);
+        cow.setAge(breedPause());
+        father.setAge(father.repro.breedPause());
         cow.level().broadcastEntityEvent(cow, (byte) 18);   // сердечка
         say("Корова завагітніла!");
     }
@@ -146,7 +180,8 @@ public class CowReproduction {
         if (pregnant && laborTicksLeft <= 0) {
             if (pregnantSeconds > 0) pregnantSeconds--;
             if (pregnantSeconds <= 0) {
-                laborTicksLeft = LABOR_TICKS;
+                laborTicksLeft = laborTicks();
+                laborTotalTicks = laborTicksLeft;
                 say("Починаються пологи!");
             }
         }
@@ -159,7 +194,7 @@ public class CowReproduction {
         cow.getNavigation().stop();
 
         if (laborTicksLeft > 0 && laborTicksLeft % 20 == 0) {
-            float pain = LABOR_DAMAGE / (LABOR_TICKS / 20.0F);
+            float pain = laborDamage() / (Math.max(20, laborTotalTicks) / 20.0F);
             cow.setHealth(Math.max(1.0F, cow.getHealth() - pain));   // не смертельно
             if ((laborTicksLeft / 20) % 3 == 0) {
                 cow.playSound(SoundEvents.COW_HURT, 0.8F, 0.8F);
@@ -177,7 +212,7 @@ public class CowReproduction {
         births++;
 
         HungryCow baby = null;
-        if (cow.getRandom().nextFloat() < CALF_DEATH_CHANCE) {
+        if (cow.getRandom().nextFloat() < calfDeathChance()) {
             cow.playSound(SoundEvents.COW_DEATH, 0.8F, 1.3F);
             say("Теля народилося мертвим...");
         } else {
@@ -187,7 +222,10 @@ public class CowReproduction {
             baby.setBaby(true);
             baby.moveTo(cow.getX(), cow.getY(), cow.getZ(), cow.getYRot(), 0.0F);
             baby.family.setupNewborn(cow, fatherNode);
-            baby.character.inherit(cow.character.genesCopy(), fatherGenes, cow.getRandom());
+            baby.genes.inherit(cow.genes.saveTag(), fatherGenes, cow.getRandom());
+            baby.character.newborn(cow.getRandom());
+            baby.onGenesChanged();
+            baby.repro.rollBirthLimit();   // ліміт телят — уже за успадкованими генами
             cow.family.addChild(baby.family.name);
             HungryCow father = findFather();
             if (father != null) father.family.addChild(baby.family.name);
@@ -254,7 +292,8 @@ public class CowReproduction {
         tag.putBoolean("Exhausted", exhausted);
         if (fatherNode != null) tag.put("FatherNode", fatherNode);
         if (fatherId != null) tag.putUUID("FatherId", fatherId);
-        if (fatherGenes != null) tag.putIntArray("FatherGenes", fatherGenes);
+        if (fatherGenes != null) tag.put("FatherGenome", fatherGenes);
+        tag.putInt("LaborTotal", laborTotalTicks);
     }
 
     public void load(CompoundTag tag) {
@@ -269,7 +308,8 @@ public class CowReproduction {
         exhausted = tag.getBoolean("Exhausted");
         fatherNode = tag.contains("FatherNode") ? tag.getCompound("FatherNode") : null;
         fatherId = tag.hasUUID("FatherId") ? tag.getUUID("FatherId") : null;
-        fatherGenes = tag.contains("FatherGenes") ? tag.getIntArray("FatherGenes") : null;
+        fatherGenes = tag.contains("FatherGenome") ? tag.getCompound("FatherGenome") : null;
+        laborTotalTicks = tag.contains("LaborTotal") ? tag.getInt("LaborTotal") : LABOR_TICKS;
         if (exhausted) applyExhaustion();
     }
 }

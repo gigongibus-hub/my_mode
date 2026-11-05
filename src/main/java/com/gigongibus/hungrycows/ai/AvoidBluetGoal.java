@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowGenes;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -10,7 +11,7 @@ import java.util.EnumSet;
 
 // Корова відходить від черемші (Azure Bluet)
 public class AvoidBluetGoal extends Goal {
-    private static final int RADIUS = 3;
+    private static final int RADIUS = 3;   // з якої відстані відходить (ген «стійкість до черемші» 100 → 2, 0 → 4)
     private final HungryCow cow;
     private BlockPos bluet;
     private int cooldown = 0;
@@ -56,8 +57,9 @@ public class AvoidBluetGoal extends Goal {
 
     private BlockPos findBluet() {
         BlockPos origin = cow.blockPosition();
+        int radius = Math.max(1, (int) Math.round(RADIUS * (2.0 - cow.gene(CowGenes.Gene.BLUET_RESIST))));
         for (BlockPos p : BlockPos.betweenClosed(
-                origin.offset(-RADIUS, -1, -RADIUS), origin.offset(RADIUS, 1, RADIUS))) {
+                origin.offset(-radius, -1, -radius), origin.offset(radius, 1, radius))) {
             if (cow.level().getBlockState(p).is(Blocks.AZURE_BLUET)) {
                 return p.immutable();
             }

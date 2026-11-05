@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowGenes;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.world.entity.ai.goal.Goal;
 import java.util.EnumSet;
@@ -44,7 +45,8 @@ public class RestGoal extends Goal {
     public void tick() {
         restTimer++;
         if (restTimer % 20 == 0) {
-            cow.fatigue = Math.max(0, cow.fatigue - RECOVER_PER_SECOND);
+            int recover = (int) Math.round(RECOVER_PER_SECOND * cow.gene(CowGenes.Gene.REST_RECOVERY));
+            cow.fatigue = Math.max(0, cow.fatigue - recover);
         }
     }
 

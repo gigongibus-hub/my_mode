@@ -47,6 +47,10 @@ public class CowMilk {
             Map.entry(Items.PINK_TULIP, "bad"), Map.entry(Items.PEONY, "bad"), Map.entry(Items.LILAC, "bad"),
             Map.entry(Items.AZURE_BLUET, "bluet"));
 
+    public static String dietGroup(Item item) {
+        return DIET_GROUP.get(item);
+    }
+
     private final HungryCow cow;
     private int milk = 0;
     private long lactationEnd = -1;      // ігровий час, коли молоко закінчиться
@@ -62,6 +66,15 @@ public class CowMilk {
 
     public boolean isLactating() {
         return cow.level().getGameTime() < lactationEnd;
+    }
+
+    // Повна шкала: 100 × ген «об'єм молока» (70–130)
+    public int max() {
+        return (int) Math.round(MAX * cow.gene(CowGenes.Gene.MILK_VOLUME));
+    }
+
+    private long lactationTicks(long days) {
+        return Math.round(days * DAY * cow.gene(CowGenes.Gene.LACTATION_LENGTH));
     }
 
     public int amount() {
@@ -84,24 +97,25 @@ public class CowMilk {
     public void startLactation(boolean calfAlive) {
         quality = computeQuality();
         diet = new CompoundTag();
-        milk = MAX;
+        milk = max();
         regenSeconds = 0;
         long days = calfAlive ? CHILDHOOD_DAYS + DAYS_AFTER_GROWN : DAYS_AFTER_CALF_DEATH;
-        lactationEnd = cow.level().getGameTime() + days * DAY;
+        lactationEnd = cow.level().getGameTime() + lactationTicks(days);
         cow.tell(cow.family.name + " має молоко: якість " + quality.letter);
     }
 
     // Теля померло: усе молоко гравцю, ще 5 діб
     public void onCalfDied() {
         if (!isLactating()) return;
-        lactationEnd = cow.level().getGameTime() + DAYS_AFTER_CALF_DEATH * DAY;
+        lactationEnd = cow.level().getGameTime() + lactationTicks(DAYS_AFTER_CALF_DEATH);
         cow.tell(cow.family.name + " втратила теля: молоко ще " + DAYS_AFTER_CALF_DEATH + " діб");
     }
 
     // Раз на секунду
     public void secondTick() {
         if (isLactating()) {
-            if (milk < MAX && ++regenSeconds >= REGEN_SECONDS) {
+            int every = Math.max(1, (int) Math.round(REGEN_SECONDS / cow.gene(CowGenes.Gene.MILK_REGEN)));
+            if (milk < max() && ++regenSeconds >= every) {
                 regenSeconds = 0;
                 milk++;
             }
@@ -114,14 +128,16 @@ public class CowMilk {
     // ---------- раціон і якість ----------
 
     public void recordDiet(Item item) {
-        String group = DIET_GROUP.get(item);
+        String group = dietGroup(item);
         if (group != null) diet.putInt(group, diet.getInt(group) + 1);
     }
 
     private MilkQuality computeQuality() {
         if (diet.getInt("bluet") >= BLUET_FOR_POISONED) return MilkQuality.POISONED;
-        if (diet.getInt("poppy") >= POPPY_FOR_S || diet.getInt("bad") >= BAD_FLOWERS_FOR_S) return MilkQuality.S;
-        if (diet.getInt("allium") >= ALLIUM_FOR_B) return MilkQuality.B;
+        double resist = cow.gene(CowGenes.Gene.QUALITY_RESIST);   // ген 100: потрібно на 30% більше поганих квітів
+        if (diet.getInt("poppy") >= Math.round(POPPY_FOR_S * resist)
+                || diet.getInt("bad") >= Math.round(BAD_FLOWERS_FOR_S * resist)) return MilkQuality.S;
+        if (diet.getInt("allium") >= Math.round(ALLIUM_FOR_B * resist)) return MilkQuality.B;
         if (diet.getInt("veg") > 0 && diet.getInt("fruit") > 0 && diet.getInt("grass") > 0) return MilkQuality.A;
         return MilkQuality.V;
     }

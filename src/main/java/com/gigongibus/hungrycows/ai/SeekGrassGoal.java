@@ -1,6 +1,7 @@
 package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowFood;
+import com.gigongibus.hungrycows.CowGenes;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -21,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class SeekGrassGoal extends Goal {
-    private static final int HUNGRY_AT = 30;
+    // з якого голоду шукає їжу: HungryCow.hungryAt() (30, ген ±30%)
     private static final int SEARCH_RADIUS = 15;          // радіус пошуку їжі по горизонталі
     private static final int SEARCH_HEIGHT = 3;           // радіус пошуку по висоті
     private static final float FLOWER_CHANCE = 0.30F;     // шанс, що голодна корова піде до квітки замість звичайної їжі
@@ -99,7 +100,7 @@ public class SeekGrassGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
         if (cow.choking) return false;   // подавлена корова не шукає їжі
-        if (cow.hunger < HUNGRY_AT) return false;
+        if (cow.hunger < cow.hungryAt()) return false;
         // раз на 10 секунд забуваємо, що вважали недосяжним
         if (cow.tickCount - lastClearTick > 200) {
             unreachable.clear();
@@ -120,7 +121,7 @@ public class SeekGrassGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return !cow.choking && cow.hunger >= HUNGRY_AT && target != null;
+        return !cow.choking && cow.hunger >= cow.hungryAt() && target != null;
     }
 
     private void resetEating() {
@@ -202,23 +203,28 @@ public class SeekGrassGoal extends Goal {
         resetEating();
     }
 
+    // скільки голоду знімає трава з урахуванням гена «користь від трави»
+    private int grassFood(int base) {
+        return (int) Math.round(base * cow.gene(CowGenes.Gene.GRASS_DIGEST));
+    }
+
     private void eatTarget(BlockState state) {
         Block block = state.getBlock();
         if (block == Blocks.GRASS_BLOCK) {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());
             cow.milk.recordDiet(block.asItem());
-            cow.hunger = Math.max(0, cow.hunger - HungryCow.GRASS_BLOCK_FOOD);
+            cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.GRASS_BLOCK_FOOD));
             cow.heal(HungryCow.GRASS_BLOCK_HEAL);
         } else if (block == Blocks.MOSS_BLOCK) {
             Block[] soils = { Blocks.DIRT, Blocks.COARSE_DIRT, Blocks.ROOTED_DIRT };
             Block soil = soils[cow.getRandom().nextInt(soils.length)];
             cow.level().setBlockAndUpdate(target, soil.defaultBlockState());
             cow.milk.recordDiet(block.asItem());
-            cow.hunger = Math.max(0, cow.hunger - HungryCow.MOSS_BLOCK_FOOD);
+            cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.MOSS_BLOCK_FOOD));
         } else if (block == Blocks.GRASS || block == Blocks.TALL_GRASS) {
             cow.level().destroyBlock(target, false);
             cow.milk.recordDiet(block.asItem());
-            cow.hunger = Math.max(0, cow.hunger - HungryCow.PLANT_FOOD);
+            cow.hunger = Math.max(0, cow.hunger - grassFood(HungryCow.PLANT_FOOD));
             cow.heal(HungryCow.PLANT_HEAL);
         } else {
             // кавун, гарбуз, сіно, квіти: за таблицею CowFood
@@ -390,10 +396,12 @@ public class SeekGrassGoal extends Goal {
                 else otherFlowers.add(c);
             }
             float roll = cow.getRandom().nextFloat();
-            if (!poppies.isEmpty() && roll < POPPY_CHANCE) {
+            float poppyChance = (float) (POPPY_CHANCE * cow.gene(CowGenes.Gene.POPPY_CRAVING));
+            float flowerChance = (float) (FLOWER_CHANCE * cow.gene(CowGenes.Gene.FLOWER_CRAVING));
+            if (!poppies.isEmpty() && roll < poppyChance) {
                 BlockPos p = pickFlower(poppies);
                 if (p != null) return p;
-            } else if (!otherFlowers.isEmpty() && roll < FLOWER_CHANCE) {
+            } else if (!otherFlowers.isEmpty() && roll < Math.max(flowerChance, poppyChance)) {
                 BlockPos p = pickFlower(otherFlowers);
                 if (p != null) return p;
             }

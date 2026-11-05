@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Характер корови: 14 рис від 0 до 100.
  * Риса = ген × GENE_SHARE + досвід × (1 − GENE_SHARE).
- * Ген не змінюється все життя (теля бере кожен ген від випадкового з батьків, з невеликою мутацією).
+ * Ген береться з CowGenes (група «Темперамент», дві копії від батьків) і не змінюється все життя.
  * Досвід змінюється від того, що з коровою відбувається (таблиця Experience нижче).
  * Усі числа зібрані на початку файлу.
  */
@@ -17,13 +17,9 @@ public class CowCharacter {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final double GENE_SHARE = 0.35;        // частка генів у рисі (у справжніх корів спадковість характеру ≈ 30–40%)
-    public static final int RANDOM_GENE_MIN = 30;        // гени корови без батьків (з яйця призову): від 30 до 70
-    public static final int RANDOM_GENE_MAX = 70;
     public static final int START_EXPERIENCE = 50;       // досвід при народженні: в середньому 50 ...
     public static final double START_EXPERIENCE_SPREAD = 8.0;  // ... ± випадковий розкид (умови перших днів)
-    public static final double MUTATION_SMALL = 2.0;     // звичайна мутація гена: зазвичай ±0–4
-    public static final float MUTATION_BIG_CHANCE = 0.01F; // 1% генів мутують сильно
-    public static final double MUTATION_BIG = 10.0;      // сильна мутація: зазвичай ±10–20
+    // спадковість і мутації генів: див. CowGenes
 
     // ================= 14 РИС =================
     public enum Trait {
@@ -85,15 +81,16 @@ public class CowCharacter {
         }
     }
 
-    private final int[] genes = new int[Trait.values().length];
+    private final CowGenes genes;
     private final int[] experience = new int[Trait.values().length];
 
-    // Нова корова без батьків: випадкові гени 30–70
-    public CowCharacter(RandomSource random) {
-        for (int i = 0; i < genes.length; i++) {
-            genes[i] = RANDOM_GENE_MIN + random.nextInt(RANDOM_GENE_MAX - RANDOM_GENE_MIN + 1);
-        }
+    public CowCharacter(CowGenes genes, RandomSource random) {
+        this.genes = genes;
         resetExperience(random);
+    }
+
+    private int gene(Trait t) {
+        return genes.value(CowGenes.Gene.forTrait(t));
     }
 
     private void resetExperience(RandomSource random) {
@@ -106,7 +103,7 @@ public class CowCharacter {
 
     public int get(Trait t) {
         int i = t.ordinal();
-        return clamp((int) Math.round(genes[i] * GENE_SHARE + experience[i] * (1.0 - GENE_SHARE)));
+        return clamp((int) Math.round(gene(t) * GENE_SHARE + experience[i] * (1.0 - GENE_SHARE)));
     }
 
     // 0..1 замість 0..100: зручно для формул
@@ -114,21 +111,10 @@ public class CowCharacter {
         return get(t) / 100.0;
     }
 
-    public int[] genesCopy() {
-        return genes.clone();
-    }
+    // ---------- народження ----------
 
-    // ---------- спадковість ----------
-
-    // Теля: кожен ген від випадкового з батьків + мутація. Досвід з нуля (≈50).
-    public void inherit(int[] motherGenes, int[] fatherGenes, RandomSource random) {
-        if (fatherGenes != null && fatherGenes.length != genes.length) fatherGenes = null;
-        for (int i = 0; i < genes.length; i++) {
-            int[] from = (fatherGenes == null || random.nextBoolean()) ? motherGenes : fatherGenes;
-            double g = from[i] + random.nextGaussian() * MUTATION_SMALL;
-            if (random.nextFloat() < MUTATION_BIG_CHANCE) g += random.nextGaussian() * MUTATION_BIG;
-            genes[i] = clamp((int) Math.round(g));
-        }
+    // Теля: досвід з нуля (≈50); гени успадковує CowGenes
+    public void newborn(RandomSource random) {
         resetExperience(random);
     }
 
@@ -153,7 +139,7 @@ public class CowCharacter {
         out.add("Характер (риса = ген " + Math.round(GENE_SHARE * 100) + "% + досвід):");
         for (Trait t : Trait.values()) {
             int i = t.ordinal();
-            out.add("   " + t.title + ": " + get(t) + " (ген " + genes[i] + ", досвід " + experience[i] + ")");
+            out.add("   " + t.title + ": " + get(t) + " (ген " + gene(t) + ", досвід " + experience[i] + ")");
         }
         return out;
     }
@@ -161,15 +147,12 @@ public class CowCharacter {
     // ---------- збереження ----------
 
     public void save(CompoundTag tag) {
-        tag.putIntArray("Genes", genes);
         tag.putIntArray("Experience", experience);
     }
 
     public void load(CompoundTag tag) {
-        int[] g = tag.getIntArray("Genes");
         int[] e = tag.getIntArray("Experience");
-        // стара корова без характеру лишає випадковий характер із конструктора
-        if (g.length == genes.length) System.arraycopy(g, 0, genes, 0, genes.length);
+        // стара корова без досвіду лишає випадковий із конструктора; старі гени "Genes" переносить CowGenes.load
         if (e.length == experience.length) System.arraycopy(e, 0, experience, 0, experience.length);
     }
 

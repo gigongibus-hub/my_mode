@@ -190,7 +190,7 @@ public class CowFamily {
             lines.add("Народжень: " + cow.repro.births() + " з " + cow.repro.birthLimit()
                     + (cow.repro.isExhausted() ? " (більше не може)" : ""));
             String milk = cow.milk.label();
-            lines.add(milk != null ? milk + " з " + CowMilk.MAX : "Молока немає");
+            lines.add(milk != null ? milk + " з " + cow.milk.max() : "Молока немає");
             lines.add("Раціон: " + cow.milk.dietText());
         }
         lines.addAll(familyLines());

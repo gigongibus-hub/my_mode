@@ -61,6 +61,9 @@ public class HungryCow extends Cow {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
+    public static final int HUNGRY_AT = 30;              // з цього голоду корова шукає їжу (ген HUNGER_THRESHOLD ±30%)
+    public static final int STARVE_DAMAGE_SECONDS = 4;   // при голодуванні урон раз на стільки секунд (ген STARVE_RESIST ±30%)
+    public static final int LOVE_TICKS = 600;            // скільки корова в режимі розмноження (ванільно 30 с; ген BREED_DRIVE ±30%)
     public static final int STARVE_AT = 60;              // з цього голоду корова отримує урон
     public static final int GRASS_BLOCK_FOOD = 30;       // трав'яний блок: скільки голоду знімає
     public static final float GRASS_BLOCK_HEAL = 2.0F;   // трав'яний блок: скільки лікує
@@ -121,9 +124,10 @@ public class HungryCow extends Cow {
 
     public final CowTrust trust = new CowTrust();   // довіра до кожного гравця
     public final CowReproduction repro = new CowReproduction(this);   // стать, вагітність, пологи
+    public final CowGenes genes = new CowGenes(this.getRandom());     // 71 ген, по дві копії
     public final CowMilk milk = new CowMilk(this);                    // шкала молока і якість
     public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
-    public final CowCharacter character = new CowCharacter(this.getRandom()); // 14 рис: гени + досвід
+    public final CowCharacter character = new CowCharacter(genes, this.getRandom()); // 14 рис: гени + досвід
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
 
@@ -146,6 +150,60 @@ public class HungryCow extends Cow {
 
     public HungryCow(EntityType<? extends Cow> type, Level level) {
         super(type, level);
+        repro.rollBirthLimit();
+        onGenesChanged();
+    }
+
+    // ===================== ГЕНИ =====================
+
+    private int hungerTimer = 0;     // секунди до наступного +1 голоду (не зберігається)
+    private int fatigueTimer = 0;
+    private int starveTimer = 0;
+    private double growthCarry = 0;  // накопичене прискорення/сповільнення росту теляти
+
+    // Викликається, коли гени стали відомі (нова корова, народження, завантаження)
+    public void onGenesChanged() {
+    }
+
+    public double gene(CowGenes.Gene g) {
+        return genes.factor(g);
+    }
+
+    // з якого голоду корова шукає їжу: ген «шукає їжу раніше» 100 → з 21, 0 → з 39
+    public int hungryAt() {
+        return (int) Math.round(HUNGRY_AT * genes.inverse(CowGenes.Gene.HUNGER_THRESHOLD));
+    }
+
+    // Раз на секунду: голод, втома і голодування з урахуванням генів
+    private void geneSecondTick() {
+        int hungerEvery = Math.max(1, (int) Math.round(HUNGER_EVERY_SECONDS / gene(CowGenes.Gene.HUNGER_RATE)));
+        if (++hungerTimer >= hungerEvery) {
+            hungerTimer = 0;
+            hunger += TIME_SPEED;
+        }
+        int fatigueEvery = Math.max(1, (int) Math.round(FATIGUE_EVERY_SECONDS / gene(CowGenes.Gene.FATIGUE_RATE)));
+        if (++fatigueTimer >= fatigueEvery) {
+            fatigueTimer = 0;
+            fatigue += TIME_SPEED;
+        }
+        if (hunger > STARVE_AT) {
+            int starveEvery = Math.max(1, (int) Math.round(STARVE_DAMAGE_SECONDS * gene(CowGenes.Gene.STARVE_RESIST)));
+            if (++starveTimer >= starveEvery) {
+                starveTimer = 0;
+                this.hurt(this.damageSources().starve(), 1.0F);
+            }
+        } else {
+            starveTimer = 0;
+        }
+        // теля росте швидше чи повільніше: ген 100 → на 30% швидше
+        if (this.isBaby()) {
+            growthCarry += 20.0 * (gene(CowGenes.Gene.CALF_GROWTH) - 1.0);
+            int whole = (int) growthCarry;
+            if (whole != 0) {
+                growthCarry -= whole;
+                this.setAge(Math.min(-1, this.getAge() + whole));
+            }
+        }
     }
 
     // Усі цілі задані тут явно (без super.registerGoals()), кожна зі своїм пріоритетом:
@@ -220,11 +278,7 @@ public class HungryCow extends Cow {
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
-            if (second % HUNGER_EVERY_SECONDS == 0) hunger += TIME_SPEED;
-            if (second % FATIGUE_EVERY_SECONDS == 0) fatigue += TIME_SPEED;
-            if (hunger > STARVE_AT && this.tickCount % 80 == 0) {
-                this.hurt(this.damageSources().starve(), 1.0F);
-            }
+            geneSecondTick();
             int gain = fearGainNearby();
             if (gain > 0) {
                 fear = Math.min(100, fear + gain);
@@ -633,6 +687,11 @@ public class HungryCow extends Cow {
         return InteractionResult.sidedSuccess(this.level().isClientSide);
     }
 
+    // Тривалість отруєння з урахуванням гена «стійкість до отрути»
+    private int poisonTicks(int seconds) {
+        return Math.max(20, (int) Math.round(seconds * 20 * genes.inverse(CowGenes.Gene.POISON_RESIST)));
+    }
+
     // Їжа з таблиці CowFood: з руки гравця або з землі
     public void eatFood(CowFood food, Item item) {
         // лічильники скидаються раз на ігрову добу
@@ -645,7 +704,11 @@ public class HungryCow extends Cow {
         int count = foodCounts.getInt(key) + 1;
         foodCounts.putInt(key, count);
 
-        hunger = Math.max(0, hunger - food.hunger);
+        // овочі й фрукти насичують більше чи менше за геном
+        String dietGroup = CowMilk.dietGroup(item);
+        int foodHunger = ("veg".equals(dietGroup) || "fruit".equals(dietGroup))
+                ? (int) Math.round(food.hunger * gene(CowGenes.Gene.PRODUCE_DIGEST)) : food.hunger;
+        hunger = Math.max(0, hunger - foodHunger);
         milk.recordDiet(item);
         if (food.heal > 0) {
             this.heal(food.heal);
@@ -657,10 +720,10 @@ public class HungryCow extends Cow {
             this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, food.firstRegenSeconds * 20));
         }
         if (food.poisonSeconds > 0) {
-            this.addEffect(new MobEffectInstance(MobEffects.POISON, food.poisonSeconds * 20));
+            this.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTicks(food.poisonSeconds)));
         }
         if (food.limitFrom > 0 && count >= food.limitFrom) {
-            this.addEffect(new MobEffectInstance(MobEffects.POISON, food.limitPoisonSeconds * 20));
+            this.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTicks(food.limitPoisonSeconds)));
         }
         if (food.slowFrom > 0 && count >= food.slowFrom) {
             this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, food.slowSeconds * 20));
@@ -672,13 +735,14 @@ public class HungryCow extends Cow {
             this.hurt(this.damageSources().cactus(), food.selfDamage);
         }
         if (food.toxinSeconds > 0) {
-            toxinLeft = food.toxinSeconds;
+            toxinLeft = Math.max(1, (int) Math.round(food.toxinSeconds * genes.inverse(CowGenes.Gene.POISON_RESIST)));
             toxinDamage = food.toxinDamage;
         }
         if (food.chokeChance > 0) {
             float chance = CHOKE_TEST_CHANCE > 0
                     ? CHOKE_TEST_CHANCE
                     : Math.min(1.0F, food.chokeChance * CHOKE_MULTIPLIER);
+            chance = (float) Math.min(1.0, chance * gene(CowGenes.Gene.CHOKE_RISK));
             if (this.getRandom().nextFloat() < chance) {
                 startChoking();
             }
@@ -699,6 +763,8 @@ public class HungryCow extends Cow {
             this.ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
         } else if (this.getAge() == 0 && this.canFallInLove()) {
             this.setInLove(player);
+            // ген «тяга до розмноження»: довше чи коротше в режимі розмноження
+            this.setInLoveTime((int) Math.round(LOVE_TICKS * gene(CowGenes.Gene.BREED_DRIVE)));
         }
     }
 
@@ -903,6 +969,7 @@ public class HungryCow extends Cow {
         milk.save(tag);
         family.save(tag);
         character.save(tag);
+        genes.save(tag);
     }
 
     @Override
@@ -921,6 +988,8 @@ public class HungryCow extends Cow {
         repro.load(tag);   // спершу стать, від неї залежить ім'я старої корови
         milk.load(tag);
         family.load(tag);
+        genes.load(tag);       // перед character: гени характеру беруться звідси
         character.load(tag);
+        onGenesChanged();
     }
 }

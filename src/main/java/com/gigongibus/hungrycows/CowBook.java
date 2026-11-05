@@ -61,7 +61,7 @@ public final class CowBook {
                     out.add("Вагітна: ще " + (s / 60) + ":" + String.format("%02d", s % 60));
                 }
                 String milk = cow.milk.label();
-                out.add(milk != null ? milk + " з " + CowMilk.MAX : "Молока немає (лише після пологів)");
+                out.add(milk != null ? milk + " з " + cow.milk.max() : "Молока немає (лише після пологів)");
                 out.add("Раціон з останніх пологів: " + cow.milk.dietText());
             } else {
                 out.add("Бик: молока не дає");
@@ -78,6 +78,12 @@ public final class CowBook {
         for (CowCharacter.Trait trait : CowCharacter.Trait.values()) {
             out.add(trait.title + ": " + cow.character.get(trait));
         }
+        // 7. Гени
+        out.add("#Гени");
+        out.add("Число = середнє двох копій (від матері / від батька).");
+        out.add("50 — як у звичайної корови. ▲ — вище 65, ▼ — нижче 35.");
+        out.add("Ген 100 або 0 змінює звичайне число на ±30%.");
+        out.addAll(cow.genes.lines());
         return out;
     }
 
