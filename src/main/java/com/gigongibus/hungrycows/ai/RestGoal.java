@@ -26,12 +26,12 @@ public class RestGoal extends Goal {
     // втомлена корова з режимом розмноження не відпочиває: втома не заважає розмноженню
     @Override
     public boolean canUse() {
-        return cow.fatigue >= TIRED_AT && !cow.isInLove();
+        return cow.fatigue >= TIRED_AT && !cow.cycle.inEstrus();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return cow.fatigue > 0 && restTimer < MAX_REST_TICKS && !cow.isInLove();
+        return cow.fatigue > 0 && restTimer < MAX_REST_TICKS && !cow.cycle.inEstrus();
     }
 
     @Override

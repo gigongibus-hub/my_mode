@@ -20,7 +20,6 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
@@ -51,6 +50,9 @@ import java.util.EnumMap;
 import java.util.UUID;
 import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
+import com.gigongibus.hungrycows.ai.BullCourtGoal;
+import com.gigongibus.hungrycows.ai.HerdUpGoal;
+import com.gigongibus.hungrycows.ai.MateGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
 import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
 import com.gigongibus.hungrycows.ai.FindFosterGoal;
@@ -68,9 +70,10 @@ public class HungryCow extends Cow {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
+    public static final int CALF_GROW_DAYS = 100;        // за скільки діб виростає теля
+    public static final int CALF_GROW_TICKS = CALF_GROW_DAYS * 24000; // вік теляти в тіках (росте на 1 за тік)
     public static final int HUNGRY_AT = 30;              // з цього голоду корова шукає їжу (ген HUNGER_THRESHOLD ±30%)
     public static final int STARVE_DAMAGE_SECONDS = 4;   // при голодуванні урон раз на стільки секунд (ген STARVE_RESIST ±30%)
-    public static final int LOVE_TICKS = 600;            // скільки корова в режимі розмноження (ванільно 30 с; ген BREED_DRIVE ±30%)
     public static final int STARVE_AT = 60;              // з цього голоду корова отримує урон
     public static final int GRASS_BLOCK_FOOD = 30;       // трав'яний блок: скільки голоду знімає
     public static final float GRASS_BLOCK_HEAL = 2.0F;   // трав'яний блок: скільки лікує
@@ -143,6 +146,7 @@ public class HungryCow extends Cow {
 
     public final CowTrust trust = new CowTrust();   // довіра до кожного гравця
     public final CowReproduction repro = new CowReproduction(this);   // стать, вагітність, пологи
+    public final CowCycle cycle = new CowCycle(this);                 // статевий цикл самки (тічка)
     public final CowGenes genes = new CowGenes(this.getRandom());     // 71 ген, по дві копії
     public final CowMilk milk = new CowMilk(this);                    // шкала молока і якість
     public final CowFamily family = new CowFamily(this);              // ім'я, мати, родинне дерево
@@ -242,7 +246,9 @@ public class HungryCow extends Cow {
 
     // з якого голоду корова шукає їжу: ген «шукає їжу раніше» 100 → з 21, 0 → з 39
     public int hungryAt() {
-        return (int) Math.round(HUNGRY_AT * genes.inverse(CowGenes.Gene.HUNGER_THRESHOLD));
+        double t = HUNGRY_AT * genes.inverse(CowGenes.Gene.HUNGER_THRESHOLD);
+        if (cycle.inEstrus()) t *= CowCycle.ESTRUS_EAT_LESS;   // у тічку їсть менше
+        return (int) Math.round(t);
     }
 
     // Раз на секунду: голод, втома і голодування з урахуванням генів
@@ -268,7 +274,8 @@ public class HungryCow extends Cow {
         }
         // теля росте швидше чи повільніше: ген 100 → на 30% швидше
         if (this.isBaby()) {
-            growthCarry += 20.0 * (gene(CowGenes.Gene.CALF_GROWTH) - 1.0);
+            // ген росту й тестовий перемикач часу (CowCycle.TIME_SPEED): додаткові тіки віку за секунду
+            growthCarry += 20.0 * (gene(CowGenes.Gene.CALF_GROWTH) * CowCycle.TIME_SPEED - 1.0);
             int whole = (int) growthCarry;
             if (whole != 0) {
                 growthCarry -= whole;
@@ -289,17 +296,19 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(5, new NurseGoal(this));                 // мати стоїть, поки теля п'є
         this.goalSelector.addGoal(6, new DrinkMilkGoal(this));             // теля йде пити молоко
         this.goalSelector.addGoal(7, new SeekGrassGoal(this));             // пошук їжі
-        this.goalSelector.addGoal(8, new BreedGoal(this, 1.0));            // розмноження
-        this.goalSelector.addGoal(9, new RestGoal(this));                  // відпочинок
-        this.goalSelector.addGoal(10, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
-        this.goalSelector.addGoal(11, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
-        this.goalSelector.addGoal(12, new AvoidBluetGoal(this));           // відходить від черемші
-        this.goalSelector.addGoal(13, new ApproachPlayerGoal(this));       // підходить до друга
-        this.goalSelector.addGoal(14, new GrieveGoal(this));               // теля ходить біля місця смерті матері
-        this.goalSelector.addGoal(15, new FollowMotherGoal(this));         // теля тримається біля матері
-        this.goalSelector.addGoal(16, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(17, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(18, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(8, new MateGoal(this));                  // самка в тічці йде до бика (замість ванільного розмноження)
+        this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
+        this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
+        this.goalSelector.addGoal(11, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
+        this.goalSelector.addGoal(12, new TemptGoal(this, 1.25, TEMPT_ITEMS, false)); // йде за ласощами
+        this.goalSelector.addGoal(13, new AvoidBluetGoal(this));           // відходить від черемші
+        this.goalSelector.addGoal(14, new HerdUpGoal(this));               // проеструс/тічка: тримається біля корів
+        this.goalSelector.addGoal(15, new ApproachPlayerGoal(this));       // підходить до друга
+        this.goalSelector.addGoal(16, new GrieveGoal(this));               // теля ходить біля місця смерті матері
+        this.goalSelector.addGoal(17, new FollowMotherGoal(this));         // теля тримається біля матері
+        this.goalSelector.addGoal(18, new WaterAvoidingRandomStrollGoal(this, 1.0));
+        this.goalSelector.addGoal(19, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(20, new RandomLookAroundGoal(this));
     }
 
     // За чим корова йде (замість пшениці, яку вона більше не їсть): ласощі, що дають довіру
@@ -343,6 +352,7 @@ public class HungryCow extends Cow {
 
             long second = this.tickCount / 20;
             repro.secondTick();
+            cycle.secondTick();
             milk.secondTick();
             family.secondTick();
             giveFriendEffect();
@@ -703,6 +713,12 @@ public class HungryCow extends Cow {
         return dot < CowReproduction.ASSIST_BEHIND_DOT;
     }
 
+    // Теля росте 100 ігрових діб (ванільно 1 доба); тестовий перемикач CowCycle.TIME_SPEED прискорює
+    @Override
+    public void setBaby(boolean baby) {
+        this.setAge(baby ? -CALF_GROW_TICKS : 0);
+    }
+
     // Теля виросло.
     // Ванільний AgeableMob.setAge() викликає цей метод лише коли вік переходить через межу «теля/доросла»
     // (з від'ємного в ≥ 0 або навпаки), і вже ПІСЛЯ оновлення isBaby(). Пауза після розмноження
@@ -779,9 +795,6 @@ public class HungryCow extends Cow {
             if (!refuses) {
                 eatFood(food, item);
                 rewardPlayer(player, item, food);
-                if (item == Items.MELON || item == Items.PUMPKIN) {
-                    tryStartLove(player);
-                }
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
@@ -867,17 +880,6 @@ public class HungryCow extends Cow {
         return false;
     }
 
-    // Блок кавуна або гарбуза: доросла корова входить у режим розмноження, теля швидше росте
-    private void tryStartLove(Player player) {
-        if (this.isBaby()) {
-            this.ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
-        } else if (this.getAge() == 0 && this.canFallInLove()) {
-            this.setInLove(player);
-            // ген «тяга до розмноження»: довше чи коротше в режимі розмноження
-            this.setInLoveTime((int) Math.round(LOVE_TICKS * gene(CowGenes.Gene.BREED_DRIVE)));
-        }
-    }
-
     // Теля теж буде нашою коровою (інакше народжується ванільна)
     @Override
     public Cow getBreedOffspring(ServerLevel level, AgeableMob otherParent) {
@@ -893,7 +895,7 @@ public class HungryCow extends Cow {
     // Вагітна корова не може знову увійти в режим розмноження
     @Override
     public boolean canFallInLove() {
-        return super.canFallInLove() && !repro.isPregnant() && !repro.isExhausted();
+        return false;   // ванільного розмноження немає: лише цикл тічки (CowCycle, MateGoal)
     }
 
     // Замість миттєвого теляти: після 15 секунд разом корова вагітніє (див. CowReproduction)
@@ -1081,6 +1083,7 @@ public class HungryCow extends Cow {
         family.save(tag);
         character.save(tag);
         genes.save(tag);
+        cycle.save(tag);
         chem.save(tag);
     }
 
@@ -1101,6 +1104,7 @@ public class HungryCow extends Cow {
         milk.load(tag);
         family.load(tag);
         genes.load(tag);       // перед character: гени характеру беруться звідси
+        cycle.load(tag);
         character.load(tag);
         chem.load(tag);
         onGenesChanged();

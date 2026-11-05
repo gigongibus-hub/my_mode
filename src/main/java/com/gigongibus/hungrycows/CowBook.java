@@ -57,13 +57,21 @@ public final class CowBook {
         } else {
             if (female) {
                 out.add("Телят народила: " + cow.repro.births() + " з " + cow.repro.birthLimit());
+                out.add("Цикл: " + cow.cycle.phase().title
+                        + (cow.cycle.phase() != CowCycle.Phase.NONE && cow.cycle.phase() != CowCycle.Phase.PREGNANT
+                        ? ", ще " + cow.cycle.daysLeft() + " діб" : ""));
+                if (cow.repro.isFreemartin()) out.add("Безплідна: фримартинізм (сестра бика-двійняти)");
+                else if (cow.repro.isInfertile()) out.add("Безплідна від народження");
                 if (cow.repro.inLabor()) {
                     out.add("Пологи: ще " + cow.repro.laborSecondsLeft() + " с"
                             + (cow.repro.isAssisted() ? " (допомогли)" : ""));
                     out.add("Допомогти: підійди ззаду, присядь і тримай ПКМ порожньою рукою 3 с");
-                } else if (cow.repro.isPregnant()) {
-                    int s = cow.repro.pregnantSecondsLeft();
-                    out.add("Вагітна: ще " + (s / 60) + ":" + String.format("%02d", s % 60));
+                } else if (cow.cycle.pregnancyVisible()) {
+                    out.add("Вагітна: ще " + cow.repro.pregnancyText());
+                } else if ((cow.cycle.inEstrus() && cow.cycle.matedThisEstrus()) || cow.cycle.inMetestrus()) {
+                    out.add("Чи вагітна: поки невідомо (стане видно в діеструсі)");
+                } else if (cow.cycle.phase() == CowCycle.Phase.DIESTRUS && cow.cycle.matedThisEstrus()) {
+                    out.add("Цього разу не завагітніла");
                 }
                 String milk = cow.milk.label();
                 out.add(milk != null ? milk + " з " + cow.milk.max() : "Молока немає (лише після пологів)");

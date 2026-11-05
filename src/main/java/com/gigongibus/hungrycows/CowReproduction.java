@@ -19,7 +19,11 @@ public class CowReproduction {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int MATING_TICKS = 300;           // скільки пара має провести разом перед зачаттям (15 сек)
-    public static final int PREGNANCY_SECONDS = 300;      // вагітність (5 хв); для швидкого тесту постав 20
+    public static final int PREGNANCY_MIN_DAYS = 90;      // вагітність: від 90 до 110 ігрових діб (ген ±30%)
+    public static final int PREGNANCY_MAX_DAYS = 110;     // час ділиться на CowCycle.TIME_SPEED
+    public static final float CONCEPTION_CHANCE = 0.6F;   // шанс завагітніти, якщо в тічку побула з биком 15 с
+    public static final float INFERTILE_CHANCE = 0.03F;   // 3% корів народжуються безплідними (ген «плідність» ±30%)
+    public static final float FREEMARTIN_CHANCE = 0.9F;   // двійнята бик + телиця: телиця безплідна з шансом 90%
     public static final int LABOR_TICKS = 200;            // пологи (10 сек)
     public static final float LABOR_DAMAGE = 2.0F;        // скільки HP мати втрачає за пологи (не смертельно)
     public static final float CALF_DEATH_CHANCE = 0.5F;   // шанс, що теля народиться мертвим (50% для тестів, у готовому моді 0.02F)
@@ -58,6 +62,8 @@ public class CowReproduction {
     private int laborTotalTicks = LABOR_TICKS; // скільки тривають ці пологи (залежить від гена)
     private int births = 0;                // скільки разів народжувала (мертві телята теж рахуються)
     private int birthLimit;                // скільки пологів можливо за життя
+    private boolean infertile = false;     // безплідна: має цикл, але не вагітніє
+    private boolean freemartin = false;    // безплідна через фримартинізм (сестра бика-двійняти)
     private boolean exhausted = false;     // більше не може народжувати і давати молоко після останньої лактації
     private CompoundTag fatherNode = null; // батько поточної вагітності для родинного дерева
     private UUID fatherId = null;
@@ -94,7 +100,44 @@ public class CowReproduction {
     }
 
     private int pregnancySeconds() {
-        return (int) Math.round(PREGNANCY_SECONDS * cow.genes.factor(CowGenes.Gene.PREGNANCY_LENGTH));
+        double days = PREGNANCY_MIN_DAYS + cow.getRandom().nextDouble() * (PREGNANCY_MAX_DAYS - PREGNANCY_MIN_DAYS);
+        days *= cow.genes.factor(CowGenes.Gene.PREGNANCY_LENGTH);
+        return Math.max(1, (int) Math.round(days * CowCycle.SECONDS_PER_DAY / CowCycle.TIME_SPEED));
+    }
+
+    public boolean isInfertile() {
+        return infertile || freemartin;
+    }
+
+    public boolean isFreemartin() {
+        return freemartin;
+    }
+
+    // Для теляти: чи народилася безплідною (лише самки)
+    public void rollInfertility() {
+        infertile = isFemale()
+                && cow.getRandom().nextFloat() < INFERTILE_CHANCE * cow.genes.inverse(CowGenes.Gene.FERTILITY);
+    }
+
+    // Самка в тічці побула з биком досить довго (викликається з MateGoal)
+    public void mateWith(HungryCow bull) {
+        if (!isFemale() || bull.repro.isFemale() || pregnant) return;
+        cow.cycle.markMated();
+        cow.level().broadcastEntityEvent(cow, (byte) 18);   // сердечка
+        bull.setAge(bull.repro.breedPause());               // бик відпочиває 5 хв
+        if (exhausted || isInfertile()) {
+            say(cow.family.name + " спарувалася з " + bull.family.name + ", але не завагітніє");
+            return;
+        }
+        if (cow.getRandom().nextFloat() < CONCEPTION_CHANCE) {
+            conceive(bull);
+        } else {
+            say(cow.family.name + " спарувалася з " + bull.family.name + " (чи завагітніла, стане видно в діеструсі)");
+        }
+    }
+
+    public int matingTicksNeeded() {
+        return matingTicks();
     }
 
     private int laborTicks() {
@@ -129,6 +172,14 @@ public class CowReproduction {
 
     public int pregnantSecondsLeft() {
         return pregnantSeconds;
+    }
+
+    // «ще 12 діб» або «ще 3:20», якщо менше доби
+    public String pregnancyText() {
+        long realSeconds = pregnantSeconds;
+        double days = realSeconds * (double) CowCycle.TIME_SPEED / CowCycle.SECONDS_PER_DAY;
+        if (days >= 1) return (int) Math.ceil(days) + " діб";
+        return (realSeconds / 60) + ":" + String.format("%02d", realSeconds % 60);
     }
 
     public int laborSecondsLeft() {
@@ -186,12 +237,7 @@ public class CowReproduction {
         fatherId = father.getUUID();
         fatherNode = father.family.asNode();
         fatherGenes = father.genes.saveTag();
-        cow.resetLove();
-        father.resetLove();
-        cow.setAge(breedPause());
-        father.setAge(father.repro.breedPause());
-        cow.level().broadcastEntityEvent(cow, (byte) 18);   // сердечка
-        say("Корова завагітніла!");
+        say(cow.family.name + " спарувалася з " + father.family.name + " (чи завагітніла, стане видно в діеструсі)");
     }
 
     // ---------- вагітність і пологи ----------
@@ -244,6 +290,7 @@ public class CowReproduction {
         if (calves == 2) say(cow.family.name + " народжує двійнят!");
 
         int alive = 0;
+        java.util.List<HungryCow> born = new java.util.ArrayList<>();
         for (int k = 0; k < calves; k++) {
             births++;   // ліміт рахує телят, мертві теж
             float death = k == 0 ? firstDeath : secondDeath;
@@ -262,6 +309,8 @@ public class CowReproduction {
             baby.onGenesChanged();
             baby.repro.rollBirthLimit();   // ліміт телят — уже за успадкованими генами
             baby.setHealth(baby.getMaxHealth());
+            baby.repro.rollInfertility();
+            born.add(baby);
             cow.family.addChild(baby.family.name);
             HungryCow father = findFather();
             if (father != null) father.family.addChild(baby.family.name);
@@ -270,7 +319,16 @@ public class CowReproduction {
             say("Народилося теля " + baby.family.name + "!");
             alive++;
         }
+        // фримартинізм: двійнята різної статі → телиця майже завжди безплідна
+        if (born.size() == 2 && born.get(0).repro.isFemale() != born.get(1).repro.isFemale()) {
+            HungryCow heifer = born.get(0).repro.isFemale() ? born.get(0) : born.get(1);
+            if (cow.getRandom().nextFloat() < FREEMARTIN_CHANCE) {
+                heifer.repro.freemartin = true;
+                say("Двійнята бик і телиця: " + heifer.family.name + " буде безплідною (фримартинізм)");
+            }
+        }
         cow.chem.onBirth();
+        cow.cycle.onBirth();
         // молоко з'являється після пологів; якщо всі телята мертві, воно все дістанеться гравцю
         cow.milk.startLactation(alive > 0);
         fatherNode = null;
@@ -325,6 +383,7 @@ public class CowReproduction {
         sex = 1;
         pregnant = true;
         pregnantSeconds = seconds;
+        cow.cycle.forcePregnant();
         laborTicksLeft = 0;
         forcedCalves = calves;
         fatherNode = null;
@@ -360,8 +419,10 @@ public class CowReproduction {
         }
         if (laborTicksLeft > 0) {
             result += " | ПОЛОГИ ще " + (laborTicksLeft / 20 + 1) + " с" + (assisted ? " (допомогли)" : "");
-        } else if (pregnant) {
-            result += " | Вагітна: " + (pregnantSeconds / 60) + ":" + String.format("%02d", pregnantSeconds % 60);
+        } else if (cow.cycle.pregnancyVisible()) {
+            result += " | Вагітна: ще " + pregnancyText();
+        } else if (isFemale() && !cow.isBaby() && cow.cycle.phase() != CowCycle.Phase.NONE) {
+            result += " | " + cow.cycle.phase().title;
         }
         return result;
     }
@@ -376,6 +437,8 @@ public class CowReproduction {
         tag.putInt("Births", births);
         tag.putInt("BirthLimit", birthLimit);
         tag.putBoolean("Exhausted", exhausted);
+        tag.putBoolean("Infertile", infertile);
+        tag.putBoolean("Freemartin", freemartin);
         if (fatherNode != null) tag.put("FatherNode", fatherNode);
         if (fatherId != null) tag.putUUID("FatherId", fatherId);
         if (fatherGenes != null) tag.put("FatherGenome", fatherGenes);
@@ -394,6 +457,8 @@ public class CowReproduction {
         births = tag.getInt("Births");
         if (tag.contains("BirthLimit")) birthLimit = tag.getInt("BirthLimit");
         exhausted = tag.getBoolean("Exhausted");
+        infertile = tag.getBoolean("Infertile");
+        freemartin = tag.getBoolean("Freemartin");
         fatherNode = tag.contains("FatherNode") ? tag.getCompound("FatherNode") : null;
         fatherId = tag.hasUUID("FatherId") ? tag.getUUID("FatherId") : null;
         fatherGenes = tag.contains("FatherGenome") ? tag.getCompound("FatherGenome") : null;

@@ -40,7 +40,7 @@ public class CowChemistry {
     public static final double OXYTOCIN_PER_COW = 2;    // + на секунду за кожну корову поруч (до 3)
     public static final double DOPAMINE_DECAY = 1;
     public static final double PAIN_DECAY = 2;
-    public static final double HORMONE_FOLLOW = 0.02;   // естроген/прогестерон/пролактин повільно йдуть до цілі (2% різниці)
+    public static final double HORMONE_FOLLOW = 0.05;   // естроген/прогестерон/пролактин повільно йдуть до цілі (5% різниці)
 
     // ================= ПОДІЇ (ген «чутливість до гормонів» ±30%) =================
     public static final double PAIN_PER_DAMAGE = 12;    // біль за 1 HP урону
@@ -125,8 +125,10 @@ public class CowChemistry {
 
         // статеві гормони й пролактин: повільно до цілі
         double progTarget = cow.repro.isPregnant() ? PROGESTERONE_PREGNANT : PROGESTERONE_BASE * g(Gene.PROGESTERONE_BASE);
+        if (cow.cycle.progesteroneTarget() >= 0) progTarget = cow.cycle.progesteroneTarget() * g(Gene.PROGESTERONE_BASE);
         progesterone += (progTarget - progesterone) * HORMONE_FOLLOW;
         double estTarget = cow.repro.isFemale() ? ESTROGEN_BASE * g(Gene.ESTROGEN_BASE) : ESTROGEN_BASE * 0.3;
+        if (cow.cycle.estrogenTarget() >= 0) estTarget = Math.min(100, cow.cycle.estrogenTarget() * g(Gene.ESTROGEN_BASE));
         estrogen += (estTarget - estrogen) * HORMONE_FOLLOW;
         double prolTarget = cow.milk.isLactating() ? PROLACTIN_LACTATING * g(Gene.PROLACTIN_BASE) : PROLACTIN_BASE;
         prolactin += (prolTarget - prolactin) * HORMONE_FOLLOW;
@@ -215,6 +217,7 @@ public class CowChemistry {
     public List<String> lines() {
         List<String> out = new ArrayList<>();
         out.add("#Самопочуття");
+        if (cow.repro.isFemale() && !cow.isBaby()) out.add("Цикл: " + cow.cycle.phase().title);
         out.add("Голод: " + feelHunger());
         out.add("Втома: " + feelTired());
         out.add("Страх: " + feelFear());

@@ -79,8 +79,9 @@ public class CowGenes {
         BREED_PAUSE(Group.REPRODUCTION, "пауза після розмноження"),
         MATING_TIME(Group.REPRODUCTION, "скільки разом до зачаття"),
         CALF_GROWTH(Group.REPRODUCTION, "швидкість росту теляти"),
-        BREED_DRIVE(Group.REPRODUCTION, "тяга до розмноження"),
+        BREED_DRIVE(Group.REPRODUCTION, "тяга до розмноження (як далеко шукає пару)"),
         TWINS(Group.REPRODUCTION, "схильність до двійні"),
+        FERTILITY(Group.REPRODUCTION, "плідність"),
         // ---- молоко (8) ----
         MILK_VOLUME(Group.MILK, "об'єм молока"),
         MILK_REGEN(Group.MILK, "швидкість відновлення молока"),

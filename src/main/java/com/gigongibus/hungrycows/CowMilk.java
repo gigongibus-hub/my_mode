@@ -21,7 +21,7 @@ public class CowMilk {
 
     // ================= СКІЛЬКИ ТРИВАЄ =================
     public static final long DAY = 24000L;               // ігрова доба в тіках
-    public static final int CHILDHOOD_DAYS = 1;          // скільки росте теля (ванільно 20 хв = 1 доба)
+    public static final int CHILDHOOD_DAYS = HungryCow.CALF_GROW_DAYS; // скільки росте теля (100 діб)
     public static final int DAYS_AFTER_GROWN = 3;        // молоко ще стільки діб після того, як теля виросло
     public static final int DAYS_AFTER_CALF_DEATH = 5;   // молоко стільки діб, якщо теля померло
 
@@ -74,7 +74,8 @@ public class CowMilk {
     }
 
     private long lactationTicks(long days) {
-        return Math.round(days * DAY * cow.gene(CowGenes.Gene.LACTATION_LENGTH));
+        // тестовий перемикач CowCycle.TIME_SPEED прискорює і молоко
+        return Math.round(days * DAY * cow.gene(CowGenes.Gene.LACTATION_LENGTH) / CowCycle.TIME_SPEED);
     }
 
     public int amount() {
