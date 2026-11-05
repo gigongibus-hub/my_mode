@@ -53,7 +53,9 @@ import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
 import com.gigongibus.hungrycows.ai.AvoidBadPlaceGoal;
 import com.gigongibus.hungrycows.ai.BullCourtGoal;
+import com.gigongibus.hungrycows.ai.HerdCohesionGoal;
 import com.gigongibus.hungrycows.ai.HerdUpGoal;
+import com.gigongibus.hungrycows.ai.PersonalSpaceGoal;
 import com.gigongibus.hungrycows.ai.InvestigateGoal;
 import com.gigongibus.hungrycows.ai.MotherCalfGoal;
 import com.gigongibus.hungrycows.ai.RuminateGoal;
@@ -213,6 +215,8 @@ public class HungryCow extends Cow {
     public final CowBrain brain = new CowBrain(this);                 // мозок: вибирає дії (крок 7)
     public final CowMemory memory = new CowMemory(this);              // відраза до їжі, звикання, місця
     public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
+    public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
+    public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     private int lastMealTick = -100000;                               // коли востаннє їла (для ремигання)
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
@@ -346,7 +350,7 @@ public class HungryCow extends Cow {
                 case EAT -> g instanceof SeekGrassGoal || g instanceof DrinkMilkGoal || g instanceof BrainTemptGoal;
                 case DRINK -> g instanceof DrinkWaterGoal || g instanceof DrinkMilkGoal;
                 case REST -> g instanceof RestGoal || g instanceof SeekShadeGoal || g instanceof SleepGoal;
-                case HERD -> g instanceof HerdUpGoal;
+                case HERD -> g instanceof HerdUpGoal || g instanceof HerdCohesionGoal;
                 case FRIEND -> g instanceof ApproachPlayerGoal || g instanceof BrainTemptGoal;
                 case WANDER -> true;
                 case WARY -> g instanceof FearGoal;
@@ -557,6 +561,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(13, new BrainTemptGoal(this));           // йде за ласощами
         this.goalSelector.addGoal(14, new AvoidBluetGoal(this));           // відходить від черемші
         this.goalSelector.addGoal(14, new AvoidBadPlaceGoal(this));        // іде з місця, де її били чи лякали
+        this.goalSelector.addGoal(14, new HerdCohesionGoal(this));         // відійшла від ватажка — повертається в стадо (ідея 11)
         this.goalSelector.addGoal(15, new HerdUpGoal(this));               // до стада (з мозком) / проеструс і тічка (без)
         this.goalSelector.addGoal(16, new ApproachPlayerGoal(this));       // підходить до друга
         this.goalSelector.addGoal(17, new InvestigateGoal(this));          // цікавиться незнайомцем (лише з мозком)
@@ -564,6 +569,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(19, new GrieveGoal(this));               // теля ходить біля місця смерті матері
         this.goalSelector.addGoal(20, new FollowMotherGoal(this));         // теля тримається біля матері
         this.goalSelector.addGoal(21, new BrainStrollGoal(this));          // гуляти
+        this.goalSelector.addGoal(21, new PersonalSpaceGoal(this));        // затісно — слабша трохи відходить
         this.goalSelector.addGoal(22, new LookAtPlayerGoal(this, Player.class, 6.0F));
         this.goalSelector.addGoal(23, new RandomLookAroundGoal(this));
     }
@@ -662,6 +668,7 @@ public class HungryCow extends Cow {
             chem.secondTick();
             memory.secondTick();
             home.secondTick();
+            herd.secondTick();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }

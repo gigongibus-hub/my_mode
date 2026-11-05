@@ -15,7 +15,8 @@ import java.util.Map;
 // Вночі корова йде додому (укриття) і спить: стоїть, відпочиває, гірше помічає дрібниці.
 // Якщо дому немає — спить під деревом (будь-яке накриття); якщо й дерева немає — там, де є. Голод, спрага, страх і пологи важливіші (вищий пріоритет).
 public class SleepGoal extends Goal {
-    private static final double HOME_REACH = 2.0;       // «вдома» = ближче цього
+    private static final double HOME_REACH = 3.0;       // «вдома» = ближче цього (стадо стоїть поруч)
+    private static final double SAME_SLEEP_RANGE = 32;  // ватажок ближче цього — стадо спить там, де вона
     private static final int MAX_WALK_TICKS = 1200;     // іде додому щонайбільше 1 хв, потім спить, де є
     private static final int RECOVER_EVERY_TICKS = 20;  // втома −2 щосекунди сну
     private static final int RECOVER = 2;
@@ -61,7 +62,13 @@ public class SleepGoal extends Goal {
     @Override
     public void tick() {
         ticks++;
+        // стадо спить разом: туди ж, де ватажок (якщо вона поруч і має де спати)
         BlockPos home = cow.home.sleepSpot();
+        HungryCow leader = cow.herd.leader();
+        if (leader != null && leader != cow && leader.home.sleepSpot() != null
+                && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
+            home = leader.home.sleepSpot();
+        }
         if (home != null && walkTicks < MAX_WALK_TICKS
                 && cow.distanceToSqr(home.getX() + 0.5, home.getY(), home.getZ() + 0.5) > HOME_REACH * HOME_REACH) {
             walkTicks++;

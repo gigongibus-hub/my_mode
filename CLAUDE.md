@@ -57,8 +57,8 @@
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Float · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
 9 BullCourt, Sleep, SeekShade · 10 Rest · 11 Ruminate · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
-14 AvoidBluet, AvoidBadPlace · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
-21 BrainStroll · 22 LookAtPlayer · 23 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
+14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
+21 BrainStroll, PersonalSpace · 22 LookAtPlayer · 23 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається: усі ванільні цілі задано явно.
 Мозок (`CowBrain`) вибирає 1 з 10 дій; цілі питають `cow.brain.is/allows(Action)` або `shouldSeekFood/shouldRest/
 shouldFlee/keepFleeing` (рефлекси обходять мозок). Без мозку (`CowBrain.enabled = false`) — старі правила.
@@ -95,7 +95,8 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 
 ## Технічні уроки
 - Без `requiresUpdateEveryTick()` метод `tick()` цілі викликається раз на два тіки, і в частини корів
-  умова `tickCount % N == 0` ніколи не спрацьовує.
+  умова `tickCount % N == 0` ніколи не спрацьовує. `canUse()` завжди викликається раз на 2 тіки — у ньому
+  НЕ використовувати `tickCount % N`, лише лічильник cooldown.
 - Порядок полів у `HungryCow` не змінювати: `repro` перед `milk` і `family` (`CowFamily` у конструкторі читає стать).
 - У `readAdditionalSaveData` спершу `repro.load`, потім `family.load`.
 - `ageBoundaryReached()` спрацьовує лише при переході теля ↔ доросла, і `isBaby()` там уже новий.
@@ -174,7 +175,11 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 10. ~~Вода~~ (зроблено): спрага +1/10 с × сонце 2 × спека 1.5 × біг 2 (+0.5 дійна, теля ×0.5); п'є з 30, зневоднення
     з 70 (урон, рефлекс). `DrinkWaterGoal` (джерело води або котел; котел на 10 разів — `WaterSources`). Спрага
     сповільнює молоко до 2×. Мозок: вхід «спрага», дія «пити» (30 входів, 11 дій — старі ваги скинуто).
-11. Стадо: майже не відходять від стада, тримаються біля ватажка (найбільша домінантність).
+11. ~~Стадо~~ (зроблено): `CowHerd` — раз на 5 с стадо = корови до 32 блоків; ватажок = доросла самка з найбільшою
+    лідерською силою (домінантність + 5 за кожне теля до 5 + 0.2 сміливості); ранг = домінантність + розмір + бик 20.
+    `HerdCohesionGoal` (14): далі 14 від ватажка → повертається в стадо (точка до 5 блоків від неї), поза мозком.
+    Мозок: ватажок поруч (16) → +0.6 до її дії. Біля їжі слабша поступається сильнішій (легкий поштовх).
+    Спить там, де ватажок. `PersonalSpaceGoal` (21): впритул — слабша відходить. Сторінка «Стадо».
 12. Бики б'ють сильніше, швидші; у 80% не тікають від зомбі чи гравця, а нападають (корови — 40%).
 13. Бики часто б'ються між собою, у кожного свій урон; домінантом стає найсильніший з найбільшим геном домінантності.
 14. Генетичні аномалії та хвороби.

@@ -105,6 +105,9 @@ public final class CowBook {
         // 6б. Мозок
         out.addAll(cow.brain.lines());
 
+        // 6г. Стадо
+        out.addAll(cow.herd.lines());
+
         // 6в. Пам'ять
         out.addAll(cow.memory.lines(reader));
 

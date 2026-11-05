@@ -2,6 +2,7 @@ package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowFood;
 import com.gigongibus.hungrycows.CowGenes;
+import com.gigongibus.hungrycows.CowHerd;
 import com.gigongibus.hungrycows.CowMemory;
 import com.gigongibus.hungrycows.HungryCow;
 import com.gigongibus.hungrycows.Regrowth;
@@ -129,6 +130,29 @@ public class SeekGrassGoal extends Goal {
         return !cow.choking && cow.shouldSeekFood() && target != null;
     }
 
+    // Ієрархія біля їжі: якщо сильніша корова йде до тієї ж трави (до 2 блоків від цілі), слабша поступається;
+    // сильніша трохи штовхає її головою (без шкоди)
+    private static final double SAME_FOOD = 2.0;
+    private static final double YIELD_PUSH = 0.4;
+
+    private boolean yieldToStronger() {
+        if (target == null) return false;
+        double mine = CowHerd.dominance(cow);
+        for (HungryCow other : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(6),
+                c -> c != cow && c.isAlive() && c.foodTarget != null)) {
+            if (other.foodTarget.distSqr(target) > SAME_FOOD * SAME_FOOD) continue;
+            if (CowHerd.dominance(other) <= mine) continue;
+            if (cow.distanceToSqr(other) < 3 * 3) {
+                cow.knockback(YIELD_PUSH, other.getX() - cow.getX(), other.getZ() - cow.getZ());
+                cow.hurtMarked = true;
+                other.playSound(net.minecraft.sounds.SoundEvents.COW_STEP, 0.8F, 0.8F);
+            }
+            cow.tell(cow.family.name + " поступилась їжею " + other.family.name);
+            return true;
+        }
+        return false;
+    }
+
     private void resetEating() {
         eatTicks = 0;
         cow.eatingTicksLeft = 0;
@@ -137,6 +161,14 @@ public class SeekGrassGoal extends Goal {
     @Override
     public void tick() {
         if (target == null) return; // tick() може викликатися ще раз, коли ціль уже з'їдена
+        cow.foodTarget = target;
+        if (cow.tickCount % 20 == 0 && yieldToStronger()) {
+            unreachable.add(target);   // ця трава зайнята сильнішою: пошукає іншу
+            target = null;
+            cow.foodTarget = null;
+            resetEating();
+            return;
+        }
         BlockState state = cow.level().getBlockState(target);
         Kind kind = classify(state);
         if (kind == Kind.NONE) {
@@ -203,6 +235,7 @@ public class SeekGrassGoal extends Goal {
     @Override
     public void stop() {
         target = null;
+        cow.foodTarget = null;
         stuckTicks = 0;
         runTicks = 0;
         resetEating();

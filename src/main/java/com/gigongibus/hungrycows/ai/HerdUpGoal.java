@@ -11,6 +11,7 @@ import java.util.EnumSet;
 public class HerdUpGoal extends Goal {
     private static final double SEE_RANGE = 16.0;
     private static final double STOP_DISTANCE = 2.0;
+    private static final double LEADER_STOP = 4.0;      // до ватажка підходить на 4 блоки
     private static final int RUN_TICKS = 300;           // скільки триває один «підхід» (15 сек)
     private static final int PAUSE_PROESTRUS = 200;     // пауза між підходами: проеструс 10 с ...
     private static final int PAUSE_ESTRUS = 60;         // ... тічка 3 с ...
@@ -44,6 +45,12 @@ public class HerdUpGoal extends Goal {
     public boolean canUse() {
         if (!active() || cow.tickCount < pauseUntil) return false;
         buddy = null;
+        // до ватажка стада (якщо вона є і це не сама корова), інакше до найближчої корови
+        HungryCow leader = cow.herd.leader();
+        if (leader != null && leader != cow && cow.distanceToSqr(leader) < 32 * 32) {
+            buddy = leader;
+            return true;
+        }
         double bestDist = SEE_RANGE * SEE_RANGE;
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(SEE_RANGE),
                 c -> c != cow && c.isAlive() && !c.isBaby())) {
@@ -60,7 +67,7 @@ public class HerdUpGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         return active() && buddy != null && buddy.isAlive() && ticks < RUN_TICKS
-                && cow.distanceToSqr(buddy) < SEE_RANGE * SEE_RANGE;
+                && cow.distanceToSqr(buddy) < 32 * 32;
     }
 
     @Override
@@ -72,7 +79,8 @@ public class HerdUpGoal extends Goal {
     public void tick() {
         if (buddy == null) return;
         ticks++;
-        if (cow.distanceToSqr(buddy) <= STOP_DISTANCE * STOP_DISTANCE) {
+        double stop = buddy == cow.herd.leader() ? LEADER_STOP : STOP_DISTANCE;   // до ватажка — не впритул
+        if (cow.distanceToSqr(buddy) <= stop * stop) {
             cow.getNavigation().stop();
             return;
         }

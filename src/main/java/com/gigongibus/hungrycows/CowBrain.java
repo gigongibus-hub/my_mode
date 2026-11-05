@@ -81,6 +81,9 @@ public class CowBrain {
     public static final double HERD_IMITATE_RANGE = 6;   // доросла корова дивиться на найближчу корову
     public static final double HERD_IMITATE_BONUS = 0.3; // + до балу її дії (слабше, ніж теля від матері)
     public static final double HERD_IMITATE_RATE = 0.001;
+    public static final double LEADER_IMITATE_RANGE = 16; // ватажок ближче цього — стадо робить те саме, що вона ...
+    public static final double LEADER_IMITATE_BONUS = 0.6; // ... + до балу її дії
+    public static final double LEADER_IMITATE_RATE = 0.002;
 
     // ================= ТЕЛЯ ПЕРЕЙМАЄ ЗВИЧКИ МАТЕРІ =================
     public static final double IMITATE_RANGE = 10;       // мати ближче цього — теля дивиться на неї
@@ -156,6 +159,7 @@ public class CowBrain {
     private int episodes = 0;
     private Action imitated = null;   // що теля зараз переймає від матері (або доросла — від сусідки)
     private boolean imitatingMother = false;
+    private boolean imitatingLeader = false;
     private HungryCow nearestCowEntity = null;
 
     // попередні спроби (для відкладених наслідків)
@@ -504,6 +508,17 @@ public class CowBrain {
                 imitatingMother = true;
             }
         }
+        // 11. стадо робить те саме, що ватажок (сильніше, ніж просто сусідка)
+        imitatingLeader = false;
+        HungryCow leader = cow.herd.leader();
+        if (imitated == null && !cow.isBaby() && leader != null && leader != cow && leader.isAlive()
+                && cow.distanceToSqr(leader) < LEADER_IMITATE_RANGE * LEADER_IMITATE_RANGE) {
+            Action a = leader.brain.current();
+            if (possible[a.ordinal()] && a != Action.MATE && a != Action.FAMILY && a != Action.FRIEND) {
+                imitated = a;
+                imitatingLeader = true;
+            }
+        }
         // 3. доросла дивиться на сусідку по стаду (слабше, ніж теля на матір)
         if (imitated == null && nearestCowEntity != null && nearestCowEntity.isAlive()
                 && cow.distanceToSqr(nearestCowEntity) < HERD_IMITATE_RANGE * HERD_IMITATE_RANGE) {
@@ -520,7 +535,8 @@ public class CowBrain {
             }
             double geneBias = GENE_BIAS * (cow.genes.value(a.gene) - 50) / 50.0;
             lastNet[i] = outputOf(i);
-            double copy = a == imitated ? (imitatingMother ? IMITATE_BONUS : HERD_IMITATE_BONUS) : 0;
+            double copy = a == imitated
+                    ? (imitatingMother ? IMITATE_BONUS : imitatingLeader ? LEADER_IMITATE_BONUS : HERD_IMITATE_BONUS) : 0;
             score[i] = (instinct(a) + geneBias + lastNet[i] + copy) / TEMPERATURE;
             max = Math.max(max, score[i]);
         }
@@ -530,7 +546,8 @@ public class CowBrain {
             sum += probs[i];
         }
         for (int i = 0; i < probs.length; i++) probs[i] = sum > 0 ? probs[i] / sum : 0;
-        if (imitated != null) imitate(imitated, imitatingMother ? IMITATE_RATE : HERD_IMITATE_RATE);
+        if (imitated != null) imitate(imitated,
+                imitatingMother ? IMITATE_RATE : imitatingLeader ? LEADER_IMITATE_RATE : HERD_IMITATE_RATE);
         // довга дія: оцінити спробу й почати нову
         if (epActive && cow.tickCount - epStartTick > EPISODE_MAX_TICKS) {
             endEpisode();
@@ -600,7 +617,8 @@ public class CowBrain {
                 + (cow.isBaby() ? " (теля)" : ""));
         out.add("Остання нагорода: " + String.format("%+.2f", lastReward) + ", звичайна: " + String.format("%+.2f", avgReward));
         out.add("Самопочуття зараз: " + Math.round(wellbeing()));
-        if (imitated != null) out.add((imitatingMother ? "Переймає від матері: " : "Дивиться на сусідку: ") + imitated.title);
+        if (imitated != null) out.add((imitatingMother ? "Переймає від матері: "
+                : imitatingLeader ? "Робить те саме, що ватажок: " : "Дивиться на сусідку: ") + imitated.title);
         out.add("Що підказує досвід зараз:");
         for (Action a : ACTIONS) {
             if (possible[a.ordinal()]) out.add("   " + a.title + ": " + String.format("%+.2f", lastNet[a.ordinal()]));
