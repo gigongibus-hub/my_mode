@@ -72,6 +72,14 @@ public class CowReproduction {
         return laborTicksLeft > 0;
     }
 
+    public int pregnantSecondsLeft() {
+        return pregnantSeconds;
+    }
+
+    public int laborSecondsLeft() {
+        return laborTicksLeft / 20 + (laborTicksLeft > 0 ? 1 : 0);
+    }
+
     public int births() {
         return births;
     }

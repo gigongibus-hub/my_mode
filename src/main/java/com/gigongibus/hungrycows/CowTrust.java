@@ -73,6 +73,11 @@ public class CowTrust {
 
     // ---------- читання та зміна ----------
 
+    // скількох гравців корова пам'ятає
+    public int knownPlayers() {
+        return map.size();
+    }
+
     public int get(UUID id) {
         Entry e = map.get(id);
         return e == null ? 0 : e.value;

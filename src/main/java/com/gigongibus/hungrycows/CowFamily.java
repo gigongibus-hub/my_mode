@@ -193,6 +193,14 @@ public class CowFamily {
             lines.add(milk != null ? milk + " з " + CowMilk.MAX : "Молока немає");
             lines.add("Раціон: " + cow.milk.dietText());
         }
+        lines.addAll(familyLines());
+        lines.addAll(cow.character.lines());
+        for (String line : lines) player.sendSystemMessage(Component.literal(line));
+    }
+
+    // Хто доглядає, предки, діти (для чату й книги)
+    public List<String> familyLines() {
+        List<String> lines = new ArrayList<>();
         if (cow.isBaby()) {
             if (motherId != null) {
                 lines.add("Доглядає: " + motherName + (fosterMother ? " (прийомна мати)" : ""));
@@ -214,8 +222,7 @@ public class CowFamily {
             for (int i = 0; i < children.size(); i++) names.add(children.getString(i));
             lines.add("Діти (" + names.size() + "): " + String.join(", ", names));
         }
-        lines.addAll(cow.character.lines());
-        for (String line : lines) player.sendSystemMessage(Component.literal(line));
+        return lines;
     }
 
     private static void printParents(List<String> lines, CompoundTag node, int depth, String indent) {

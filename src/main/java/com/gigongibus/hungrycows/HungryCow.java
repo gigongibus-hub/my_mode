@@ -579,6 +579,11 @@ public class HungryCow extends Cow {
         Item item = stack.getItem();
         boolean server = !this.level().isClientSide;
 
+        // книга «Корововедення»: ПКМ по корові відкриває сторінки про неї
+        if (stack.is(ModItems.COW_BOOK.get())) {
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) CowBook.open(serverPlayer, this);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         // присісти + ПКМ порожньою рукою: родинне дерево в чат (поки для тестів)
         if (player.isShiftKeyDown() && stack.isEmpty()) {
             if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;

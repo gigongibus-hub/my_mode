@@ -20,5 +20,6 @@ public class HungryCowsMod {
         ITEMS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
+        ModNetwork.register();
     }
 }

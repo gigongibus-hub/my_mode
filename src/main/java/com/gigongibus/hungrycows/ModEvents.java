@@ -24,6 +24,10 @@ public class ModEvents {
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModEntities.HUNGRY_COW_SPAWN_EGG);
         }
+        // книга «Корововедення» є лише у творчому інвентарі
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(ModItems.COW_BOOK);
+        }
         // молоко кожної якості (поки для тестів)
         if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
             for (MilkQuality q : MilkQuality.values()) {
