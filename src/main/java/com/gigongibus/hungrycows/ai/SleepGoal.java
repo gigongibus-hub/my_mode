@@ -159,7 +159,8 @@ public class SleepGoal extends Goal {
                 cow.getNavigation().resetMaxVisitedNodesMultiplier();
                 // не наближається (ходить колом) або шляху немає — це місце відкладає і бере наступне
                 double d = cow.distanceToSqr(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5);
-                if (!ok || (walkTicks % 60 == 0 && d > lastDist - 0.5)) failedPaths++;
+                boolean airborne = !cow.onGround() && !cow.isInWater();   // у повітрі шлях не будується — не рахувати як невдачу
+                if ((!ok && !airborne) || (walkTicks % 60 == 0 && d > lastDist - 0.5)) failedPaths++;
                 if (walkTicks % 60 == 0) lastDist = d;
                 if (failedPaths >= MAX_FAILED_PATHS && !passedDoor) {
                     passedDoor = true;   // до входу не дійти — пробує прямо до місця
@@ -273,6 +274,10 @@ public class SleepGoal extends Goal {
         // а перевірить, коли дійде до входу
         if (door != null && !passedDoor && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5)
                 > CHECK_PATHS_NEAR_DOOR * CHECK_PATHS_NEAR_DOOR) {
+            return spots.isEmpty() ? null : spots.get(0);
+        }
+        // корова в повітрі (сходинка, стрибок, поштовх): гра не будує шлях — бере найглибше місце без перевірки, дорогою перевірить
+        if (!cow.onGround() && !cow.isInWater()) {
             return spots.isEmpty() ? null : spots.get(0);
         }
         int checks = 0;

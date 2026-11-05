@@ -192,6 +192,8 @@ public class CowHome {
             Integer retry = unreachable.get(key);
             if (retry != null && cow.tickCount < retry) continue;   // нещодавно не дійшла сюди: спершу інші місця
             if (pathBudget <= 0) continue;                          // цієї секунди шляхів уже досить
+            // корова в повітрі (сходинка, стрибок, поштовх): гра тоді взагалі не будує шлях — це не «недосяжно», перевірить пізніше
+            if (!cow.onGround() && !cow.isInWater()) continue;
             pathBudget--;
             BlockPos r = reachableNear(p);
             if (r == null) {

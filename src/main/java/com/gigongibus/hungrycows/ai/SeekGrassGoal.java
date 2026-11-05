@@ -114,6 +114,7 @@ public class SeekGrassGoal extends Goal {
             lastClearTick = cow.tickCount;
         }
         if (cooldown > 0) { cooldown--; return false; }
+        if (!cow.onGround() && !cow.isInWater()) return false;   // у повітрі гра не будує шлях: уся їжа здавалась би недосяжною
         target = findFood();
         // нічого не знайшла: наступний пошук приблизно за 4 с, а не за 1 с (пошук важкий для сервера)
         cooldown = target != null ? 10 : 40;
