@@ -34,7 +34,9 @@ public class CowHome {
     private BlockPos treeSpot = null;   // запасне місце для сну, якщо дому немає: під деревом чи будь-яким накриттям
     private int homeScore = 0;
     private int seconds = 0;
-    private int sweep = 0;   // по черзі оглядає околицю (номер клітинки)
+    private int sweep = 0;
+    private int lastUnreachableTell = -100000;
+    private static final int UNREACHABLE_TELL_TICKS = 1200;   // підказку «не може дійти» — не частіше раз на хвилину   // по черзі оглядає околицю (номер клітинки)
 
     public CowHome(HungryCow cow) {
         this.cow = cow;
@@ -121,7 +123,16 @@ public class CowHome {
             if (s == 0 && shaded(level, p) && (treeSpot == null || p.distSqr(o) < treeSpot.distSqr(o))) {
                 treeSpot = p.immutable();
             }
-            if (s > homeScore && reachable(p)) {
+            if (s > homeScore && !reachable(p)) {
+                // для перевірки: бачить гарне укриття, але не може туди дійти (вхід закритий чи загороджений)
+                if (cow.tickCount - lastUnreachableTell > UNREACHABLE_TELL_TICKS) {
+                    lastUnreachableTell = cow.tickCount;
+                    cow.tell(cow.family.name + " бачить дім " + p.getX() + " " + p.getY() + " " + p.getZ()
+                            + " (бали " + s + "), але не може дійти — перевір вхід");
+                }
+                continue;
+            }
+            if (s > homeScore) {
                 cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
                         + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
                 home = p.immutable();
@@ -187,6 +198,13 @@ public class CowHome {
             }
             inspectColumn(x, o.getY(), z, o);
         }
+    }
+
+    // Коротко для палиці налагодження
+    public String debugText() {
+        if (home != null) return "дім " + home.getX() + " " + home.getY() + " " + home.getZ() + " (" + homeScore + "/" + BEST_SCORE + ")";
+        if (treeSpot != null) return "дому немає, спить під деревом";
+        return "дому немає";
     }
 
     public int homeScore() {

@@ -590,7 +590,8 @@ public class CowBrain {
         for (int i = 0; i < probs.length; i++) order.add(i);
         order.sort((x, y) -> Double.compare(probs[y], probs[x]));
         StringBuilder sb = new StringBuilder(cow.family.name + ": " + current.title.toUpperCase()
-                + (cow.isDoing(current) ? "" : " (ще не почала)") + " | страх " + cow.chem.fearFelt() + "/" + cow.scaredAt() + " |");
+                + (cow.isDoing(current) ? "" : " (ще не почала)") + " | страх " + cow.chem.fearFelt() + "/" + cow.scaredAt()
+                + " | " + cow.home.debugText() + " |");
         for (int k = 0; k < 4; k++) {
             int i = order.get(k);
             if (probs[i] <= 0) break;
