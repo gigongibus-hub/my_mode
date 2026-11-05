@@ -34,6 +34,8 @@ public class CowBrain {
     public static final int MIN_HOLD_TICKS = 100;        // вибрану дію робить хоча б 5 с ...
     public static final double SWITCH_MARGIN = 0.25;     // ... якщо нова дія не більш ніж на 25% імовірніша
     public static final double TEMPERATURE = 1.0;        // більше = вибір випадковіший
+    public static final int STUCK_TICKS = 40;            // якщо вибрана дія 2 с не виходить (немає їжі, друга тощо) ...
+    public static final int BLOCK_TICKS = 200;           // ... мозок відкладає її на 10 с і вибирає іншу
 
     // ================= ДЕ ДИВИТЬСЯ =================
     public static final double COW_RANGE = 16;
@@ -82,6 +84,9 @@ public class CowBrain {
     private final HungryCow cow;
     private Action current = Action.WANDER;
     private int heldTicks = 0;
+    private int lastDoingTick = 0;                       // коли востаннє справді виконувала вибрану дію
+    private final int[] blockedUntil = new int[Action.values().length];
+    private boolean stuck = false;                       // для налагодження: остання дія не виходила
     private final double[] probs = new double[ACTIONS.length];
     private final boolean[] possible = new boolean[ACTIONS.length];
     private final double[] input = new double[INPUTS];
@@ -253,6 +258,10 @@ public class CowBrain {
         possible[Action.FAMILY.ordinal()] = family != null && familyDist > 3.0;
         possible[Action.RUMINATE.ordinal()] = adult && cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) && !cow.wantsFood();
         possible[Action.CURIOUS.ordinal()] = stranger != null;
+        // відкладені дії (не виходили) поки неможливі; прогулянка можлива завжди
+        for (Action a : ACTIONS) {
+            if (a != Action.WANDER && cow.tickCount < blockedUntil[a.ordinal()]) possible[a.ordinal()] = false;
+        }
     }
 
     // Інстинкт: бал дії за старими правилами (0 — «на межі», більше — хочеться)
@@ -291,6 +300,15 @@ public class CowBrain {
     }
 
     private void decide() {
+        // дія не виходить (ціль не запускається): відкласти її
+        stuck = false;
+        if (cow.isDoing(current)) {
+            lastDoingTick = cow.tickCount;
+        } else if (current != Action.WANDER && heldTicks > STUCK_TICKS
+                && cow.tickCount - lastDoingTick > STUCK_TICKS) {
+            blockedUntil[current.ordinal()] = cow.tickCount + BLOCK_TICKS;
+            stuck = true;
+        }
         fillInputs();
         fillPossible();
         double max = Double.NEGATIVE_INFINITY;
@@ -323,13 +341,16 @@ public class CowBrain {
             }
         }
         // щоб не смикалась: тримає дію, поки вона можлива, хоча б MIN_HOLD_TICKS
-        if (pick != current && possible[current.ordinal()] && heldTicks < MIN_HOLD_TICKS
+        // страх дійшов до порогу — різка подія: можна одразу перейти на «стерегтися»
+        boolean scaredNow = pick == Action.WARY && cow.chem.fearFelt() >= cow.scaredAt();
+        if (pick != current && possible[current.ordinal()] && heldTicks < MIN_HOLD_TICKS && !scaredNow
                 && probs[pick.ordinal()] < probs[current.ordinal()] + SWITCH_MARGIN) {
             return;
         }
         if (pick != current) {
             current = pick;
             heldTicks = 0;
+            lastDoingTick = cow.tickCount;
         }
     }
 
@@ -340,7 +361,8 @@ public class CowBrain {
         List<Integer> order = new ArrayList<>();
         for (int i = 0; i < probs.length; i++) order.add(i);
         order.sort((x, y) -> Double.compare(probs[y], probs[x]));
-        StringBuilder sb = new StringBuilder(cow.family.name + ": " + current.title.toUpperCase() + " |");
+        StringBuilder sb = new StringBuilder(cow.family.name + ": " + current.title.toUpperCase()
+                + (cow.isDoing(current) ? "" : " (ще не почала)") + " | страх " + cow.chem.fearFelt() + "/" + cow.scaredAt() + " |");
         for (int k = 0; k < 4; k++) {
             int i = order.get(k);
             if (probs[i] <= 0) break;

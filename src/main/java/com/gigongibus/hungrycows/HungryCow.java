@@ -253,6 +253,25 @@ public class HungryCow extends Cow {
         return CowBrain.enabled ? brain.is(CowBrain.Action.WARY) && chem.fearFelt() >= scaredAt() / 2 : stillAfraid();
     }
 
+    // Чи справді зараз виконується ціль цієї дії мозку (щоб мозок помітив, що дія «не виходить»)
+    public boolean isDoing(CowBrain.Action a) {
+        return this.goalSelector.getRunningGoals().anyMatch(w -> {
+            Object g = w.getGoal();
+            return switch (a) {
+                case EAT -> g instanceof SeekGrassGoal || g instanceof DrinkMilkGoal || g instanceof BrainTemptGoal;
+                case REST -> g instanceof RestGoal;
+                case HERD -> g instanceof HerdUpGoal;
+                case FRIEND -> g instanceof ApproachPlayerGoal || g instanceof BrainTemptGoal;
+                case WANDER -> true;
+                case WARY -> g instanceof FearGoal;
+                case MATE -> g instanceof MateGoal || g instanceof BullCourtGoal;
+                case FAMILY -> g instanceof MotherCalfGoal || g instanceof FollowMotherGoal;
+                case RUMINATE -> g instanceof RuminateGoal;
+                case CURIOUS -> g instanceof InvestigateGoal || g instanceof BrainTemptGoal;
+            };
+        });
+    }
+
     public void onAte() {
         lastMealTick = this.tickCount;
     }
