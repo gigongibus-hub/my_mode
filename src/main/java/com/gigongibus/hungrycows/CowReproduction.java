@@ -226,6 +226,7 @@ public class CowReproduction {
             baby.character.newborn(cow.getRandom());
             baby.onGenesChanged();
             baby.repro.rollBirthLimit();   // ліміт телят — уже за успадкованими генами
+            baby.setHealth(baby.getMaxHealth());
             cow.family.addChild(baby.family.name);
             HungryCow father = findFather();
             if (father != null) father.family.addChild(baby.family.name);

@@ -56,7 +56,7 @@ public class FearGoal extends Goal {
             return;
         }
         if (cow.tickCount % 10 == 0 || cow.getNavigation().isDone()) {
-            double speed = 1.0 + cow.fear / 100.0 * 1.2;
+            double speed = cow.fleeSpeed(1.0 + cow.fear / 100.0 * 1.2);
             Vec3 away = DefaultRandomPos.getPosAway(cow, 10, 4, scary.position());
             if (away != null) {
                 cow.getNavigation().moveTo(away.x, away.y, away.z, speed);

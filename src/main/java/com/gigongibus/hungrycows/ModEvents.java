@@ -1,6 +1,5 @@
 package com.gigongibus.hungrycows;
 
-import net.minecraft.client.renderer.entity.CowRenderer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -40,7 +39,7 @@ public class ModEvents {
     public static class ClientEvents {
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
-            event.registerEntityRenderer(ModEntities.HUNGRY_COW.get(), CowRenderer::new);
+            event.registerEntityRenderer(ModEntities.HUNGRY_COW.get(), com.gigongibus.hungrycows.client.HungryCowRenderer::new);
         }
     }
 }

@@ -2,6 +2,12 @@ package com.gigongibus.hungrycows;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -42,6 +48,7 @@ import com.gigongibus.hungrycows.CowCharacter.Experience;
 import com.gigongibus.hungrycows.CowCharacter.Trait;
 import com.gigongibus.hungrycows.ai.GrieveGoal;
 import java.util.EnumMap;
+import java.util.UUID;
 import net.minecraftforge.registries.ForgeRegistries;
 import com.gigongibus.hungrycows.ai.ApproachPlayerGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
@@ -114,6 +121,16 @@ public class HungryCow extends Cow {
     public static final int FIRE_CHECK_SECONDS = 5;            // як часто дивитись, чи щось горить поруч
     public static final int FIRE_RADIUS = 4;                   // на скільки блоків навколо
 
+    // ================= ТІЛО (гени) =================
+    public static final float SIZE_MIN = 0.85F;          // розмір: ген 0 → 85% звичайного ...
+    public static final float SIZE_MAX = 1.15F;          // ... ген 100 → 115%
+    public static final double SIZE_HEALTH = 1.0;        // більша на 15% → здоров'я +15% (×1.0 від різниці розміру)
+    public static final double SIZE_SLOWDOWN = 0.5;      // більша на 15% → повільніша на 7.5% (×0.5 від різниці)
+    public static final double KNOCKBACK_RESIST_MAX = 0.3; // ген «стійкість до відкидання» 100 → 30% стійкості (нижче 50 — 0)
+    private static final UUID HEALTH_GENE_ID = UUID.fromString("3b0f6f7e-0c55-4a8e-8f61-6f3c8f0a9b21");
+    private static final UUID SPEED_GENE_ID = UUID.fromString("a8f3d2c4-5e71-4b0a-9c2d-1e6f7a8b9c30");
+    private static final UUID KNOCKBACK_GENE_ID = UUID.fromString("c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f");
+
     public static final boolean DEBUG_MESSAGES = true;   // писати в чат про подавлення, довіру, напади та пологи
 
     public int hunger = 0;
@@ -152,6 +169,7 @@ public class HungryCow extends Cow {
         super(type, level);
         repro.rollBirthLimit();
         onGenesChanged();
+        this.setHealth(this.getMaxHealth());   // нова корова з повним здоров'ям (при завантаженні здоров'я потім читається з NBT)
     }
 
     // ===================== ГЕНИ =====================
@@ -161,8 +179,58 @@ public class HungryCow extends Cow {
     private int starveTimer = 0;
     private double growthCarry = 0;  // накопичене прискорення/сповільнення росту теляти
 
-    // Викликається, коли гени стали відомі (нова корова, народження, завантаження)
+    // Розмір тіла: синхронізується з грою гравця, щоб корову було видно більшою чи меншою
+    private static final EntityDataAccessor<Float> DATA_SIZE =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.FLOAT);
+
+    @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(DATA_SIZE, 1.0F);
+    }
+
+    public float sizeScale() {
+        return this.entityData.get(DATA_SIZE);
+    }
+
+    // хітбокс (розмір для зіткнень) теж більший чи менший
+    @Override
+    public float getScale() {
+        return super.getScale() * sizeScale();
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        if (DATA_SIZE.equals(key)) this.refreshDimensions();
+        super.onSyncedDataUpdated(key);
+    }
+
+    // Викликається, коли гени стали відомі (нова корова, народження, завантаження): розмір, здоров'я, швидкість
     public void onGenesChanged() {
+        if (this.level() == null || this.level().isClientSide) return;
+        float size = SIZE_MIN + (SIZE_MAX - SIZE_MIN) * genes.value(CowGenes.Gene.SIZE) / 100.0F;
+        this.entityData.set(DATA_SIZE, size);
+
+        double health = gene(CowGenes.Gene.HEALTH) * (1.0 + (size - 1.0) * SIZE_HEALTH);
+        double speed = gene(CowGenes.Gene.WALK_SPEED) * (1.0 - (size - 1.0) * SIZE_SLOWDOWN);
+        double knockback = Math.max(0.0, KNOCKBACK_RESIST_MAX * (genes.value(CowGenes.Gene.KNOCKBACK_RESIST) - 50) / 50.0);
+        setGeneModifier(Attributes.MAX_HEALTH, HEALTH_GENE_ID, "Health gene", health - 1.0, AttributeModifier.Operation.MULTIPLY_BASE);
+        setGeneModifier(Attributes.MOVEMENT_SPEED, SPEED_GENE_ID, "Speed gene", speed - 1.0, AttributeModifier.Operation.MULTIPLY_BASE);
+        setGeneModifier(Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_GENE_ID, "Knockback gene", knockback, AttributeModifier.Operation.ADDITION);
+        if (this.getHealth() > this.getMaxHealth()) this.setHealth(this.getMaxHealth());
+    }
+
+    private void setGeneModifier(net.minecraft.world.entity.ai.attributes.Attribute attribute, UUID id, String name,
+                                 double value, AttributeModifier.Operation op) {
+        AttributeInstance inst = this.getAttribute(attribute);
+        if (inst == null) return;
+        inst.removeModifier(id);
+        inst.addPermanentModifier(new AttributeModifier(id, name, value, op));
+    }
+
+    // швидкість утечі з урахуванням гена (для FearGoal)
+    public double fleeSpeed(double base) {
+        return base * gene(CowGenes.Gene.FLEE_SPEED);
     }
 
     public double gene(CowGenes.Gene g) {
@@ -497,6 +565,8 @@ public class HungryCow extends Cow {
 
     private void attackPlayer(Player player, float damage) {
         // у творчому режимі й на «Мирній» складності удар не проходить, тоді й не відкидаємо
+        // ген «сила удару»: ±30%
+        damage = (float) (damage * gene(CowGenes.Gene.KICK_STRENGTH));
         if (!player.hurt(this.damageSources().mobAttack(this), damage)) return;
         player.knockback(CowTrust.ATTACK_KNOCKBACK, this.getX() - player.getX(), this.getZ() - player.getZ());
         player.hurtMarked = true;
