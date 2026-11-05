@@ -228,16 +228,32 @@ public class SleepGoal extends Goal {
     }
 
     // Чи займає це місце інша корова (уже спить там або йде туди)
+    private static final double CLAIM_SPACE = 1.5;   // своє місце + сусідні клітинки (квадрат відстані): спершу шукає з простором
+    private boolean tight = false;                   // у домі тісно: досить, щоб саме ця клітинка була вільна
+
     private boolean claimedByOther(BlockPos p) {
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
                 c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
-            if (c.sleepClaim.distSqr(p) < 1.5) return true;
+            if (tight ? c.sleepClaim.equals(p) : c.sleepClaim.distSqr(p) < CLAIM_SPACE) return true;
         }
         return false;
     }
 
     // Вибрати своє місце біля спільного: усередині укриття (або в тіні дерева), найглибше вільне, до якого можна дійти
+    // Спершу місце з простором навколо; якщо в домі тісно — будь-яка вільна клітинка (корови лягають поруч одна з одною)
     private BlockPos chooseSpot(BlockPos base) {
+        tight = false;
+        BlockPos p = chooseSpotOnce(base);
+        if (p != null) return p;
+        tight = true;
+        excluded.clear();
+        p = chooseSpotOnce(base);
+        tight = false;
+        if (p == null) cow.tell(cow.family.name + " не знайшла вільного місця в домі, до якого можна дійти");
+        return p;
+    }
+
+    private BlockPos chooseSpotOnce(BlockPos base) {
         boolean building = CowHome.shelterScore(cow.level(), base) > 0;
         java.util.List<BlockPos> spots = new java.util.ArrayList<>();
         for (BlockPos p : BlockPos.betweenClosed(base.offset(-SPOT_RADIUS, -1, -SPOT_RADIUS), base.offset(SPOT_RADIUS, 1, SPOT_RADIUS))) {
@@ -276,7 +292,6 @@ public class SleepGoal extends Goal {
             }
             excluded.add(p);
         }
-        if (!spots.isEmpty()) cow.tell(cow.family.name + " не знайшла вільного місця в домі, до якого можна дійти");
         return null;   // вільних місць усередині немає — спить, де є
     }
 
