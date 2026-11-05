@@ -78,8 +78,16 @@ public class CowHome {
     }
 
     // Справжній будівельний блок (тверде, але не листя: листя дає тінь, але не захищає)
-    private static boolean building(BlockState s) {
-        return s.isSolid() && !s.is(BlockTags.LEAVES);
+    // Дах: будь-який блок, у який не можна пройти (повний блок, півблок, сходинки, люк…), крім листя
+    private static boolean roofBlock(Level level, BlockPos p) {
+        BlockState s = level.getBlockState(p);
+        return !s.is(BlockTags.LEAVES) && !s.getCollisionShape(level, p).isEmpty();
+    }
+
+    // Стіна: те саме, але паркан, хвіртка й огорожа стіною не рахуються (крізь них дме вітер і видно)
+    private static boolean wallBlock(Level level, BlockPos p) {
+        BlockState s = level.getBlockState(p);
+        return roofBlock(level, p) && !s.is(BlockTags.FENCES) && !s.is(BlockTags.FENCE_GATES) && !s.is(BlockTags.WALLS);
     }
 
     // Скільки боків закрито стінами (до WALL_DISTANCE блоків); листя не рахується
@@ -88,7 +96,7 @@ public class CowHome {
         for (Direction d : Direction.Plane.HORIZONTAL) {
             for (int i = 1; i <= WALL_DISTANCE; i++) {
                 BlockPos p = pos.relative(d, i);
-                if (building(level.getBlockState(p)) || building(level.getBlockState(p.above()))) {
+                if (wallBlock(level, p) || wallBlock(level, p.above())) {
                     n++;
                     break;
                 }
@@ -100,10 +108,10 @@ public class CowHome {
     // Чи є над головою справжній дах (не листя), до ROOF_HEIGHT блоків
     public static boolean hasRoof(Level level, BlockPos pos) {
         for (int i = 2; i <= ROOF_HEIGHT; i++) {
-            BlockState s = level.getBlockState(pos.above(i));
-            // повітря, ліхтар, смолоскип, ланцюг тощо — пропускає; дах = перший справжній блок угорі
-            if (building(s)) return true;
-            if (s.is(BlockTags.LEAVES)) return false;   // листя: тінь, але не дах
+            BlockPos p = pos.above(i);
+            // повітря, ліхтар, смолоскип, ланцюг тощо — пропускає; дах = перший блок, у який не пройти (і півблок теж)
+            if (roofBlock(level, p)) return true;
+            if (level.getBlockState(p).is(BlockTags.LEAVES)) return false;   // листя: тінь, але не дах
         }
         return false;
     }
