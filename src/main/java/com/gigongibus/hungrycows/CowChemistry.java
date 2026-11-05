@@ -266,8 +266,11 @@ public class CowChemistry {
     public int feelTired() { return (int) Math.round(clamp(adenosine() * tiredness())); }
     // Відчуття страху в тих самих одиницях, що й страх корови (порівнюється з HungryCow.scaredAt())
     public int fearFelt() {
-        double f = Math.max(cow.fear, adrenaline);
-        f += STRESS_JUMPY * Math.max(0, cortisol - CORTISOL_BASE);
+        // лише те, що понад спокійний рівень цієї корови (спокійна корова відчуває страх 0)
+        double adrBase = ADRENALINE_BASE * g(Gene.ADRENALINE_BASE);
+        double cortBase = CORTISOL_BASE * g(Gene.CORTISOL_BASE);
+        double f = Math.max(cow.fear, adrenaline - adrBase);
+        f += STRESS_JUMPY * Math.max(0, cortisol - cortBase);
         double calm = Math.max(0, Math.min(1, (oxytocin - OXYTOCIN_BASE) / (100 - OXYTOCIN_BASE)));
         f *= 1.0 - CALM_COMPANY * calm;
         return (int) Math.round(clamp(f));

@@ -19,7 +19,10 @@ public class CowHome {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int SEARCH_RADIUS = 32;         // як далеко шукає дім
     public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди ...
-    public static final int SWEEP_PER_SECOND = 40;      // ... і скільки ще по черзі (так за ~2 хв огляне всю околицю)
+    public static final int SWEEP_PER_SECOND = 80;      // ... і скільки ще по черзі (так менше ніж за хвилину огляне всю околицю)
+    public static final int BEST_SCORE = 13;            // найкращий можливий дім (дах + 4 стіни)
+    public static final int COLUMN_UP = 6;              // у кожному місці перевіряє висоти від y+6 ...
+    public static final int COLUMN_DOWN = 6;            // ... до y−6 (і дах, і підлогу всередині будівлі)
     public static final int ROOF_HEIGHT = 6;            // дах шукає не вище стількох блоків над головою
     public static final int MIN_WALLS = 2;              // скільки боків мають бути закриті
     public static final int WALL_DISTANCE = 3;          // стіна — не далі стількох блоків
@@ -101,14 +104,30 @@ public class CowHome {
         return 3 + 2 * w + (w == 4 ? 2 : 0);
     }
 
-    // Знайти місце, де можна стати на висоті поблизу y (від y+4 до y−6)
-    private BlockPos groundNear(int x, int y, int z) {
+    // Чи може корова туди дійти (наприклад, у хлів із зачиненими дверима — ні)
+    private boolean reachable(BlockPos p) {
+        net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
+        return path != null && path.canReach();
+    }
+
+    // Оглянути одне місце: усі висоти (дах будівлі й підлогу всередині), найкраще укриття й тінь
+    private void inspectColumn(int x, int y, int z, BlockPos o) {
         Level level = cow.level();
-        for (int dy = 4; dy >= -6; dy--) {
+        for (int dy = COLUMN_UP; dy >= -COLUMN_DOWN; dy--) {
             BlockPos p = new BlockPos(x, y + dy, z);
-            if (standable(level, p)) return p;
+            if (!standable(level, p)) continue;
+            int s = shelterScore(level, p);
+            // не дім, але є тінь (дерево): запасне місце для сну — ближче краще
+            if (s == 0 && shaded(level, p) && (treeSpot == null || p.distSqr(o) < treeSpot.distSqr(o))) {
+                treeSpot = p.immutable();
+            }
+            if (s > homeScore && reachable(p)) {
+                cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
+                        + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
+                home = p.immutable();
+                homeScore = s;
+            }
         }
-        return null;
     }
 
     // Випадкове місце в тіні поруч (для відпочинку в сонячний день)
@@ -117,8 +136,11 @@ public class CowHome {
         for (int i = 0; i < tries; i++) {
             int x = o.getX() + cow.getRandom().nextInt(radius * 2 + 1) - radius;
             int z = o.getZ() + cow.getRandom().nextInt(radius * 2 + 1) - radius;
-            BlockPos p = groundNear(x, o.getY(), z);
-            if (p != null && shaded(cow.level(), p)) return p;
+            // усі висоти: тінь може бути й під дахом, а не лише нагорі
+            for (int dy = COLUMN_UP; dy >= -COLUMN_DOWN; dy--) {
+                BlockPos p = new BlockPos(x, o.getY() + dy, z);
+                if (standable(cow.level(), p) && shaded(cow.level(), p)) return p;
+            }
         }
         return null;
     }
@@ -149,9 +171,13 @@ public class CowHome {
         // огляд околиць: шукає дім або кращий (закритіший) дім — навмання й по черзі
         BlockPos o = cow.blockPosition();
         int side = SEARCH_RADIUS * 2 + 1;
-        for (int i = 0; i < SAMPLES_PER_SECOND + SWEEP_PER_SECOND; i++) {
+        // ідеальний дім уже є — не шукає; добрий є — шукає вчетверо рідше (щоб не навантажувати гру)
+        if (homeScore >= BEST_SCORE) return;
+        int checks = SAMPLES_PER_SECOND + SWEEP_PER_SECOND;
+        if (home != null) checks /= 4;
+        for (int i = 0; i < checks; i++) {
             int x, z;
-            if (i < SAMPLES_PER_SECOND) {
+            if (i < checks * SAMPLES_PER_SECOND / (SAMPLES_PER_SECOND + SWEEP_PER_SECOND)) {
                 x = o.getX() + cow.getRandom().nextInt(side) - SEARCH_RADIUS;
                 z = o.getZ() + cow.getRandom().nextInt(side) - SEARCH_RADIUS;
             } else {
@@ -159,20 +185,7 @@ public class CowHome {
                 x = o.getX() + sweep % side - SEARCH_RADIUS;
                 z = o.getZ() + sweep / side - SEARCH_RADIUS;
             }
-            BlockPos p = groundNear(x, o.getY(), z);
-            if (p == null) continue;
-            int s = shelterScore(cow.level(), p);
-            // не дім, але є тінь (дерево): запасне місце для сну — ближче краще
-            if (s == 0 && shaded(cow.level(), p) && (treeSpot == null
-                    || p.distSqr(o) < treeSpot.distSqr(o))) {
-                treeSpot = p.immutable();
-            }
-            if (s > homeScore) {
-                cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
-                        + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
-                home = p.immutable();
-                homeScore = s;
-            }
+            inspectColumn(x, o.getY(), z, o);
         }
     }
 

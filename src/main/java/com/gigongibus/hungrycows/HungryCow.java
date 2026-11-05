@@ -773,9 +773,8 @@ public class HungryCow extends Cow {
     public void onScaredBy(Player player) {
         if (this.tickCount - lastPlayerHitTick < 60) return;           // страх від удару вже враховано
         if (trustOf(player) < CowTrust.SCARE_MIN_TRUST) return;
-        // «налякав» лише якщо справді лякав: друг — лише коли бігав чи стрибав поруч
-        if (trustOf(player) >= CowTrust.FRIEND_FROM && !player.isSprinting()
-                && (player.onGround() || player.getAbilities().flying)) return;
+        // «налякав» лише якщо справді лякав: друг — лише коли біг поруч
+        if (trustOf(player) >= CowTrust.FRIEND_FROM && !player.isSprinting()) return;
         if (trust.tryScare(player.getUUID(), this.tickCount)) {
             addTrust(player, -CowTrust.SCARE_PENALTY, "налякав", false);
         }
@@ -1263,11 +1262,10 @@ public class HungryCow extends Cow {
     public boolean isScary(LivingEntity e) {
         if (e instanceof Player p) {
             if (p.isSpectator() || p.hasEffect(MobEffects.INVISIBILITY)) return false;
-            // друг не страшний — хіба що бігає, стрибає або щойно вдарив
+            // друг не страшний — хіба що біжить або щойно вдарив (стрибки не рахуються: гравець стрибає постійно)
             if (trustOf(p) >= CowTrust.FRIEND_FROM) {
-                boolean jumping = !p.onGround() && !p.getAbilities().flying;
                 boolean justHit = p.getUUID().equals(lastHitBy) && this.tickCount - lastPlayerHitTick < FRIEND_HIT_SCARY_TICKS;
-                return p.isSprinting() || jumping || justHit;
+                return p.isSprinting() || justHit;
             }
             return true;
         }
