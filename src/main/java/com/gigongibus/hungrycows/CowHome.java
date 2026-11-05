@@ -3,6 +3,7 @@ package com.gigongibus.hungrycows;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -17,7 +18,9 @@ public class CowHome {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int SEARCH_RADIUS = 32;         // як далеко шукає дім
-    public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди
+    public static final int SAMPLES_PER_SECOND = 16;    // скільки випадкових місць оглядає щосекунди ...
+    public static final int SWEEP_PER_SECOND = 40;      // ... і скільки ще по черзі (так за ~2 хв огляне всю околицю)
+    public static final int ROOF_HEIGHT = 6;            // дах шукає не вище стількох блоків над головою
     public static final int MIN_WALLS = 2;              // скільки боків мають бути закриті
     public static final int WALL_DISTANCE = 3;          // стіна — не далі стількох блоків
     public static final int RECHECK_SECONDS = 30;       // як часто перевіряє, чи дім ще годиться
@@ -27,6 +30,7 @@ public class CowHome {
     private BlockPos home = null;
     private int homeScore = 0;
     private int seconds = 0;
+    private int sweep = 0;   // по черзі оглядає околицю (номер клітинки)
 
     public CowHome(HungryCow cow) {
         this.cow = cow;
@@ -49,13 +53,18 @@ public class CowHome {
         return !level.canSeeSky(pos.above());
     }
 
-    // Скільки боків закрито стінами (до WALL_DISTANCE блоків)
+    // Справжній будівельний блок (тверде, але не листя: листя дає тінь, але не захищає)
+    private static boolean building(BlockState s) {
+        return s.isSolid() && !s.is(BlockTags.LEAVES);
+    }
+
+    // Скільки боків закрито стінами (до WALL_DISTANCE блоків); листя не рахується
     public static int walls(Level level, BlockPos pos) {
         int n = 0;
         for (Direction d : Direction.Plane.HORIZONTAL) {
             for (int i = 1; i <= WALL_DISTANCE; i++) {
                 BlockPos p = pos.relative(d, i);
-                if (level.getBlockState(p).isSolid() || level.getBlockState(p.above()).isSolid()) {
+                if (building(level.getBlockState(p)) || building(level.getBlockState(p.above()))) {
                     n++;
                     break;
                 }
@@ -64,11 +73,22 @@ public class CowHome {
         return n;
     }
 
-    // Наскільки добре місце як дім (0 = не годиться)
+    // Чи є над головою справжній дах (не листя), до ROOF_HEIGHT блоків
+    public static boolean hasRoof(Level level, BlockPos pos) {
+        for (int i = 2; i <= ROOF_HEIGHT; i++) {
+            BlockState s = level.getBlockState(pos.above(i));
+            if (s.isAir()) continue;
+            return building(s);
+        }
+        return false;
+    }
+
+    // Наскільки добре місце як дім (0 = не годиться): дах +3, кожна стіна +2, усі 4 стіни ще +2 (до 13)
     public static int shelterScore(Level level, BlockPos pos) {
-        if (!standable(level, pos) || !shaded(level, pos)) return 0;
+        if (!standable(level, pos) || !hasRoof(level, pos)) return 0;
         int w = walls(level, pos);
-        return w >= MIN_WALLS ? 1 + w : 0;   // 3..5
+        if (w < MIN_WALLS) return 0;
+        return 3 + 2 * w + (w == 4 ? 2 : 0);
     }
 
     // Знайти місце, де можна стати на висоті поблизу y (від y+4 до y−6)
@@ -109,20 +129,33 @@ public class CowHome {
                 homeScore = s;
             }
         }
-        // огляд околиць: шукає дім або кращий (закритіший) дім
+        // огляд околиць: шукає дім або кращий (закритіший) дім — навмання й по черзі
         BlockPos o = cow.blockPosition();
-        for (int i = 0; i < SAMPLES_PER_SECOND; i++) {
-            int x = o.getX() + cow.getRandom().nextInt(SEARCH_RADIUS * 2 + 1) - SEARCH_RADIUS;
-            int z = o.getZ() + cow.getRandom().nextInt(SEARCH_RADIUS * 2 + 1) - SEARCH_RADIUS;
+        int side = SEARCH_RADIUS * 2 + 1;
+        for (int i = 0; i < SAMPLES_PER_SECOND + SWEEP_PER_SECOND; i++) {
+            int x, z;
+            if (i < SAMPLES_PER_SECOND) {
+                x = o.getX() + cow.getRandom().nextInt(side) - SEARCH_RADIUS;
+                z = o.getZ() + cow.getRandom().nextInt(side) - SEARCH_RADIUS;
+            } else {
+                sweep = (sweep + 1) % (side * side);
+                x = o.getX() + sweep % side - SEARCH_RADIUS;
+                z = o.getZ() + sweep / side - SEARCH_RADIUS;
+            }
             BlockPos p = groundNear(x, o.getY(), z);
             if (p == null) continue;
             int s = shelterScore(cow.level(), p);
             if (s > homeScore) {
-                if (home == null) cow.tell(cow.family.name + " знайшла дім: " + p.getX() + " " + p.getY() + " " + p.getZ());
+                cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
+                        + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
                 home = p.immutable();
                 homeScore = s;
             }
         }
+    }
+
+    public int homeScore() {
+        return homeScore;
     }
 
     // ---------- збереження ----------
