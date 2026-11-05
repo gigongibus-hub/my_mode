@@ -115,8 +115,19 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   Для дому — `setMaxVisitedNodesMultiplier(4)`, не більше 6 шляхів за секунду, недосяжне місце — повтор через 30 с.
 - `createPath` повертає null, коли корова не на землі (сходинка, стрибок, поштовх): у такий момент НЕ перевіряти досяжність
   (інакше дім, місце для сну чи їжа хибно стають «недосяжними»).
+- Ванільний `followThePath`: точку пройдено, коли |x − (вузол + (ширина+1)/2)| < ширина/2; корова точно в центрі блока
+  (яйце призову, /summon) за деякої ширини (ген розміру) стоїть на першій точці назавжди, поки не штовхнуть.
+  Виправлено в `HungryCow.unstickPath()` (10 тіків на першій точці у своїй клітинці → `path.advance()`). Знайдено GameTest-ом.
 - Не вмикати access transformer у `build.gradle`: у ForgeGradle 6 після нього з компіляції зникають бібліотеки Forge
   (`net.minecraftforge.eventbus`, `fml`, `brigadier` «does not exist»). Закриті поля брати через `ObfuscationReflectionHelper`.
+
+## Автоматичні тести (Forge GameTest)
+- `test/HungryCowGameTests`: hungerGrows, cowFindsAndEatsFood, fatigueGrowsAndRecovers. Майданчик
+  `data/hungrycows/structures/platform.nbt` (камінь 9×9, скло 2 бл.). Координати тесту — від службового блока: y=1 підлога.
+  `relativePos` у 1.20.1 повертає перевернуті координати (ванільна особливість) — для повідомлень, не для перевірок.
+- Запуск: `./gradlew runGameTestServer -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-amd64`
+  (потрібна Java 17: `apt-get install -y openjdk-17-jdk-headless`; українське в журналі — `JDK_JAVA_OPTIONS="-Dstdout.encoding=UTF-8"`).
+  Maven Central іноді відповідає 429 — повторити. Тести нестабільні? Запускати кілька разів поспіль.
 
 ## Тестові значення: повернути перед релізом
 - `CowCycle.TIME_SPEED = 16` → 1 (з 16 цикл ≈ пів години).

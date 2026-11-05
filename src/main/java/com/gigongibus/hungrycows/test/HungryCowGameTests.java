@@ -3,6 +3,7 @@ package com.gigongibus.hungrycows.test;
 import com.gigongibus.hungrycows.HungryCow;
 import com.gigongibus.hungrycows.HungryCowsMod;
 import com.gigongibus.hungrycows.ModEntities;
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -23,17 +24,19 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(HungryCowsMod.MODID)
 @PrefixGameTestTemplate(false)
 public class HungryCowGameTests {
+    private static final org.slf4j.Logger LOG = LogUtils.getLogger();
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     private static final String PLATFORM = "platform";        // тестовий майданчик
     private static final long NOON = 6000;                     // полудень: корови не йдуть спати
-    private static final BlockPos CENTER = new BlockPos(4, 1, 4);
+    // Координати тесту рахуються від службового блока під майданчиком: y=1 — підлога, y=2 — над підлогою
+    private static final BlockPos CENTER = new BlockPos(4, 2, 4);
     // 1. Голод: росте на 1 приблизно раз на 7 с (ген ×0.7…1.3) — чекаємо до 60 с
     private static final int HUNGER_TIMEOUT = 1200;
     // 2. Їжа: голодна корова (голод 40 — удень іде їсти завжди) знаходить трав'яний блок за 6 блоків і з'їдає його
     private static final int FOOD_HUNGER = 40;
-    private static final BlockPos FOOD_COW = new BlockPos(1, 1, 4);
-    private static final BlockPos FOOD_GRASS = new BlockPos(7, 0, 4);   // у підлозі, з повітрям над ним
+    private static final BlockPos FOOD_COW = new BlockPos(1, 2, 4);
+    private static final BlockPos FOOD_GRASS = new BlockPos(7, 1, 4);   // у підлозі, з повітрям над ним
     private static final int FOOD_TIMEOUT = 1200;
     // 3. Втома: росте на 1 приблизно раз на 10 с — чекаємо; потім виснаження (100) → відпочинок → втома спадає
     private static final int FATIGUE_TIMEOUT = 3600;
@@ -45,6 +48,15 @@ public class HungryCowGameTests {
         HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), pos);
         cow.setAge(0);   // доросла (теля їсть лише молоко)
         return cow;
+    }
+
+    // Стан корови для повідомлення про провал: де стоїть, показники, ціль їжі і службовий напис (там видно активні цілі)
+    private static String describe(GameTestHelper h, HungryCow cow) {
+        BlockPos rel = h.relativePos(cow.blockPosition());
+        BlockPos food = cow.foodTarget == null ? null : h.relativePos(cow.foodTarget);
+        return "корова на " + rel.toShortString() + ", голод " + cow.hunger + ", втома " + cow.fatigue + ", страх " + cow.fear
+                + ", спрага " + cow.thirst + ", ціль їжі " + (food == null ? "немає" : food.toShortString())
+                + ", напис [" + (cow.getCustomName() == null ? "" : cow.getCustomName().getString()) + "]";
     }
 
     private static void assertAlive(GameTestHelper h, HungryCow cow) {
@@ -59,6 +71,7 @@ public class HungryCowGameTests {
         h.succeedWhen(() -> {
             assertAlive(h, cow);
             h.assertTrue(cow.hunger > 0, "голод не виріс за " + HUNGER_TIMEOUT / 20 + " с (голод " + cow.hunger + ")");
+            LOG.info("[тест] hungerGrows: голод {} через {} тіків", cow.hunger, h.getTick());
         });
     }
 
@@ -70,8 +83,9 @@ public class HungryCowGameTests {
         cow.hunger = FOOD_HUNGER;
         h.succeedWhen(() -> {
             assertAlive(h, cow);
-            h.assertBlockPresent(Blocks.DIRT, FOOD_GRASS);   // трав'яний блок з'їдено
+            h.assertTrue(h.getBlockState(FOOD_GRASS).is(Blocks.DIRT), "трав'яний блок не з'їдено: " + describe(h, cow));
             h.assertTrue(cow.hunger < FOOD_HUNGER, "трава з'їдена, але голод не спав (голод " + cow.hunger + ")");
+            LOG.info("[тест] cowFindsAndEatsFood: трава з'їдена, голод {} -> {} через {} тіків", FOOD_HUNGER, cow.hunger, h.getTick());
         });
     }
 
@@ -84,6 +98,7 @@ public class HungryCowGameTests {
                 .thenWaitUntil(() -> {
                     assertAlive(h, cow);
                     h.assertTrue(cow.fatigue > 0, "втома не росте (втома " + cow.fatigue + ")");
+                    LOG.info("[тест] fatigueGrowsAndRecovers: втома виросла до {} через {} тіків", cow.fatigue, h.getTick());
                 })
                 .thenExecute(() -> cow.fatigue = HungryCow.EXHAUSTED_AT)
                 .thenWaitUntil(() -> {
@@ -94,6 +109,7 @@ public class HungryCowGameTests {
                     assertAlive(h, cow);
                     h.assertTrue(cow.fatigue <= HungryCow.EXHAUSTED_AT - FATIGUE_RECOVERED_BY,
                             "під час відпочинку втома не спадає (втома " + cow.fatigue + ")");
+                    LOG.info("[тест] fatigueGrowsAndRecovers: відпочинок, втома {} -> {} на тіку {}", HungryCow.EXHAUSTED_AT, cow.fatigue, h.getTick());
                 })
                 .thenSucceed();
     }

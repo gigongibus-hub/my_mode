@@ -135,6 +135,9 @@ public class HungryCow extends Cow {
     public static final int CALF_GROW_TICKS = CALF_GROW_DAYS * 24000; // вік теляти в тіках (росте на 1 за тік)
     public static final int HUNGRY_AT = 30;              // з цього голоду корова шукає їжу (ген HUNGER_THRESHOLD ±30%)
     public static final int STARVE_DAMAGE_SECONDS = 4;   // при голодуванні урон раз на стільки секунд (ген STARVE_RESIST ±30%)
+    // Ванільний пошук шляху: корова точно в центрі блока (так ставить яйце призову чи /summon) за деякої ширини
+    // (ген розміру) ніколи не «проходить» першу точку шляху — стоїть, доки її не штовхнуть. Виправлення:
+    public static final int PATH_STUCK_TICKS = 10;       // стоїть на першій точці у своїй клітинці стільки тіків — до наступної точки
     public static final int DAY_EAT_AT = 25;             // удень з цього голоду йде пастися завжди (не чекає мозку)
     public static final int MORNING_EAT_AT = 5;          // уранці (після сну) з цього голоду виходить пастися
     public static final int MORNING_FROM = 23500;        // ранок: від світанку ...
@@ -339,6 +342,24 @@ public class HungryCow extends Cow {
 
     // Ніч (лише у світах зі сходом і заходом сонця)
     // Ніч для сну — за часом доби, з сутінків (щоб устигнути дійти); дощ і гроза — не ніч
+    private int pathStuckTicks = 0;
+
+    // Корова має шлях, але стоїть на його першій точці (у своїй же клітинці) і не рухається — перейти до наступної точки
+    private void unstickPath() {
+        net.minecraft.world.level.pathfinder.Path p = this.getNavigation().getPath();
+        boolean stuck = p != null && !p.isDone() && p.getNextNodeIndex() + 1 < p.getNodeCount() && this.onGround()
+                && p.getNextNodePos().equals(this.blockPosition())
+                && this.getDeltaMovement().horizontalDistanceSqr() < 1.0E-6;
+        if (!stuck) {
+            pathStuckTicks = 0;
+            return;
+        }
+        if (++pathStuckTicks >= PATH_STUCK_TICKS) {
+            p.advance();
+            pathStuckTicks = 0;
+        }
+    }
+
     public boolean isDayTime() {
         if (!this.level().dimensionType().hasSkyLight() || this.level().dimensionType().hasFixedTime()) return false;
         return !isNightTime();
@@ -674,6 +695,7 @@ public class HungryCow extends Cow {
     public void aiStep() {
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
+        if (!this.level().isClientSide) unstickPath();
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             if (toxinLeft > 0) {
                 this.hurt(this.damageSources().magic(), toxinDamage);
