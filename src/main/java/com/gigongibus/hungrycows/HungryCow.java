@@ -82,9 +82,17 @@ public class HungryCow extends Cow {
     public static final double RUN_FATIGUE = 2.0;        // бігає — втомлюється вдвічі швидше
     public static final double RUN_BLOCKS_PER_SECOND = 3.5; // «бігає» = за секунду пройшла більше стількох блоків
     public static final int TIRED_AT = 40;               // з якої відчутої втоми корова йде відпочивати
-    public static final int FEAR_WALKING = 10;           // страх за секунду від гравця, що ходить поруч
-    public static final int FEAR_STILL = 2;              // ... що стоїть на місці
-    public static final int FEAR_CROUCHING = 2;          // ... що крадеться присівши
+    // ================= СТРАХ ВІД ГРАВЦЯ (за секунду) =================
+    // Що ближче гравець, то сильніше лякає (на краю радіуса 0, біля самої корови найбільше),
+    // а кожен крок ДО корови додає ще; присівши — усе вдвічі менше.
+    public static final double FEAR_RANGE = 6.0;         // з якої відстані корова лякається незнайомого гравця
+    public static final double FEAR_WALKING = 3;         // гравець ходить поруч (біля самої корови)
+    public static final double FEAR_RUNNING = 40;        // біжить
+    public static final double FEAR_JUMPING = 35;        // стрибає
+    public static final int FEAR_STILL = 2;              // стоїть на місці (корова за цей час заспокоюється на 1–3)
+    public static final double FEAR_PER_BLOCK = 2;       // за кожен блок, на який гравець наблизився (на краю) ...
+    public static final double FEAR_PER_BLOCK_CLOSE = 2; // ... + стільки ще біля самої корови (тобто до 4 за блок)
+    public static final double FEAR_CROUCH_FACTOR = 0.5; // присівши — страх удвічі менший
     public static final double STILL_MOVE = 0.5;         // «стоїть на місці» = за секунду зрушив менше ніж на пів блока
     public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
@@ -1124,15 +1132,22 @@ public class HungryCow extends Cow {
     // де був кожен гравець секунду тому (щоб знати, чи він стоїть на місці); не зберігається
     private final java.util.Map<UUID, Vec3> lastPlayerPos = new java.util.HashMap<>();
     private final java.util.Set<UUID> stillPlayers = new java.util.HashSet<>();
+    private final java.util.Map<UUID, Double> approachBy = new java.util.HashMap<>(); // на скільки блоків наблизився за секунду
 
     private void updatePlayerStillness() {
         stillPlayers.clear();
+        approachBy.clear();
         java.util.Map<UUID, Vec3> now = new java.util.HashMap<>();
+        Vec3 me = this.position();
         for (Player p : this.level().players()) {
             if (this.distanceToSqr(p) > 16 * 16) continue;
             Vec3 pos = p.position();
             Vec3 before = lastPlayerPos.get(p.getUUID());
-            if (before != null && before.distanceToSqr(pos) < STILL_MOVE * STILL_MOVE) stillPlayers.add(p.getUUID());
+            if (before != null) {
+                if (before.distanceToSqr(pos) < STILL_MOVE * STILL_MOVE) stillPlayers.add(p.getUUID());
+                double closer = before.distanceTo(me) - pos.distanceTo(me);
+                if (closer > 0) approachBy.put(p.getUUID(), closer);
+            }
             now.put(p.getUUID(), pos);
         }
         lastPlayerPos.clear();
@@ -1167,18 +1182,25 @@ public class HungryCow extends Cow {
         int t = trustOf(player);
         boolean running = player.isSprinting();
         boolean jumping = !player.onGround() && !player.getAbilities().flying;
-        int base;
+        boolean still = stillPlayers.contains(player.getUUID());
+        // 0 на краю радіуса, 1 біля самої корови
+        double close = Math.max(0.0, Math.min(1.0, (FEAR_RANGE - Math.sqrt(this.distanceToSqr(player))) / FEAR_RANGE));
+
+        double gain;
         if (running) {
-            base = 40;
+            gain = FEAR_RUNNING * close;
         } else if (jumping) {
-            base = 35;
-        } else if (player.isCrouching()) {
-            base = FEAR_CROUCHING;
-        } else if (stillPlayers.contains(player.getUUID())) {
-            base = FEAR_STILL;      // стоїть на місці: майже не лякає
+            gain = FEAR_JUMPING * close;
+        } else if (still) {
+            gain = FEAR_STILL;
         } else {
-            base = FEAR_WALKING;
+            gain = FEAR_WALKING * close;
         }
+        // кожен крок до корови: що ближче, то страшніше
+        double closer = approachBy.getOrDefault(player.getUUID(), 0.0);
+        gain += closer * (FEAR_PER_BLOCK + FEAR_PER_BLOCK_CLOSE * close);
+        if (player.isCrouching()) gain *= FEAR_CROUCH_FACTOR;
+        int base = (int) Math.round(gain);
 
         if (t < 0) {
             return Math.max(base, CowTrust.HOSTILE_MIN_FEAR);   // ворожа корова завжди насторожена
