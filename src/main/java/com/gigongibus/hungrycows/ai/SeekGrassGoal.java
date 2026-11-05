@@ -7,6 +7,7 @@ import com.gigongibus.hungrycows.CowMemory;
 import com.gigongibus.hungrycows.HungryCow;
 import com.gigongibus.hungrycows.Regrowth;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.core.BlockPos;
@@ -206,7 +207,13 @@ public class SeekGrassGoal extends Goal {
 
         // перший рух одразу, далі кожні 10 тіків
         if (runTicks == 1 || runTicks % 10 == 0) {
-            cow.getNavigation().moveTo(x, y, z, 1.0);
+            if (kind == Kind.PLACED) {
+                // кавун, гарбуз, сіно — твердий блок: іти до його краю, а не в середину (інакше шлях не знаходиться)
+                Path path = cow.getNavigation().createPath(target, 1);
+                if (path != null) cow.getNavigation().moveTo(path, 1.0);
+            } else {
+                cow.getNavigation().moveTo(x, y, z, 1.0);
+            }
         }
 
         // кожні 20 тіків перевіряємо, чи корова справді наближається до цілі
@@ -280,6 +287,12 @@ public class SeekGrassGoal extends Goal {
             // кавун, гарбуз, сіно, квіти: за таблицею CowFood
             Item item = block.asItem();
             CowFood food = CowFood.get(item);
+            // квітка відросте на тому самому місці (у високої — з нижньої половини)
+            if (server != null && state.is(BlockTags.FLOWERS)) {
+                BlockPos flowerPos = state.hasProperty(DoublePlantBlock.HALF)
+                        && state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER ? target.below() : target;
+                Regrowth.flowerEaten(server, flowerPos, block);
+            }
             cow.level().destroyBlock(target, false);
             if (food != null) {
                 cow.eatFood(food, item);

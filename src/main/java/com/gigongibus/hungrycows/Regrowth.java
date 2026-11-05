@@ -36,22 +36,26 @@ public class Regrowth extends SavedData {
     public static final float PLANT_CHANCE = 0.30F;         // шанс, що на трав'яному блоці виросте низька трава
     public static final int PLANT_MIN_TICKS = 3 * 1200;     // ... через 3–5 хв
     public static final int PLANT_MAX_TICKS = 5 * 1200;
-    public static final int TALL_TICKS = 5 * 1200;          // низька трава стає високою через 5 хв
+    public static final int TALL_TICKS = 5 * 1200;
+    public static final int FLOWER_MIN_TICKS = 5 * 1200;    // з'їдена квітка відростає за 5–8 хв
+    public static final int FLOWER_MAX_TICKS = 8 * 1200;          // низька трава стає високою через 5 хв
     public static final int CHECK_EVERY_TICKS = 20;         // як часто перевіряти, чи щось уже має відрости
 
     private static final String NAME = HungryCowsMod.MODID + "_regrowth";
 
-    private enum Kind { GRASS, MOSS, SHORT_PLANT, TALL_PLANT }
+    private enum Kind { GRASS, MOSS, SHORT_PLANT, TALL_PLANT, FLOWER }
 
     private static class Entry {
         final Kind kind;
         final long due;          // ігровий час, коли відросте
         final String expected;   // який блок має бути на місці (інакше гравець його змінив)
+        final String payload;    // що виросте (для квітки — яка саме)
 
-        Entry(Kind kind, long due, String expected) {
+        Entry(Kind kind, long due, String expected, String payload) {
             this.kind = kind;
             this.due = due;
             this.expected = expected;
+            this.payload = payload;
         }
     }
 
@@ -80,6 +84,15 @@ public class Regrowth extends SavedData {
         }
     }
 
+    // Корова з'їла квітку: через 5–8 хв на тому самому місці виросте така сама
+    public static void flowerEaten(ServerLevel level, BlockPos pos, Block flower) {
+        Regrowth data = get(level);
+        RandomSource r = level.getRandom();
+        long due = level.getGameTime() + FLOWER_MIN_TICKS + r.nextInt(FLOWER_MAX_TICKS - FLOWER_MIN_TICKS + 1);
+        data.entries.put(pos.asLong(), new Entry(Kind.FLOWER, due, id(Blocks.AIR), id(flower)));
+        data.setDirty();
+    }
+
     // Гравець зламав або поставив блок: на цьому місці нічого не відросте
     public static void blockChanged(ServerLevel level, BlockPos pos) {
         Regrowth data = get(level);
@@ -90,7 +103,7 @@ public class Regrowth extends SavedData {
     private void add(ServerLevel level, BlockPos pos, Kind kind, Block expected, int minTicks, int maxTicks) {
         RandomSource r = level.getRandom();
         long due = level.getGameTime() + minTicks + r.nextInt(Math.max(1, maxTicks - minTicks + 1));
-        entries.put(pos.asLong(), new Entry(kind, due, id(expected)));
+        entries.put(pos.asLong(), new Entry(kind, due, id(expected), ""));
         setDirty();
     }
 
@@ -139,6 +152,18 @@ public class Regrowth extends SavedData {
                 if (!level.getBlockState(pos.above()).isAir()) return;   // немає місця для верхньої половини
                 DoublePlantBlock.placeAt(level, Blocks.TALL_GRASS.defaultBlockState(), pos, 3);
             }
+            case FLOWER -> {
+                Block flower = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(e.payload));
+                if (flower == null || flower == Blocks.AIR) return;
+                BlockState fs = flower.defaultBlockState();
+                if (!fs.canSurvive(level, pos)) return;   // тут квітка вже не виросте (немає трави чи землі)
+                if (flower instanceof DoublePlantBlock) {
+                    if (!level.getBlockState(pos.above()).isAir()) return;
+                    DoublePlantBlock.placeAt(level, fs, pos, 3);
+                } else {
+                    level.setBlockAndUpdate(pos, fs);
+                }
+            }
         }
     }
 
@@ -153,6 +178,7 @@ public class Regrowth extends SavedData {
             c.putString("Kind", e.getValue().kind.name());
             c.putLong("Due", e.getValue().due);
             c.putString("Expected", e.getValue().expected);
+            c.putString("Payload", e.getValue().payload);
             list.add(c);
         }
         tag.put("Entries", list);
@@ -166,7 +192,7 @@ public class Regrowth extends SavedData {
             CompoundTag c = list.getCompound(i);
             try {
                 Kind kind = Kind.valueOf(c.getString("Kind"));
-                data.entries.put(c.getLong("Pos"), new Entry(kind, c.getLong("Due"), c.getString("Expected")));
+                data.entries.put(c.getLong("Pos"), new Entry(kind, c.getLong("Due"), c.getString("Expected"), c.getString("Payload")));
             } catch (IllegalArgumentException ignored) {
                 // невідомий запис зі старої версії: пропускаємо
             }
