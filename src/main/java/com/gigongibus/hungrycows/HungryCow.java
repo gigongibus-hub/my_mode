@@ -97,7 +97,10 @@ public class HungryCow extends Cow {
     public static final double FEAR_PUMPKIN_FACTOR = 1.5; // у вирізаному гарбузі — страх у півтора раза більший (і корова не впізнає)
     public static final double STILL_MOVE = 0.5;         // «стоїть на місці» = за секунду зрушив менше ніж на пів блока
     public static final double ALARM_RADIUS = 8;         // корова тікає — корови ближче цього лякаються теж
-    public static final int ALARM_FEAR = 15;             // скільки страху передається (× чутливість до стресу 0.5–1.5)
+    public static final int ALARM_FEAR = 25;             // скільки страху передається (× чутливість до стресу 0.5–1.5)
+    public static final int ALARM_HIT_FEAR = 35;         // бачила, як гравець ударив корову: страх одразу
+    public static final int ALARM_MEMORY_TICKS = 200;    // 10 с пам'ятає, від кого тікати ...
+    public static final double ALARM_MEMORY_RANGE = 20;  // ... навіть якщо він далі (до 20 блоків)
     public static final int ALARM_COOLDOWN_TICKS = 100;  // одна корова «заражається» страхом не частіше раз на 5 с
     public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
@@ -300,15 +303,22 @@ public class HungryCow extends Cow {
         double r = ALARM_RADIUS;
         for (HungryCow other : this.level().getEntitiesOfClass(HungryCow.class, this.getBoundingBox().inflate(r),
                 c -> c != this && c.isAlive() && c.distanceToSqr(this) <= r * r)) {
-            other.receiveAlarm(threat);
+            other.receiveAlarm(threat, ALARM_FEAR);
         }
     }
 
-    private void receiveAlarm(LivingEntity threat) {
+    private LivingEntity alarmThreat = null;   // від кого тікають інші (не зберігається)
+    private int alarmUntil = 0;
+
+    public void receiveAlarm(LivingEntity threat, int amount) {
         if (this.tickCount - lastAlarmTick < ALARM_COOLDOWN_TICKS) return;
         lastAlarmTick = this.tickCount;
         double k = 0.5 + character.fraction(Trait.STRESS_SENSITIVITY);
-        fear = (int) Math.min(100, fear + ALARM_FEAR * k);
+        fear = (int) Math.min(100, fear + amount * k);
+        if (threat != null) {
+            alarmThreat = threat;
+            alarmUntil = this.tickCount + ALARM_MEMORY_TICKS;
+        }
         chem.onAlarm();
         // вчиться від стада: від цього гравця інша корова втекла — до нього звикає менше
         if (threat instanceof Player p) memory.familiarityHit(p, CowMemory.HABIT_LOSS_ALARM);
@@ -1085,12 +1095,15 @@ public class HungryCow extends Cow {
         }
         if (food.slowFrom > 0 && count >= food.slowFrom) {
             this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, food.slowSeconds * 20));
+            memory.blameDirect(item, CowMemory.SLOW_BLAME, "від цього стала важкою");
         }
         if (food.dyingFrom > 0 && count >= food.dyingFrom) {
             dyingLeft = food.dyingSeconds;
+            memory.blameDirect(item, CowMemory.DYING_BLAME, "від цього їй дуже погано");
         }
         if (food.selfDamage > 0) {
             this.hurt(this.damageSources().cactus(), food.selfDamage);
+            memory.blameDirect(item, CowMemory.THORN_BLAME, "вкололась");
         }
         if (food.toxinSeconds > 0) {
             toxinLeft = Math.max(1, (int) Math.round(food.toxinSeconds * genes.inverse(CowGenes.Gene.POISON_RESIST)));
@@ -1103,6 +1116,7 @@ public class HungryCow extends Cow {
             chance = (float) Math.min(1.0, chance * gene(CowGenes.Gene.CHOKE_RISK));
             if (this.getRandom().nextFloat() < chance) {
                 startChoking();
+                memory.blameDirect(item, CowMemory.CHOKE_BLAME, "подавилась");
             }
         }
     }
@@ -1174,7 +1188,13 @@ public class HungryCow extends Cow {
                 enemy = p;
             }
         }
-        return enemy != null ? enemy : best;
+        if (enemy != null) return enemy;
+        // тривога від стада: пам'ятає, від кого тікали інші, навіть якщо він далі
+        if (alarmThreat != null && this.tickCount < alarmUntil && alarmThreat.isAlive() && isScary(alarmThreat)
+                && this.distanceToSqr(alarmThreat) < ALARM_MEMORY_RANGE * ALARM_MEMORY_RANGE) {
+            return alarmThreat;
+        }
+        return best;
     }
 
     // Скільки страху за секунду дають усі, хто поруч (береться найбільше)
@@ -1291,7 +1311,10 @@ public class HungryCow extends Cow {
                     experience(Experience.HIT_BY_PLAYER, HIT_EXPERIENCE_COOLDOWN);
                     if (!player.isSpectator() && !player.hasEffect(MobEffects.INVISIBILITY)) {
                         for (HungryCow w : witnesses()) {
-                            if (w.hasLineOfSight(player)) w.experience(Experience.SAW_PLAYER_HIT_COW, SAW_HIT_EXPERIENCE_COOLDOWN);
+                            if (w.hasLineOfSight(player)) {
+                                w.experience(Experience.SAW_PLAYER_HIT_COW, SAW_HIT_EXPERIENCE_COOLDOWN);
+                                w.receiveAlarm(player, ALARM_HIT_FEAR);   // бачила удар — лякається й тікає
+                            }
                         }
                     }
                 }

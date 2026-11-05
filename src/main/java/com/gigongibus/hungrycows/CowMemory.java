@@ -33,6 +33,11 @@ public class CowMemory {
     public static final double AVERSION_GAIN = 0.5;      // наскільки сильна відраза до найсвіжішої страви за раз
     public static final int SICK_UNWELL = 30;            // «погано» = нездужання від 30, отрута, токсин чи подавилась
     public static final int SICK_REPEAT_SECONDS = 10;    // поки погано, підсилює відразу раз на 10 с
+    // шкода прямо від їжі — відраза одразу саме до неї (не чекаючи нездужання)
+    public static final double THORN_BLAME = 0.5;        // вкололась (трояндовий кущ)
+    public static final double CHOKE_BLAME = 0.5;        // подавилась
+    public static final double SLOW_BLAME = 0.3;         // стала повільною (папороть)
+    public static final double DYING_BLAME = 0.6;        // «повільна смерть» (папороть)
     public static final double STAPLE_BLAME = 0.2;       // звична їжа (трава, мох, сіно) отримує лише 20% провини
     public static final double AVOID_AT = 0.7;           // з такої відрази не їсть цю їжу сама (хіба що голодує) і не бере з рук
     public static final double AVERSION_SCORE = 40;      // у пошуку їжі відраза 1.0 знімає 40 балів вигоди
@@ -97,6 +102,17 @@ public class CowMemory {
     public double aversion(Item item) {
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
         return key == null ? 0 : aversion.getOrDefault(key.toString(), 0.0);
+    }
+
+    // Від цієї їжі одразу стало погано (вкололась, подавилась тощо): відраза саме до неї
+    public void blameDirect(Item item, double strength, String why) {
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        if (key == null) return;
+        boolean staple = "grass".equals(CowMilk.dietGroup(item)) || item == net.minecraft.world.item.Items.HAY_BLOCK;
+        double s = strength * (staple ? STAPLE_BLAME : 1.0);
+        aversion.merge(key.toString(), s, (a, b) -> Math.min(1.0, a + b));
+        cow.tell(cow.family.name + ": " + why + " — запам'ятала (" + key.getPath() + " "
+                + Math.round(aversion.get(key.toString()) * 100) + "%)");
     }
 
     public boolean avoids(Item item) {
