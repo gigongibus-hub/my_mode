@@ -288,7 +288,10 @@ public class SeekGrassGoal extends Goal {
         // пам'ять: відраза до цієї їжі й те, яке це місце (добре чи там били)
         double memory = -CowMemory.AVERSION_SCORE * cow.memory.aversion(c.block.asItem())
                 + CowMemory.PLACE_SCORE * cow.memory.placeValue(c.pos);
-        return c.value + bonus - DISTANCE_PENALTY * distance + memory;
+        // ідея 9: вдень корова охочіше пасеться в полі (над травою видно небо)
+        BlockPos stand = (c.kind == Kind.GRASS_BLOCK || c.kind == Kind.MOSS_BLOCK) ? c.pos.above() : c.pos;
+        double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
+        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field;
     }
 
     // «апетит» до виду квітки з урахуванням відрази

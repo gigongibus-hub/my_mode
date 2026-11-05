@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.network.PacketDistributor;
@@ -34,6 +35,10 @@ public final class CowBook {
 
         // 2. Потреби
         out.add("#Потреби");
+        BlockPos home = cow.home.home();
+        out.add("Дім: " + (home == null ? "ще не знайшла" : home.getX() + " " + home.getY() + " " + home.getZ()
+                + " (" + Math.round(Math.sqrt(cow.distanceToSqr(home.getX(), home.getY(), home.getZ()))) + " бл.)")
+                + (cow.sleeping ? " — спить" : ""));
         out.add("Спрага: " + cow.thirst + " (п'є з " + HungryCow.THIRSTY_AT + ", зневоднення з " + HungryCow.DEHYDRATE_AT + ")"
                 + (cow.inSun() ? " — на сонці" : ""));
         out.add("Голод: " + cow.hunger + " (шукає їжу з " + cow.hungryAt() + " з урахуванням апетиту, голодує з "

@@ -57,6 +57,8 @@ import com.gigongibus.hungrycows.ai.HerdUpGoal;
 import com.gigongibus.hungrycows.ai.InvestigateGoal;
 import com.gigongibus.hungrycows.ai.MotherCalfGoal;
 import com.gigongibus.hungrycows.ai.RuminateGoal;
+import com.gigongibus.hungrycows.ai.SeekShadeGoal;
+import com.gigongibus.hungrycows.ai.SleepGoal;
 import com.gigongibus.hungrycows.ai.MateGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
 import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
@@ -91,6 +93,9 @@ public class HungryCow extends Cow {
     public static final int DEHYDRATE_DAMAGE_SECONDS = 5; // урон 1 HP раз на стільки секунд
     public static final int DRINK_AMOUNT = 50;           // одне пиття знімає стільки спраги
     public static final int CALF_MILK_THIRST = 35;       // теля: один раз попити молока знімає стільки спраги
+
+    public static final double SLEEP_FEAR = 0.5;         // сплячу корову гравець лякає вдвічі менше
+    public static final double FIELD_BONUS = 10;         // вдень трава на відкритому місці (поле) привабливіша на стільки балів
 
     public static final double LACTATING_HUNGER = 0.3;   // дійна (є молоко) — на 30% швидше (разом з вагітністю +50%)
     public static final double RUN_HUNGER = 2.0;         // бігає (тікає, гасає в тічку) — голодніє вдвічі швидше
@@ -207,6 +212,8 @@ public class HungryCow extends Cow {
     public final CowChemistry chem = new CowChemistry(this);          // речовини в крові й відчуття
     public final CowBrain brain = new CowBrain(this);                 // мозок: вибирає дії (крок 7)
     public final CowMemory memory = new CowMemory(this);              // відраза до їжі, звикання, місця
+    public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
+    public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     private int lastMealTick = -100000;                               // коли востаннє їла (для ремигання)
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
@@ -310,6 +317,12 @@ public class HungryCow extends Cow {
         tell(family.name + " попила води (спрага " + thirst + ")");
     }
 
+    // Ніч (лише у світах зі сходом і заходом сонця)
+    public boolean isNightTime() {
+        return this.level().dimensionType().hasSkyLight() && !this.level().dimensionType().hasFixedTime()
+                && !this.level().isDay();
+    }
+
     public boolean shouldRest() {
         if (fatigue >= EXHAUSTED_AT) return true;   // рефлекс: виснаження
         return CowBrain.enabled ? brain.is(CowBrain.Action.REST) : wantsRest();
@@ -332,14 +345,14 @@ public class HungryCow extends Cow {
             return switch (a) {
                 case EAT -> g instanceof SeekGrassGoal || g instanceof DrinkMilkGoal || g instanceof BrainTemptGoal;
                 case DRINK -> g instanceof DrinkWaterGoal || g instanceof DrinkMilkGoal;
-                case REST -> g instanceof RestGoal;
+                case REST -> g instanceof RestGoal || g instanceof SeekShadeGoal || g instanceof SleepGoal;
                 case HERD -> g instanceof HerdUpGoal;
                 case FRIEND -> g instanceof ApproachPlayerGoal || g instanceof BrainTemptGoal;
                 case WANDER -> true;
                 case WARY -> g instanceof FearGoal;
                 case MATE -> g instanceof MateGoal || g instanceof BullCourtGoal;
                 case FAMILY -> g instanceof MotherCalfGoal || g instanceof FollowMotherGoal;
-                case RUMINATE -> g instanceof RuminateGoal;
+                case RUMINATE -> g instanceof RuminateGoal || g instanceof SeekShadeGoal;
                 case CURIOUS -> g instanceof InvestigateGoal || g instanceof BrainTemptGoal;
             };
         });
@@ -536,6 +549,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(7, new SeekGrassGoal(this));             // пошук їжі
         this.goalSelector.addGoal(8, new MateGoal(this));                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
+        this.goalSelector.addGoal(9, new SleepGoal(this));                 // вночі додому і спати (ідея 9)
+        this.goalSelector.addGoal(9, new SeekShadeGoal(this));             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
         this.goalSelector.addGoal(11, new RuminateGoal(this));             // ремигання після їжі (лише з мозком)
         this.goalSelector.addGoal(12, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
@@ -646,6 +661,7 @@ public class HungryCow extends Cow {
             giveFriendEffect();
             chem.secondTick();
             memory.secondTick();
+            home.secondTick();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
@@ -1338,6 +1354,7 @@ public class HungryCow extends Cow {
         if (player.isCrouching()) gain *= FEAR_CROUCH_FACTOR;
         if (isDisguised(player)) gain *= FEAR_PUMPKIN_FACTOR;
         else gain *= memory.habituationFactor(player);   // звикла до цього гравця — боїться менше
+        if (sleeping) gain *= SLEEP_FEAR;                 // спить — гірше помічає дрібниці
         int base = (int) Math.round(gain);
 
         if (t < 0) {
@@ -1453,6 +1470,7 @@ public class HungryCow extends Cow {
         chem.save(tag);
         brain.save(tag);
         memory.save(tag);
+        home.save(tag);
     }
 
     @Override
@@ -1478,6 +1496,7 @@ public class HungryCow extends Cow {
         chem.load(tag);
         brain.load(tag);
         memory.load(tag);
+        home.load(tag);
         onGenesChanged();
     }
 }
