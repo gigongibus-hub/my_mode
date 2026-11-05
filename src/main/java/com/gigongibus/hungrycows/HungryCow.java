@@ -222,6 +222,7 @@ public class HungryCow extends Cow {
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
+    public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі
     private int lastMealTick = -100000;                               // коли востаннє їла (для ремигання)
     private final EnumMap<Experience, Integer> lastExperience = new EnumMap<>(Experience.class); // не зберігається
     public int nurseUntil = 0;                      // до якого тіку мати стоїть і годує теля
