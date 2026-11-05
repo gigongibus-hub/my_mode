@@ -28,6 +28,7 @@ public class CowHome {
 
     private final HungryCow cow;
     private BlockPos home = null;
+    private BlockPos treeSpot = null;   // запасне місце для сну, якщо дому немає: під деревом чи будь-яким накриттям
     private int homeScore = 0;
     private int seconds = 0;
     private int sweep = 0;   // по черзі оглядає околицю (номер клітинки)
@@ -38,6 +39,15 @@ public class CowHome {
 
     public BlockPos home() {
         return home;
+    }
+
+    // Куди йти спати: дім, а якщо його немає — під дерево
+    public BlockPos sleepSpot() {
+        return home != null ? home : treeSpot;
+    }
+
+    public BlockPos treeSpot() {
+        return treeSpot;
     }
 
     // ---------- перевірки місць ----------
@@ -118,6 +128,13 @@ public class CowHome {
     public void secondTick() {
         if (cow.isBaby()) return;   // теля спить біля матері
         seconds++;
+        // запасне місце під деревом: забути, якщо там більше немає тіні чи воно далеко
+        if (treeSpot != null && seconds % RECHECK_SECONDS == 0
+                && (!standable(cow.level(), treeSpot) || !shaded(cow.level(), treeSpot)
+                || cow.distanceToSqr(treeSpot.getX() + 0.5, treeSpot.getY(), treeSpot.getZ() + 0.5)
+                > MAX_HOME_DISTANCE * MAX_HOME_DISTANCE)) {
+            treeSpot = null;
+        }
         if (home != null && (seconds % RECHECK_SECONDS == 0)) {
             int s = shelterScore(cow.level(), home);
             if (s == 0 || cow.distanceToSqr(home.getX() + 0.5, home.getY(), home.getZ() + 0.5)
@@ -145,6 +162,11 @@ public class CowHome {
             BlockPos p = groundNear(x, o.getY(), z);
             if (p == null) continue;
             int s = shelterScore(cow.level(), p);
+            // не дім, але є тінь (дерево): запасне місце для сну — ближче краще
+            if (s == 0 && shaded(cow.level(), p) && (treeSpot == null
+                    || p.distSqr(o) < treeSpot.distSqr(o))) {
+                treeSpot = p.immutable();
+            }
             if (s > homeScore) {
                 cow.tell(cow.family.name + (home == null ? " знайшла дім: " : " знайшла кращий дім: ")
                         + p.getX() + " " + p.getY() + " " + p.getZ() + " (бали " + s + ")");
@@ -165,10 +187,12 @@ public class CowHome {
             tag.putLong("Home", home.asLong());
             tag.putInt("HomeScore", homeScore);
         }
+        if (treeSpot != null) tag.putLong("TreeSpot", treeSpot.asLong());
     }
 
     public void load(CompoundTag tag) {
         home = tag.contains("Home") ? BlockPos.of(tag.getLong("Home")) : null;
         homeScore = tag.getInt("HomeScore");
+        treeSpot = tag.contains("TreeSpot") ? BlockPos.of(tag.getLong("TreeSpot")) : null;
     }
 }

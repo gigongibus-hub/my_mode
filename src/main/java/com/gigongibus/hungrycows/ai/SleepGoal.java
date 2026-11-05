@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 // Вночі корова йде додому (укриття) і спить: стоїть, відпочиває, гірше помічає дрібниці.
-// Якщо дому немає — спить там, де є. Голод, спрага, страх і пологи важливіші (вищий пріоритет).
+// Якщо дому немає — спить під деревом (будь-яке накриття); якщо й дерева немає — там, де є. Голод, спрага, страх і пологи важливіші (вищий пріоритет).
 public class SleepGoal extends Goal {
     private static final double HOME_REACH = 2.0;       // «вдома» = ближче цього
     private static final int MAX_WALK_TICKS = 1200;     // іде додому щонайбільше 1 хв, потім спить, де є
@@ -61,7 +61,7 @@ public class SleepGoal extends Goal {
     @Override
     public void tick() {
         ticks++;
-        BlockPos home = cow.home.home();
+        BlockPos home = cow.home.sleepSpot();
         if (home != null && walkTicks < MAX_WALK_TICKS
                 && cow.distanceToSqr(home.getX() + 0.5, home.getY(), home.getZ() + 0.5) > HOME_REACH * HOME_REACH) {
             walkTicks++;

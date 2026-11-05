@@ -36,7 +36,8 @@ public final class CowBook {
         // 2. Потреби
         out.add("#Потреби");
         BlockPos home = cow.home.home();
-        out.add("Дім: " + (home == null ? "ще не знайшла" : home.getX() + " " + home.getY() + " " + home.getZ()
+        BlockPos tree = cow.home.treeSpot();
+        out.add("Дім: " + (home == null ? (tree != null ? "немає, спить під деревом (" + tree.getX() + " " + tree.getY() + " " + tree.getZ() + ")" : "ще не знайшла") : home.getX() + " " + home.getY() + " " + home.getZ()
                 + " (" + Math.round(Math.sqrt(cow.distanceToSqr(home.getX(), home.getY(), home.getZ()))) + " бл.)")
                 + (home != null ? ", бали " + cow.home.homeScore() + " з 13" : "")
                 + (cow.sleeping ? " — спить" : ""));
