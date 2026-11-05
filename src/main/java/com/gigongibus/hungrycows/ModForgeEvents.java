@@ -114,7 +114,9 @@ public class ModForgeEvents {
             cow.getNavigation().resetMaxVisitedNodesMultiplier();
             String name = cow.family.name + " (" + cow.blockPosition().toShortString() + ")";
             net.minecraft.core.BlockPos home = cow.home.home();
-            String homeText = home == null ? "дому немає" : "дім " + home.toShortString() + ", бали " + cow.home.homeScore();
+            net.minecraft.core.BlockPos door = cow.home.entrance();
+            String homeText = home == null ? "дому немає" : "дім " + home.toShortString() + ", бали " + cow.home.homeScore()
+                    + ", вхід " + (door == null ? "невідомий" : door.toShortString());
             String result;
             if (path == null || path.getEndNode() == null) {
                 result = "шляху немає зовсім";

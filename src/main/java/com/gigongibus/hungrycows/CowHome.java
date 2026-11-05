@@ -39,6 +39,9 @@ public class CowHome {
     private BlockPos home = null;
     private BlockPos treeSpot = null;   // запасне місце для сну, якщо дому немає: під деревом чи будь-яким накриттям
     private int homeScore = 0;
+    private BlockPos entrance = null;      // вхід у дім: остання точка шляху надворі перед дахом (туди спершу, потім усередину)
+    private BlockPos lastEntrance = null;  // вхід, знайдений останнім перевіреним шляхом
+    public static final double ENTRANCE_REACH = 2.0;   // «біля входу» = ближче 2 блоків
     private int seconds = 0;
     private int sweep = 0;
     private int lastUnreachableTell = -100000;
@@ -61,6 +64,11 @@ public class CowHome {
     // Куди йти спати: дім, а якщо його немає — під дерево
     public BlockPos sleepSpot() {
         return home != null ? home : treeSpot;
+    }
+
+    // Вхід у дім (null — невідомий: дім знайдено зсередини або спить під деревом)
+    public BlockPos entrance() {
+        return entrance;
     }
 
     public BlockPos treeSpot() {
@@ -156,6 +164,13 @@ public class CowHome {
         if (end == null) return null;
         BlockPos e = end.asBlockPos();
         lastPathEnd = e;
+        // вхід: остання точка шляху ще надворі (без даху) перед тим, як шлях заходить під дах
+        lastEntrance = null;
+        for (int i = 1; i < path.getNodeCount(); i++) {
+            if (hasRoof(cow.level(), path.getNodePos(i)) && !hasRoof(cow.level(), path.getNodePos(i - 1))) {
+                lastEntrance = path.getNodePos(i - 1).immutable();
+            }
+        }
         if (e.distManhattan(p) <= 1) return p;
         if (e.distManhattan(p) <= NEAR_REACH && standable(cow.level(), e) && shelterScore(cow.level(), e) > 0) return e;
         return null;
@@ -198,6 +213,7 @@ public class CowHome {
                         + r.getX() + " " + r.getY() + " " + r.getZ() + " (бали " + rs + ")");
                 home = r.immutable();
                 homeScore = rs;
+                entrance = lastEntrance;
             }
         }
     }
@@ -236,8 +252,13 @@ public class CowHome {
                 cow.tell(cow.family.name + ": дім більше не годиться, шукає новий");
                 home = null;
                 homeScore = 0;
+                entrance = null;
             } else {
                 homeScore = s;
+                // вхід ще невідомий (дім знайдено зсередини чи зі старого збереження): шукає його, коли сама надворі
+                if (entrance == null && !hasRoof(cow.level(), cow.blockPosition()) && reachableNear(home) != null) {
+                    entrance = lastEntrance;
+                }
             }
         }
         // огляд околиць: шукає дім або кращий (закритіший) дім — навмання й по черзі
@@ -292,6 +313,7 @@ public class CowHome {
         if (home != null) {
             tag.putLong("Home", home.asLong());
             tag.putInt("HomeScore", homeScore);
+            if (entrance != null) tag.putLong("HomeEntrance", entrance.asLong());
         }
         if (treeSpot != null) tag.putLong("TreeSpot", treeSpot.asLong());
     }
@@ -299,6 +321,7 @@ public class CowHome {
     public void load(CompoundTag tag) {
         home = tag.contains("Home") ? BlockPos.of(tag.getLong("Home")) : null;
         homeScore = tag.getInt("HomeScore");
+        entrance = tag.contains("HomeEntrance") ? BlockPos.of(tag.getLong("HomeEntrance")) : null;
         treeSpot = tag.contains("TreeSpot") ? BlockPos.of(tag.getLong("TreeSpot")) : null;
     }
 }
