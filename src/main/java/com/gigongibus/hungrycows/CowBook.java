@@ -46,7 +46,8 @@ public final class CowBook {
 
         // 3. Довіра
         out.add("#Довіра");
-        int t = cow.trustOf(reader);
+        int t = cow.realTrustOf(reader);
+        if (HungryCow.isDisguised(reader)) out.add("Ти в гарбузі: корова тебе не впізнає");
         out.add("До тебе: " + t);
         out.add(trustStatus(t));
         out.add("Пам'ятає гравців: " + cow.trust.knownPlayers());

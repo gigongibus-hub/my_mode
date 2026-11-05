@@ -92,7 +92,8 @@ public class HungryCow extends Cow {
     public static final int FEAR_STILL = 2;              // стоїть на місці (корова за цей час заспокоюється на 1–3)
     public static final double FEAR_PER_BLOCK = 2;       // за кожен блок, на який гравець наблизився (на краю) ...
     public static final double FEAR_PER_BLOCK_CLOSE = 2; // ... + стільки ще біля самої корови (тобто до 4 за блок)
-    public static final double FEAR_CROUCH_FACTOR = 0.5; // присівши — страх удвічі менший
+    public static final double FEAR_CROUCH_FACTOR = 0.67; // присівши — страх у півтора раза менший
+    public static final double FEAR_PUMPKIN_FACTOR = 1.5; // у вирізаному гарбузі — страх у півтора раза більший (і корова не впізнає)
     public static final double STILL_MOVE = 0.5;         // «стоїть на місці» = за секунду зрушив менше ніж на пів блока
     public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
@@ -599,8 +600,20 @@ public class HungryCow extends Cow {
 
     // ===================== ДОВІРА =====================
 
+    // Довіра так, як її відчуває корова: гравця у вирізаному гарбузі вона не впізнає (для неї він незнайомець)
     public int trustOf(Player player) {
+        if (isDisguised(player)) return 0;
         return trust.get(player.getUUID());
+    }
+
+    // Справжня збережена довіра (для книги), навіть якщо гравець зараз у гарбузі
+    public int realTrustOf(Player player) {
+        return trust.get(player.getUUID());
+    }
+
+    // Вирізаний гарбуз на голові: корова не впізнає людину
+    public static boolean isDisguised(Player player) {
+        return player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).is(Items.CARVED_PUMPKIN);
     }
 
     // scaled = true: застосувати тестовий множник CowTrust.TEST_MULTIPLIER
@@ -1200,6 +1213,7 @@ public class HungryCow extends Cow {
         double closer = approachBy.getOrDefault(player.getUUID(), 0.0);
         gain += closer * (FEAR_PER_BLOCK + FEAR_PER_BLOCK_CLOSE * close);
         if (player.isCrouching()) gain *= FEAR_CROUCH_FACTOR;
+        if (isDisguised(player)) gain *= FEAR_PUMPKIN_FACTOR;
         int base = (int) Math.round(gain);
 
         if (t < 0) {
