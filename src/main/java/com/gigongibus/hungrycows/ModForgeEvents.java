@@ -74,6 +74,7 @@ public class ModForgeEvents {
                 .then(Commands.literal("brain")
                         .then(Commands.literal("on").executes(c -> setBrain(c.getSource(), true)))
                         .then(Commands.literal("off").executes(c -> setBrain(c.getSource(), false))))
+                .then(Commands.literal("path").executes(c -> pathTest(c.getSource())))
                 .then(Commands.literal("birth")
                         .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
                         .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
@@ -86,6 +87,67 @@ public class ModForgeEvents {
                 ? "Мозок корів увімкнено"
                 : "Мозок корів вимкнено: діють старі правила"), true);
         return 1;
+    }
+
+    // ================= ПЕРЕВІРКА ШЛЯХУ (/hungrycows path) =================
+    private static final double PATH_TEST_RANGE = 48;   // які корови перевіряють шлях до гравця
+    private static final int PATH_TEST_COWS = 3;        // скільки найближчих корів
+
+    // /hungrycows path — чи можуть корови дійти до місця, де стоїть гравець, і що саме заважає
+    private static int pathTest(CommandSourceStack source) {
+        ServerLevel level = source.getLevel();
+        net.minecraft.core.BlockPos target = net.minecraft.core.BlockPos.containing(source.getPosition());
+        source.sendSuccess(() -> Component.literal("Місце " + target.toShortString() + ": можна стати "
+                + (CowHome.standable(level, target) ? "так" : "ні") + ", дах " + (CowHome.hasRoof(level, target) ? "так" : "ні")
+                + ", стін " + CowHome.walls(level, target) + ", бали дому " + CowHome.shelterScore(level, target)), false);
+        java.util.List<HungryCow> cows = level.getEntitiesOfClass(HungryCow.class,
+                new net.minecraft.world.phys.AABB(target).inflate(PATH_TEST_RANGE), c -> c.isAlive() && !c.isBaby());
+        cows.sort(java.util.Comparator.comparingDouble(c -> c.distanceToSqr(source.getPosition())));
+        if (cows.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("Поруч немає дорослих корів"), false);
+            return 0;
+        }
+        for (int i = 0; i < Math.min(PATH_TEST_COWS, cows.size()); i++) {
+            HungryCow cow = cows.get(i);
+            cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);
+            net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(target, 1);
+            cow.getNavigation().resetMaxVisitedNodesMultiplier();
+            String name = cow.family.name + " (" + cow.blockPosition().toShortString() + ")";
+            net.minecraft.core.BlockPos home = cow.home.home();
+            String homeText = home == null ? "дому немає" : "дім " + home.toShortString() + ", бали " + cow.home.homeScore();
+            String result;
+            if (path == null || path.getEndNode() == null) {
+                result = "шляху немає зовсім";
+            } else {
+                net.minecraft.core.BlockPos end = path.getEndNode().asBlockPos();
+                if (end.distManhattan(target) <= 1) {
+                    result = "дійде (" + path.getNodeCount() + " кроків)";
+                } else {
+                    result = "шлях обривається в " + end.toShortString() + "; далі " + obstacle(level, end, target);
+                }
+            }
+            String text = name + ": " + homeText + "; " + result;
+            source.sendSuccess(() -> Component.literal(text), false);
+        }
+        return 1;
+    }
+
+    // Що лежить на один блок далі від кінця шляху в бік цілі: під ногами, на рівні ніг і голови
+    private static String obstacle(ServerLevel level, net.minecraft.core.BlockPos end, net.minecraft.core.BlockPos target) {
+        int dx = target.getX() - end.getX();
+        int dz = target.getZ() - end.getZ();
+        net.minecraft.core.BlockPos next = Math.abs(dx) >= Math.abs(dz)
+                ? end.offset(Integer.signum(dx), 0, 0) : end.offset(0, 0, Integer.signum(dz));
+        net.minecraft.world.level.pathfinder.BlockPathTypes type =
+                net.minecraft.world.level.pathfinder.WalkNodeEvaluator.getBlockPathTypeStatic(level, next.mutable());
+        return next.toShortString() + " [" + type.name() + "]: під ногами " + blockName(level, next.below())
+                + ", ноги " + blockName(level, next) + ", голова " + blockName(level, next.above());
+    }
+
+    private static String blockName(ServerLevel level, net.minecraft.core.BlockPos pos) {
+        net.minecraft.resources.ResourceLocation key =
+                net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(level.getBlockState(pos).getBlock());
+        return key == null ? "?" : key.getPath();
     }
 
     private static int spawnPregnant(CommandSourceStack source, int calves) {
