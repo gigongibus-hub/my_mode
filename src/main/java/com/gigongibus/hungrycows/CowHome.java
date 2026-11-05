@@ -7,6 +7,8 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 
 /**
  * Дім і тінь (ідея 9).
@@ -71,7 +73,13 @@ public class CowHome {
         if (!low) return false;
         boolean ground = !at.isEmpty() || !level.getBlockState(pos.below()).getCollisionShape(level, pos.below()).isEmpty();
         boolean head = level.getBlockState(pos.above()).getCollisionShape(level, pos.above()).isEmpty();
-        return ground && head;
+        if (!ground || !head) return false;
+        // не на котлі, паркані, огорожі чи хвіртці: мобам туди не можна ставати
+        BlockState below = level.getBlockState(pos.below());
+        if (below.is(BlockTags.CAULDRONS) || below.is(BlockTags.FENCES) || below.is(BlockTags.WALLS)
+                || below.is(BlockTags.FENCE_GATES)) return false;
+        // і головне — та сама перевірка, якою користується пошук шляху гри: чи може моб тут ходити
+        return WalkNodeEvaluator.getBlockPathTypeStatic(level, pos.mutable()) == BlockPathTypes.WALKABLE;
     }
 
     // Тінь: над головою не видно неба
