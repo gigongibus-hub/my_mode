@@ -51,6 +51,10 @@
   до друга, гуляти, стерегтися, шукати пару, до рідних, ремигати, цікавитися). Бал = інстинкт + ген схильності (BRAIN_*)
   + нейромережа 29→12→10 (ваги зберігаються; навчання в 7б). Вибір раз на 0,5 с, тримає дію ≥5 с.
   Команда `/hungrycows brain on|off`, предмет «Палиця налагодження мозку», сторінка «Мозок» у книзі.
+- `CowSleep`: шкала сну (день 0; вечір 12000–13000 +1/2 с, ніч +2/2 с; сонна до −10% швидкості; 100 і не вдома →
+  спить, де є) і своя дорога додому (точки кожні 5 бл., до 40; дійшла вперше — запам'ятала; ходить нею — міцність до 10;
+  не ходила 3 доби + міцність — забуває; перегородили — забуває й записує нову). `Trails`: стежки (SavedData) — лише кроки
+  дорогою додому; 12 кроків на трав'яному блоці → утоптана стежка (`dirt_path`); 3 доби без кроків — лічильник з нуля.
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.

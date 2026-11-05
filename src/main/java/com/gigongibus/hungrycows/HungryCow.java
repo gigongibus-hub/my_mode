@@ -220,6 +220,7 @@ public class HungryCow extends Cow {
     public final CowMemory memory = new CowMemory(this);              // відраза до їжі, звикання, місця
     public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
+    public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі
@@ -683,6 +684,7 @@ public class HungryCow extends Cow {
             memory.secondTick();
             home.secondTick();
             herd.secondTick();
+            sleep.secondTick();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
@@ -696,7 +698,8 @@ public class HungryCow extends Cow {
             String goals = this.goalSelector.getRunningGoals()
                     .map(g -> g.getGoal().getClass().getSimpleName().replace("Goal", ""))
                     .collect(Collectors.joining(","));
-            String name = "Голод: " + hunger + " | Втома: " + fatigue + " | Страх: " + fear;
+            String name = "Голод: " + hunger + " | Втома: " + fatigue + " | Страх: " + fear
+                    + (sleep.sleepiness > 0 ? " | Сон: " + Math.round(sleep.sleepiness) : "");
             Player nearest = this.level().getNearestPlayer(this, 16.0);
             if (nearest != null) {
                 name += " | Довіра: " + trustOf(nearest);
@@ -1503,6 +1506,7 @@ public class HungryCow extends Cow {
         brain.save(tag);
         memory.save(tag);
         home.save(tag);
+        sleep.save(tag);
     }
 
     @Override
@@ -1529,6 +1533,7 @@ public class HungryCow extends Cow {
         brain.load(tag);
         memory.load(tag);
         home.load(tag);
+        sleep.load(tag);
         onGenesChanged();
     }
 }

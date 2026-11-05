@@ -1,6 +1,8 @@
 package com.gigongibus.hungrycows.ai;
 
 import com.gigongibus.hungrycows.CowHome;
+import com.gigongibus.hungrycows.CowSleep;
+import com.gigongibus.hungrycows.Trails;
 import com.gigongibus.hungrycows.CowTrust;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
@@ -24,7 +26,10 @@ import java.util.Set;
 //   2) своє місце біля спільного (усередині, найглибше, не зайняте іншою);
 //   3) якщо надворі — спершу до входу (вхід відомий або вона дізнається його сама), далі всередину;
 //   4) поблизу дому перевіряє, чи до місця справді можна дійти (здалеку гра часто не знаходить шляху);
-//   5) не дійшла — через 30 с пробує знову; без дому — знову шукає дім.
+//   5) не дійшла — через 30 с пробує знову; без дому — знову шукає дім;
+//   6) шкала сну (CowSleep) дійшла до 100, а корова ще не вдома — засинає, де є;
+//   7) дійшла вперше — запам'ятовує дорогу точками, наступного разу йде нею (від точки до точки);
+//      дорогою додому витоптує стежку (Trails).
 public class SleepGoal extends Goal {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     private static final double HOME_REACH = 1.0;        // «на своєму місці» = ближче цього
@@ -69,6 +74,12 @@ public class SleepGoal extends Goal {
     private int nextDoorTry = 0;
     private int outsideSince = -1;
     private boolean tight = false;       // у домі тісно: досить, щоб саме ця клітинка була вільна
+    private int routeIdx = -1;           // до якої точки запам'ятованої дороги йде (−1 — не дорогою)
+    private boolean usedRoute = false;   // цієї ночі йде своєю дорогою (дійде — пам'ятатиме міцніше)
+    private boolean startedOutside = false;
+    private boolean arrived = false;
+    private final java.util.List<BlockPos> recording = new java.util.ArrayList<>();   // нова дорога, поки йде
+    private BlockPos lastStep = null;    // блок, на якому стояла (для стежки)
 
     public SleepGoal(HungryCow cow) {
         this.cow = cow;
@@ -103,6 +114,17 @@ public class SleepGoal extends Goal {
         outsideSince = -1;
         // повернулась уночі (поїла, попила, злякалась): якщо вона не вдома — знову йде через вхід
         passedDoor = isInside();
+        if (claimBase != null) beginWay(claimBase);
+    }
+
+    // Почати дорогу до base: своєю дорогою, якщо пам'ятає й вона поруч; інакше записує нову
+    private void beginWay(BlockPos base) {
+        recording.clear();
+        arrived = false;
+        startedOutside = !isInside();
+        routeIdx = startedOutside ? cow.sleep.joinRoute(base) : -1;
+        usedRoute = routeIdx >= 0;
+        if (startedOutside && !usedRoute) recording.add(cow.blockPosition());
     }
 
     @Override
@@ -112,7 +134,7 @@ public class SleepGoal extends Goal {
 
         // 1. Ще не знає, де спати: 30 с активно шукає (будівлю, потім дерево), тримаючись стада
         if (base == null) {
-            if (seekTicks < SEEK_TICKS) {
+            if (seekTicks < SEEK_TICKS && !cow.sleep.full()) {
                 seekTicks++;
                 awake();
                 if (seekTicks % 20 == 1) {
@@ -149,6 +171,13 @@ public class SleepGoal extends Goal {
             walkTicks = 0;
             failedPaths = 0;
             lastDist = Double.MAX_VALUE;
+            beginWay(base);
+        }
+
+        // шкала сну повна, а корова ще не вдома: далі не йде, засинає, де є
+        if (cow.sleep.full() && !isInside()) {
+            sleepHere();
+            return;
         }
 
         // 3. Іде до свого місця
@@ -156,8 +185,19 @@ public class SleepGoal extends Goal {
             walkTicks++;
             awake();
             cow.sleepClaim = claimed;
+            trample();
             if (walkTicks == 1 || walkTicks % 20 == 0) walkStep(base);
             return;
+        }
+        // дійшла: перша дорога — запам'ятати; своєю дорогою — пам'ятати міцніше
+        if (claimed != null && atSpot(claimed) && !arrived) {
+            arrived = true;
+            if (usedRoute) {
+                cow.sleep.reinforce();
+            } else if (startedOutside) {
+                recording.add(claimed);
+                cow.sleep.saveRoute(base, recording);
+            }
         }
 
         // 4. Розбудили: стоїть на місці без сну, прислухається, потім засинає знову (лише вдома;
@@ -192,8 +232,30 @@ public class SleepGoal extends Goal {
     // Один крок дороги (раз на секунду): вхід → своє місце; перевірка досяжності поблизу; заміна місця, якщо не виходить
     private void walkStep(BlockPos base) {
         boolean grounded = cow.onGround() || cow.isInWater();
+        // своєю дорогою: точку пройдено — до наступної; остання — далі до свого місця
+        if (routeIdx >= 0) {
+            BlockPos rp = cow.sleep.routePoint(routeIdx);
+            if (rp == null) {
+                routeIdx = -1;
+            } else if (cow.distanceToSqr(rp.getX() + 0.5, rp.getY(), rp.getZ() + 0.5) <= CowSleep.ROUTE_REACH * CowSleep.ROUTE_REACH) {
+                routeIdx++;
+                failedPaths = 0;
+                lastDist = Double.MAX_VALUE;
+                if (routeIdx >= cow.sleep.routeSize()) {
+                    routeIdx = -1;
+                    passedDoor = true;
+                }
+            }
+        }
+        // нова дорога: точка кожні 5 блоків
+        if (!usedRoute && startedOutside && grounded) {
+            BlockPos here = cow.blockPosition();
+            if (recording.isEmpty() || recording.get(recording.size() - 1).distSqr(here) >= CowSleep.ROUTE_STEP * CowSleep.ROUTE_STEP) {
+                recording.add(here);
+            }
+        }
         // вхід невідомий, а корова надворі: пробує дізнатися його сама
-        if (door == null && !passedDoor && cow.tickCount >= nextDoorTry && grounded) {
+        if (routeIdx < 0 && door == null && !passedDoor && cow.tickCount >= nextDoorTry && grounded) {
             nextDoorTry = cow.tickCount + LEARN_DOOR_EVERY;
             door = doorOf(base);
             if (door == null) door = cow.home.findEntrance(claimed);
@@ -215,7 +277,7 @@ public class SleepGoal extends Goal {
             lastDist = Double.MAX_VALUE;
             if (claimed == null) return;
         }
-        BlockPos goal = passedDoor || door == null ? claimed : door;
+        BlockPos goal = routeIdx >= 0 ? cow.sleep.routePoint(routeIdx) : (passedDoor || door == null ? claimed : door);
         cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);   // довгий шлях: обійти будівлю до входу
         boolean ok = cow.getNavigation().moveTo(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, 1.0);
         cow.getNavigation().resetMaxVisitedNodesMultiplier();
@@ -229,7 +291,14 @@ public class SleepGoal extends Goal {
         if (failedPaths < MAX_FAILED_PATHS) return;
         failedPaths = 0;
         lastDist = Double.MAX_VALUE;
-        if (!passedDoor) {
+        if (routeIdx >= 0) {
+            // своєю дорогою не пройти (перегородили): забуває її, іде, як уперше, і запише нову
+            cow.sleep.forgetRoute();
+            routeIdx = -1;
+            usedRoute = false;
+            recording.clear();
+            recording.add(cow.blockPosition());
+        } else if (!passedDoor) {
             passedDoor = true;   // до входу не дійти — пробує прямо до місця
         } else {
             excluded.add(claimed);   // до цього місця не дійти — бере наступне
@@ -263,6 +332,15 @@ public class SleepGoal extends Goal {
             return CowHome.shaded(cow.level(), pos);   // спить під деревом: досить тіні
         }
         return CowHome.shelterScore(cow.level(), pos) > 0;
+    }
+
+    // Дорогою додому витоптує стежку: кожен новий блок під ногами
+    private void trample() {
+        if (!(cow.level() instanceof net.minecraft.server.level.ServerLevel level) || !cow.onGround()) return;
+        BlockPos here = cow.blockPosition();
+        if (here.equals(lastStep)) return;
+        lastStep = here.immutable();
+        Trails.step(level, here.below());
     }
 
     private boolean nearBase(BlockPos base) {
