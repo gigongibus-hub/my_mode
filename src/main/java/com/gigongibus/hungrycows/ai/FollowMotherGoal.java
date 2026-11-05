@@ -20,6 +20,12 @@ public class FollowMotherGoal extends Goal {
         this.setFlags(EnumSet.of(Goal.Flag.MOVE));
     }
 
+    // викликати tick() кожного тіку, а не раз на два (інакше частина телят не йде за матір'ю)
+    @Override
+    public boolean requiresUpdateEveryTick() {
+        return true;
+    }
+
     private LivingEntity findMother() {
         HungryCow m = cow.family.findMother();
         if (m != null) return m;

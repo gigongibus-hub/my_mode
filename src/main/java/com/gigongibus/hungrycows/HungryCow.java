@@ -458,7 +458,10 @@ public class HungryCow extends Cow {
         }
     }
 
-    // Теля виросло
+    // Теля виросло.
+    // Ванільний AgeableMob.setAge() викликає цей метод лише коли вік переходить через межу «теля/доросла»
+    // (з від'ємного в ≥ 0 або навпаки), і вже ПІСЛЯ оновлення isBaby(). Пауза після розмноження
+    // (вік 6000 → 0) межу не перетинає, тож для дорослих він не спрацьовує.
     @Override
     protected void ageBoundaryReached() {
         super.ageBoundaryReached();
