@@ -34,6 +34,8 @@ public final class CowBook {
 
         // 2. Потреби
         out.add("#Потреби");
+        out.add("Спрага: " + cow.thirst + " (п'є з " + HungryCow.THIRSTY_AT + ", зневоднення з " + HungryCow.DEHYDRATE_AT + ")"
+                + (cow.inSun() ? " — на сонці" : ""));
         out.add("Голод: " + cow.hunger + " (шукає їжу з " + cow.hungryAt() + " з урахуванням апетиту, голодує з "
                 + HungryCow.STARVE_AT + ")");
         out.add("Втома: " + cow.fatigue + " (відпочиває за відчуттям з " + HungryCow.TIRED_AT + ")");

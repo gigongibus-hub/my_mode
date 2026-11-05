@@ -78,6 +78,7 @@ public class DrinkMilkGoal extends Goal {
         if (drinkTicks % 40 == 0) cow.playSound(SoundEvents.GENERIC_DRINK, 0.5F, 1.2F);
         if (drinkTicks >= DRINK_TICKS && mother.milk.take(drinkUnits())) {
             cow.hunger = Math.max(0, cow.hunger - (int) Math.round(DRINK_HUNGER * cow.gene(CowGenes.Gene.CALF_DRINK)));
+            cow.thirst = Math.max(0, cow.thirst - HungryCow.CALF_MILK_THIRST);   // молоко гасить і спрагу
             cow.chem.onNursing();
             cow.onAte();
             mother.chem.onNursing();

@@ -60,6 +60,7 @@ import com.gigongibus.hungrycows.ai.RuminateGoal;
 import com.gigongibus.hungrycows.ai.MateGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
 import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
+import com.gigongibus.hungrycows.ai.DrinkWaterGoal;
 import com.gigongibus.hungrycows.ai.FindFosterGoal;
 import com.gigongibus.hungrycows.ai.FollowMotherGoal;
 import com.gigongibus.hungrycows.ai.NurseGoal;
@@ -77,6 +78,20 @@ public class HungryCow extends Cow {
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
     // ================= ОБМІН РЕЧОВИН І ВТОМА (6б) =================
     public static final double PREGNANT_HUNGER = 0.2;    // вагітна голодніє на 20% швидше
+    // ================= СПРАГА (ідея 10) =================
+    public static final int THIRST_EVERY_SECONDS = 10;   // спрага +1 раз на стільки секунд (ген «швидкість спраги» ±30%)
+    public static final double CALF_THIRST = 0.5;        // теля відчуває спрагу вдвічі повільніше (п'є молоко)
+    public static final double SUN_THIRST = 2.0;         // на сонці (день, видно небо, без дощу) — удвічі швидше
+    public static final double HOT_THIRST = 1.5;         // у спекотному біомі (пустеля, савана…) — у 1,5 раза
+    public static final float HOT_BIOME = 1.0F;          // «спекотний» = температура біому вища за це
+    public static final double RUN_THIRST = 2.0;         // бігає — удвічі
+    public static final double LACTATING_THIRST = 0.5;   // дійна — на 50% швидше (молоко — це вода)
+    public static final int THIRSTY_AT = 30;             // з цієї відчутої спраги корова йде пити
+    public static final int DEHYDRATE_AT = 70;           // з такої спраги втрачає здоров'я і йде пити за будь-якого рішення
+    public static final int DEHYDRATE_DAMAGE_SECONDS = 5; // урон 1 HP раз на стільки секунд
+    public static final int DRINK_AMOUNT = 50;           // одне пиття знімає стільки спраги
+    public static final int CALF_MILK_THIRST = 35;       // теля: один раз попити молока знімає стільки спраги
+
     public static final double LACTATING_HUNGER = 0.3;   // дійна (є молоко) — на 30% швидше (разом з вагітністю +50%)
     public static final double RUN_HUNGER = 2.0;         // бігає (тікає, гасає в тічку) — голодніє вдвічі швидше
     public static final double REST_HUNGER = 0.5;        // відпочиває — удвічі повільніше
@@ -174,6 +189,9 @@ public class HungryCow extends Cow {
     public static final boolean DEBUG_MESSAGES = true;   // писати в чат про подавлення, довіру, напади та пологи
 
     public int hunger = 0;
+    public int thirst = 0;                          // спрага (ідея 10)
+    private double thirstCarry = 0;
+    private int dehydrateTimer = 0;
     public int fatigue = 0;
     public int fear = 0;
     public boolean choking = false;
@@ -260,6 +278,38 @@ public class HungryCow extends Cow {
         return CowBrain.enabled ? brain.is(CowBrain.Action.EAT) && hunger >= CowBrain.EAT_MIN_HUNGER : wantsFood();
     }
 
+    // ===================== СПРАГА =====================
+
+    // Чи стоїть на сонці (день, над головою небо, без дощу)
+    public boolean inSun() {
+        BlockPos p = this.blockPosition();
+        return this.level().isDay() && !this.level().isRainingAt(p) && this.level().canSeeSky(p.above());
+    }
+
+    private double thirstRate() {
+        double r = 1.0;
+        if (inSun()) r *= SUN_THIRST;
+        if (this.level().getBiome(this.blockPosition()).value().getBaseTemperature() > HOT_BIOME) r *= HOT_THIRST;
+        if (isRunning()) r *= RUN_THIRST;
+        if (milk.isLactating()) r += LACTATING_THIRST;
+        if (this.isBaby()) r *= CALF_THIRST;
+        return r;
+    }
+
+    public boolean wantsWater() {
+        return chem.thirstFelt() >= THIRSTY_AT;
+    }
+
+    public boolean shouldSeekWater() {
+        if (thirst >= DEHYDRATE_AT) return true;   // рефлекс: зневоднення
+        return CowBrain.enabled ? brain.is(CowBrain.Action.DRINK) && thirst >= CowBrain.EAT_MIN_HUNGER : wantsWater();
+    }
+
+    public void drinkWater() {
+        thirst = Math.max(0, thirst - DRINK_AMOUNT);
+        tell(family.name + " попила води (спрага " + thirst + ")");
+    }
+
     public boolean shouldRest() {
         if (fatigue >= EXHAUSTED_AT) return true;   // рефлекс: виснаження
         return CowBrain.enabled ? brain.is(CowBrain.Action.REST) : wantsRest();
@@ -281,6 +331,7 @@ public class HungryCow extends Cow {
             Object g = w.getGoal();
             return switch (a) {
                 case EAT -> g instanceof SeekGrassGoal || g instanceof DrinkMilkGoal || g instanceof BrainTemptGoal;
+                case DRINK -> g instanceof DrinkWaterGoal || g instanceof DrinkMilkGoal;
                 case REST -> g instanceof RestGoal;
                 case HERD -> g instanceof HerdUpGoal;
                 case FRIEND -> g instanceof ApproachPlayerGoal || g instanceof BrainTemptGoal;
@@ -421,6 +472,20 @@ public class HungryCow extends Cow {
     // Раз на секунду: голод, втома і голодування з урахуванням генів
     private void geneSecondTick() {
         updateActivity();
+        // спрага: ген × сонце × спека × біг × молоко
+        thirstCarry += gene(CowGenes.Gene.THIRST_RATE) * thirstRate() / THIRST_EVERY_SECONDS;
+        while (thirstCarry >= 1.0) {
+            thirstCarry -= 1.0;
+            thirst += TIME_SPEED;
+        }
+        if (thirst >= DEHYDRATE_AT) {
+            if (++dehydrateTimer >= DEHYDRATE_DAMAGE_SECONDS) {
+                dehydrateTimer = 0;
+                this.hurt(this.damageSources().dryOut(), 1.0F);
+            }
+        } else {
+            dehydrateTimer = 0;
+        }
         // голод: ген × обмін речовин (вагітність, молоко, біг, відпочинок)
         hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() / HUNGER_EVERY_SECONDS;
         while (hungerCarry >= 1.0) {
@@ -467,6 +532,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(4, new FirePanicGoal(this));             // паніка лише від вогню й морозу
         this.goalSelector.addGoal(5, new NurseGoal(this));                 // мати стоїть, поки теля п'є
         this.goalSelector.addGoal(6, new DrinkMilkGoal(this));             // теля йде пити молоко
+        this.goalSelector.addGoal(6, new DrinkWaterGoal(this));            // доросла йде пити воду (ідея 10)
         this.goalSelector.addGoal(7, new SeekGrassGoal(this));             // пошук їжі
         this.goalSelector.addGoal(8, new MateGoal(this));                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
@@ -922,6 +988,7 @@ public class HungryCow extends Cow {
     // ПКМ по теляті відром молока: теля наїдається; сирота вважає гравця матір'ю
     private void feedCalfMilk(Player player, InteractionHand hand, ItemStack stack) {
         hunger = Math.max(0, hunger - CALF_BUCKET_FOOD);
+        thirst = Math.max(0, thirst - DRINK_AMOUNT);   // молоко — і їжа, і питво
         this.playSound(SoundEvents.GENERIC_DRINK, 1.0F, 1.0F);
         player.setItemInHand(hand, ItemUtils.createFilledResult(stack, player, new ItemStack(Items.BUCKET)));
         if (family.isOrphan()) {
@@ -1367,6 +1434,7 @@ public class HungryCow extends Cow {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("Hunger", hunger);
+        tag.putInt("Thirst", thirst);
         tag.putInt("Fatigue", fatigue);
         tag.putInt("Fear", fear);
         tag.putBoolean("Choking", choking);
@@ -1391,6 +1459,7 @@ public class HungryCow extends Cow {
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         hunger = tag.getInt("Hunger");
+        thirst = tag.getInt("Thirst");
         fatigue = tag.getInt("Fatigue");
         fear = tag.getInt("Fear");
         choking = tag.getBoolean("Choking");

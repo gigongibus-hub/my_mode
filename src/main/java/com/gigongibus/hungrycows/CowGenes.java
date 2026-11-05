@@ -59,6 +59,7 @@ public class CowGenes {
         TEMPER_PAIN_SENSITIVITY(Group.TEMPERAMENT, "чутливість до болю"),
         // ---- обмін речовин і голод (12) ----
         HUNGER_RATE(Group.METABOLISM, "швидкість голоду"),
+        THIRST_RATE(Group.METABOLISM, "швидкість спраги"),
         HUNGER_THRESHOLD(Group.METABOLISM, "шукає їжу раніше"),
         STARVE_RESIST(Group.METABOLISM, "стійкість до голодування"),
         GRASS_DIGEST(Group.METABOLISM, "користь від трави"),
@@ -131,7 +132,8 @@ public class CowGenes {
         BRAIN_MATE(Group.BRAIN, "схильність шукати пару"),
         BRAIN_FAMILY(Group.BRAIN, "схильність до рідних"),
         BRAIN_RUMINATE(Group.BRAIN, "схильність ремигати"),
-        BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися");
+        BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися"),
+        BRAIN_DRINK(Group.BRAIN, "схильність пити");
 
         public final Group group;
         public final String title;

@@ -17,7 +17,8 @@ public class CowMilk {
     public static final int BUCKET_COST = 25;            // скільки забирає одне відро
     public static final int FRIEND_BUCKET_COST = 10;     // скільки забирає відро з ефектом «Друг корови»
     public static final int REGEN_SECONDS = 24;          // +1 одиниця кожні 24 с = 100 одиниць за 2 ігрові доби
-    public static final int CALF_DRINK = 5;              // скільки випиває теля за один раз (≈50 за 2 доби)
+    public static final int CALF_DRINK = 5;
+    public static final double THIRST_MILK_SLOWDOWN = 0.5; // дуже хоче пити — молоко відновлюється вдвічі повільніше              // скільки випиває теля за один раз (≈50 за 2 доби)
 
     // ================= СКІЛЬКИ ТРИВАЄ =================
     public static final long DAY = 24000L;               // ігрова доба в тіках
@@ -116,8 +117,11 @@ public class CowMilk {
     public void secondTick() {
         if (isLactating()) {
             // ген і стрес: кортизол 100 → удвічі повільніше
+            // спрага: з 30 до 70 молоко сповільнюється до 2 разів (молоко — це вода)
+            double thirstK = 1.0 - THIRST_MILK_SLOWDOWN
+                    * Math.max(0, Math.min(1, (cow.thirst - HungryCow.THIRSTY_AT) / (double) (HungryCow.DEHYDRATE_AT - HungryCow.THIRSTY_AT)));
             int every = Math.max(1, (int) Math.round(REGEN_SECONDS
-                    / (cow.gene(CowGenes.Gene.MILK_REGEN) * cow.chem.milkSpeedFactor())));
+                    / (cow.gene(CowGenes.Gene.MILK_REGEN) * cow.chem.milkSpeedFactor() * thirstK)));
             if (milk < max() && ++regenSeconds >= every) {
                 regenSeconds = 0;
                 milk++;

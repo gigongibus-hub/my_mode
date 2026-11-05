@@ -55,7 +55,7 @@
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
-0 Float · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk · 7 SeekGrass · 8 Mate ·
+0 Float · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
 9 BullCourt · 10 Rest · 11 Ruminate · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
 14 AvoidBluet, AvoidBadPlace · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
 21 BrainStroll · 22 LookAtPlayer · 23 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
@@ -168,7 +168,9 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 ## Ідеї Fij 9–15 (уточнюються, робити по черзі)
 9. Корови шукають закриті місця для сну й «дому», частіше там бувають; пасуться в полях; відпочивають у безпечному
    місці чи в тіні (на сонці вода витрачається швидше).
-10. Вода: корова п'є з водойм і з котлів із водою.
+10. ~~Вода~~ (зроблено): спрага +1/10 с × сонце 2 × спека 1.5 × біг 2 (+0.5 дійна, теля ×0.5); п'є з 30, зневоднення
+    з 70 (урон, рефлекс). `DrinkWaterGoal` (джерело води або котел; котел на 10 разів — `WaterSources`). Спрага
+    сповільнює молоко до 2×. Мозок: вхід «спрага», дія «пити» (30 входів, 11 дій — старі ваги скинуто).
 11. Стадо: майже не відходять від стада, тримаються біля ватажка (найбільша домінантність).
 12. Бики б'ють сильніше, швидші; у 80% не тікають від зомбі чи гравця, а нападають (корови — 40%).
 13. Бики часто б'ються між собою, у кожного свій урон; домінантом стає найсильніший з найбільшим геном домінантності.

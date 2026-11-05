@@ -61,6 +61,7 @@ public class CowBrain {
     public static final double REWARD_AVG_RATE = 0.05;   // як швидко звикає до «звичайної» нагороди
     public static final float WEIGHT_LIMIT = 3.0F;       // ваги не більші за це (щоб мозок не «зламався»)
     // самопочуття = комфорт − голод·0.5 − втома·0.5 − страх·0.7 − біль − нездужання·0.5 − самотність·0.3
+    public static final double W_THIRST = 0.5;
     public static final double W_HUNGER = 0.5, W_TIRED = 0.5, W_FEAR = 0.7, W_PAIN = 1.0, W_UNWELL = 0.5, W_LONELY = 0.3;
 
     // ================= 4. ВІДКЛАДЕНІ НАСЛІДКИ =================
@@ -96,7 +97,8 @@ public class CowBrain {
         MATE("шукати пару", Gene.BRAIN_MATE),
         FAMILY("до теляти/матері", Gene.BRAIN_FAMILY),
         RUMINATE("ремигати", Gene.BRAIN_RUMINATE),
-        CURIOUS("цікавитися", Gene.BRAIN_CURIOUS);
+        CURIOUS("цікавитися", Gene.BRAIN_CURIOUS),
+        DRINK("пити", Gene.BRAIN_DRINK);
 
         public final String title;
         public final Gene gene;
@@ -112,7 +114,7 @@ public class CowBrain {
             "голод", "втома", "страх", "стрес", "самотність", "біль", "нездужання", "комфорт", "бажання пари",
             "материнство", "адреналін", "окситоцин", "дофамін", "їжа поруч", "корова поруч", "страшне поруч",
             "друг поруч", "рідні поруч", "здоров'я", "вагітна", "тічка/самка в тічці", "ніч", "дощ",
-            "допитливість", "товариськість", "активність", "нещодавно їла", "теля", "незнайомець поруч"
+            "допитливість", "товариськість", "активність", "нещодавно їла", "теля", "незнайомець поруч", "спрага"
     };
     public static final int INPUTS = INPUT_NAMES.length;
 
@@ -312,6 +314,7 @@ public class CowBrain {
         input[26] = cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) ? 1 : 0;
         input[27] = cow.isBaby() ? 1 : 0;
         input[28] = stranger != null ? 1 : 0;
+        input[29] = cow.thirst / 100.0;
     }
 
     // Що взагалі можливо зараз
@@ -329,6 +332,7 @@ public class CowBrain {
         possible[Action.FAMILY.ordinal()] = family != null && familyDist > 3.0;
         possible[Action.RUMINATE.ordinal()] = adult && cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) && !cow.wantsFood();
         possible[Action.CURIOUS.ordinal()] = stranger != null;
+        possible[Action.DRINK.ordinal()] = !cow.isBaby() && cow.thirst >= EAT_MIN_HUNGER;
         // відкладені дії (не виходили) поки неможливі; прогулянка можлива завжди
         for (Action a : ACTIONS) {
             if (a != Action.WANDER && cow.tickCount < blockedUntil[a.ordinal()]) possible[a.ordinal()] = false;
@@ -354,6 +358,7 @@ public class CowBrain {
             case FAMILY -> (cow.isBaby() ? 3 : 2 * input[9]) * Math.min(1, familyDist / 10.0) + 0.5;
             case RUMINATE -> 1.5 + input[7] - 3 * fear;
             case CURIOUS -> 3 * input[23] - 5 * fear - 1;
+            case DRINK -> 10 * (cow.chem.thirstFelt() / 100.0 - HungryCow.THIRSTY_AT / 100.0);
         };
     }
 
@@ -380,7 +385,7 @@ public class CowBrain {
     // Наскільки корові зараз добре (приблизно від −150 до +100)
     public double wellbeing() {
         CowChemistry ch = cow.chem;
-        return ch.feelComfort() - W_HUNGER * ch.hungerFelt() - W_TIRED * ch.fatigueFelt() - W_FEAR * ch.fearFelt()
+        return ch.feelComfort() - W_THIRST * ch.thirstFelt() - W_HUNGER * ch.hungerFelt() - W_TIRED * ch.fatigueFelt() - W_FEAR * ch.fearFelt()
                 - W_PAIN * ch.feelPain() - W_UNWELL * ch.feelUnwell() - W_LONELY * ch.loneliness();
     }
 

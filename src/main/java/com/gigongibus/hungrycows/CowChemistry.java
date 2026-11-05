@@ -243,6 +243,11 @@ public class CowChemistry {
         return (int) Math.round(cow.hunger * appetite());
     }
 
+    // Відчуття спраги (поки = справжня спрага; апетит на неї не впливає)
+    public int thirstFelt() {
+        return cow.thirst;
+    }
+
     public int feelHunger() { return (int) Math.round(clamp((100 - glucose()) * appetite())); }
     // Наскільки сильно корова ВІДЧУВАЄ втому (множник до справжньої втоми)
     public double tiredness() {
