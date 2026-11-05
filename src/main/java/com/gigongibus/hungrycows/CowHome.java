@@ -34,6 +34,8 @@ public class CowHome {
     public static final int WALL_DISTANCE = 3;          // стіна — не далі стількох блоків
     public static final int RECHECK_SECONDS = 30;       // як часто перевіряє, чи дім ще годиться
     public static final double MAX_HOME_DISTANCE = 64;  // дім далі цього — забуває його
+    public static final double ADOPT_RANGE = 32;        // свого дому немає — переймає дім корови зі стада ближче цього
+    public static final int ADOPT_EVERY_SECONDS = 2;    // ... перевіряє раз на 2 с
 
     private final HungryCow cow;
     private BlockPos home = null;
@@ -186,6 +188,29 @@ public class CowHome {
         return lastEntrance;
     }
 
+    // Свого дому немає (нова корова): переймає дім найближчої дорослої корови поруч, у якої він є.
+    // Потім, як звичайно, шукає кращий сама. true — перейняла.
+    public boolean adoptFromHerd() {
+        if (home != null || cow.isBaby()) return false;
+        HungryCow best = null;
+        double bestD = ADOPT_RANGE * ADOPT_RANGE;
+        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(ADOPT_RANGE),
+                c -> c != cow && c.isAlive() && !c.isBaby() && c.home.home != null)) {
+            double d = cow.distanceToSqr(c);
+            if (d < bestD) {
+                bestD = d;
+                best = c;
+            }
+        }
+        if (best == null) return false;
+        home = best.home.home;
+        homeScore = best.home.homeScore;
+        entrance = best.home.entrance;
+        cow.tell(cow.family.name + " переняла дім від " + best.family.name + ": " + home.getX() + " " + home.getY() + " "
+                + home.getZ() + " (бали " + homeScore + ")");
+        return true;
+    }
+
     // Оглянути одне місце: усі висоти (дах будівлі й підлогу всередині), найкраще укриття й тінь
     private void inspectColumn(int x, int y, int z, BlockPos o) {
         Level level = cow.level();
@@ -250,6 +275,7 @@ public class CowHome {
     public void secondTick() {
         if (cow.isBaby()) return;   // теля спить біля матері
         seconds++;
+        if (home == null && seconds % ADOPT_EVERY_SECONDS == 0) adoptFromHerd();
         // запасне місце під деревом: забути, якщо там більше немає тіні чи воно далеко
         if (treeSpot != null && seconds % RECHECK_SECONDS == 0
                 && (!standable(cow.level(), treeSpot) || !shaded(cow.level(), treeSpot)

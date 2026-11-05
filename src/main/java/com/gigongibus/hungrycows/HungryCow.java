@@ -135,6 +135,10 @@ public class HungryCow extends Cow {
     public static final int CALF_GROW_TICKS = CALF_GROW_DAYS * 24000; // вік теляти в тіках (росте на 1 за тік)
     public static final int HUNGRY_AT = 30;              // з цього голоду корова шукає їжу (ген HUNGER_THRESHOLD ±30%)
     public static final int STARVE_DAMAGE_SECONDS = 4;   // при голодуванні урон раз на стільки секунд (ген STARVE_RESIST ±30%)
+    public static final int DAY_EAT_AT = 25;             // удень з цього голоду йде пастися завжди (не чекає мозку)
+    public static final int MORNING_EAT_AT = 5;          // уранці (після сну) з цього голоду виходить пастися
+    public static final int MORNING_FROM = 23500;        // ранок: від світанку ...
+    public static final int MORNING_UNTIL = 3000;        // ... до 3000 (≈ 3 хв гри)
     public static final int STARVE_AT = 60;              // з цього голоду корова отримує урон
     public static final int GRASS_BLOCK_FOOD = 30;       // трав'яний блок: скільки голоду знімає
     public static final float GRASS_BLOCK_HEAL = 2.0F;   // трав'яний блок: скільки лікує
@@ -293,6 +297,11 @@ public class HungryCow extends Cow {
 
     public boolean shouldSeekFood() {
         if (hunger >= STARVE_AT) return true;   // рефлекс: голодування
+        // удень корова пасеться: помітно голодна — іде їсти; уранці після сну — виходить пастися майже одразу
+        if (isDayTime()) {
+            if (hunger >= DAY_EAT_AT) return true;
+            if (isMorning() && hunger >= MORNING_EAT_AT) return true;
+        }
         return CowBrain.enabled ? brain.is(CowBrain.Action.EAT) && hunger >= CowBrain.EAT_MIN_HUNGER : wantsFood();
     }
 
@@ -330,6 +339,16 @@ public class HungryCow extends Cow {
 
     // Ніч (лише у світах зі сходом і заходом сонця)
     // Ніч для сну — за часом доби, з сутінків (щоб устигнути дійти); дощ і гроза — не ніч
+    public boolean isDayTime() {
+        if (!this.level().dimensionType().hasSkyLight() || this.level().dimensionType().hasFixedTime()) return false;
+        return !isNightTime();
+    }
+
+    public boolean isMorning() {
+        long t = this.level().getDayTime() % 24000L;
+        return t >= MORNING_FROM || t < MORNING_UNTIL;
+    }
+
     public boolean isNightTime() {
         if (!this.level().dimensionType().hasSkyLight() || this.level().dimensionType().hasFixedTime()) return false;
         long t = this.level().getDayTime() % 24000L;

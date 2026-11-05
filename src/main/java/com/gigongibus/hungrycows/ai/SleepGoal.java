@@ -310,9 +310,11 @@ public class SleepGoal extends Goal {
     private BlockPos sharedSpot() {
         HungryCow leader = cow.herd.leader();
         if (leader != null && leader != cow && leader.home.sleepSpot() != null
-                && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
+                && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE
+                && (leader.home.home() != null || cow.home.home() == null)) {   // дерево ватажка не краще за свій дім
             return leader.home.sleepSpot();
         }
+        if (cow.home.home() == null) cow.home.adoptFromHerd();   // нова корова: дім стада, а не сон на місці
         return cow.home.sleepSpot();
     }
 
