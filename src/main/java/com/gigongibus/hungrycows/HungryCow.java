@@ -78,6 +78,7 @@ public class HungryCow extends Cow {
     public static final double RUN_FATIGUE = 2.0;        // бігає — втомлюється вдвічі швидше
     public static final double RUN_BLOCKS_PER_SECOND = 3.5; // «бігає» = за секунду пройшла більше стількох блоків
     public static final int TIRED_AT = 40;               // з якої відчутої втоми корова йде відпочивати
+    public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
 
     public static final int CALF_GROW_DAYS = 100;        // за скільки діб виростає теля
@@ -221,6 +222,16 @@ public class HungryCow extends Cow {
         if (running) m *= RUN_HUNGER;
         else if (resting) m *= REST_HUNGER;
         return m;
+    }
+
+    // 6б: чи тікає корова. Вирішує відчуття страху (адреналін, кортизол, окситоцин); паніка — рефлекс.
+    public boolean wantsToFlee() {
+        return fear >= PANIC_AT || chem.fearFelt() >= scaredAt();
+    }
+
+    // Чи вже заспокоїлась настільки, щоб перестати тікати (на половині порогу)
+    public boolean stillAfraid() {
+        return fear >= PANIC_AT || chem.fearFelt() >= scaredAt() / 2;
     }
 
     // 6б: чи хоче корова відпочити. Вирішує відчуття втоми; повне виснаження — рефлекс.

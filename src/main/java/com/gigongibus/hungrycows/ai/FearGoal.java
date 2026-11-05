@@ -26,7 +26,7 @@ public class FearGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (cow.fear < cow.scaredAt()) return false;
+        if (!cow.wantsToFlee()) return false;   // 6б: вирішує відчуття страху
         scary = cow.findScary(10.0);
         return scary != null;
     }
@@ -34,7 +34,7 @@ public class FearGoal extends Goal {
     // Шукати заново кожні 10 тіків, а не щотіку: пошук істот поруч дорогий
     @Override
     public boolean canContinueToUse() {
-        if (cow.fear < cow.scaredAt() / 2) return false;   // заспокоюється на половині порогу
+        if (!cow.stillAfraid()) return false;   // заспокоюється на половині порогу
         if (scary == null || !scary.isAlive() || cow.tickCount % 10 == 0) {
             scary = cow.findScary(14.0);
         }

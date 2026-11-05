@@ -72,6 +72,10 @@ public class CowChemistry {
     public static final double PAIN_ADDS_TIRED = 0.3;   // біль 100 — втома відчувається на 30% сильніше
     public static final double PREGNANT_TIRED = 0.2;    // вагітна — на 20% сильніше
 
+    // ================= ВІДЧУТТЯ СТРАХУ (6б) =================
+    public static final double STRESS_JUMPY = 0.3;      // кожна одиниця кортизолу понад базу додає 0.3 до страху (нервова)
+    public static final double CALM_COMPANY = 0.3;      // окситоцин 100 (компанія, теля, друг) — страх на 30% менший
+
     // ================= СТРЕС І МОЛОКО =================
     public static final double STRESS_MILK_SLOWDOWN = 0.5; // кортизол 100 → молоко відновлюється вдвічі повільніше
 
@@ -235,7 +239,16 @@ public class CowChemistry {
     }
 
     public int feelTired() { return (int) Math.round(clamp(adenosine() * tiredness())); }
-    public int feelFear() { return (int) Math.round(clamp(adrenaline * 0.7 + cortisol * 0.3)); }
+    // Відчуття страху в тих самих одиницях, що й страх корови (порівнюється з HungryCow.scaredAt())
+    public int fearFelt() {
+        double f = Math.max(cow.fear, adrenaline);
+        f += STRESS_JUMPY * Math.max(0, cortisol - CORTISOL_BASE);
+        double calm = Math.max(0, Math.min(1, (oxytocin - OXYTOCIN_BASE) / (100 - OXYTOCIN_BASE)));
+        f *= 1.0 - CALM_COMPANY * calm;
+        return (int) Math.round(clamp(f));
+    }
+
+    public int feelFear() { return fearFelt(); }
     public int feelStress() { return (int) Math.round(cortisol); }
     public int feelPain() { return (int) Math.round(pain); }
     public int feelMating() { return (int) Math.round(cow.repro.isFemale() ? clamp(estrogen * 1.5) : 0); }
@@ -271,7 +284,7 @@ public class CowChemistry {
         out.add("Втома (відчуття): " + fatigueFelt() + " (відпочиває з " + HungryCow.TIRED_AT + ")");
         out.add("Втома насправді: " + cow.fatigue + " (×" + String.format("%.2f", tiredness()) + ")");
         out.add("Обмін речовин: ×" + String.format("%.2f", cow.metabolism()) + (cow.isRunning() ? " (бігає)" : ""));
-        out.add("Страх: " + feelFear());
+        out.add("Страх (відчуття): " + fearFelt() + " (тікає з " + cow.scaredAt() + ")");
         out.add("Стрес: " + feelStress());
         out.add("Самотність: " + loneliness() + (isLonely() ? "" : (aloneSeconds > 0 ? " (сама вже " + aloneSeconds + " с)" : "")));
         out.add("Біль: " + feelPain());
