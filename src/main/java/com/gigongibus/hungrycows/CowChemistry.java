@@ -65,6 +65,13 @@ public class CowChemistry {
     public static final double UNWELL_APPETITE_LOSS = 0.4; // нездужання 100 — на 40% менший
     public static final double ESTRUS_APPETITE = 1.0 / 1.5; // у тічку їсть менше (поріг ніби ×1.5)
 
+    // ================= ВІДЧУТТЯ ВТОМИ (6б) =================
+    public static final double TIRED_ACTIVE = 0.7;      // риса «активність» 100: відчуває втому на 30% слабше ...
+    public static final double TIRED_LAZY = 1.3;        // ... «активність» 0: на 30% сильніше
+    public static final double ADRENALINE_HIDES_TIRED = 0.5; // адреналін 100 приглушує втому вдвічі (наляканій не до сну)
+    public static final double PAIN_ADDS_TIRED = 0.3;   // біль 100 — втома відчувається на 30% сильніше
+    public static final double PREGNANT_TIRED = 0.2;    // вагітна — на 20% сильніше
+
     // ================= СТРЕС І МОЛОКО =================
     public static final double STRESS_MILK_SLOWDOWN = 0.5; // кортизол 100 → молоко відновлюється вдвічі повільніше
 
@@ -213,7 +220,21 @@ public class CowChemistry {
     }
 
     public int feelHunger() { return (int) Math.round(clamp((100 - glucose()) * appetite())); }
-    public int feelTired() { return (int) Math.round(adenosine()); }
+    // Наскільки сильно корова ВІДЧУВАЄ втому (множник до справжньої втоми)
+    public double tiredness() {
+        double k = TIRED_LAZY - (TIRED_LAZY - TIRED_ACTIVE) * cow.character.fraction(Trait.ACTIVITY);
+        k *= 1.0 - ADRENALINE_HIDES_TIRED * adrenaline / 100.0;
+        k *= 1.0 + PAIN_ADDS_TIRED * pain / 100.0;
+        if (cow.repro.isPregnant()) k *= 1.0 + PREGNANT_TIRED;
+        return Math.max(0.3, k);
+    }
+
+    // Відчуття втоми в тих самих одиницях, що й втома корови (порівнюється з HungryCow.TIRED_AT)
+    public int fatigueFelt() {
+        return (int) Math.round(cow.fatigue * tiredness());
+    }
+
+    public int feelTired() { return (int) Math.round(clamp(adenosine() * tiredness())); }
     public int feelFear() { return (int) Math.round(clamp(adrenaline * 0.7 + cortisol * 0.3)); }
     public int feelStress() { return (int) Math.round(cortisol); }
     public int feelPain() { return (int) Math.round(pain); }
@@ -247,7 +268,9 @@ public class CowChemistry {
         out.add("Голод (відчуття): " + hungerFelt() + " (шукає їжу з " + cow.hungryAt() + ")");
         out.add("Голод насправді: " + cow.hunger + (cow.hunger > HungryCow.STARVE_AT ? " — ГОЛОДУЄ" : ""));
         out.add("Апетит: ×" + String.format("%.2f", appetite()));
-        out.add("Втома: " + feelTired());
+        out.add("Втома (відчуття): " + fatigueFelt() + " (відпочиває з " + HungryCow.TIRED_AT + ")");
+        out.add("Втома насправді: " + cow.fatigue + " (×" + String.format("%.2f", tiredness()) + ")");
+        out.add("Обмін речовин: ×" + String.format("%.2f", cow.metabolism()) + (cow.isRunning() ? " (бігає)" : ""));
         out.add("Страх: " + feelFear());
         out.add("Стрес: " + feelStress());
         out.add("Самотність: " + loneliness() + (isLonely() ? "" : (aloneSeconds > 0 ? " (сама вже " + aloneSeconds + " с)" : "")));

@@ -36,7 +36,7 @@ public final class CowBook {
         out.add("#Потреби");
         out.add("Голод: " + cow.hunger + " (шукає їжу з " + cow.hungryAt() + " з урахуванням апетиту, голодує з "
                 + HungryCow.STARVE_AT + ")");
-        out.add("Втома: " + cow.fatigue + " (відпочиває з 40)");
+        out.add("Втома: " + cow.fatigue + " (відпочиває за відчуттям з " + HungryCow.TIRED_AT + ")");
         out.add("Страх: " + cow.fear + " (тікає з " + cow.scaredAt() + ")");
         if (cow.choking) out.add("ПОДАВИЛАСЯ! Вдар її, щоб урятувати");
         if (cow.isBaby()) out.add("Теля п'є лише молоко");

@@ -70,6 +70,16 @@ public class HungryCow extends Cow {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
+    // ================= ОБМІН РЕЧОВИН І ВТОМА (6б) =================
+    public static final double PREGNANT_HUNGER = 0.2;    // вагітна голодніє на 20% швидше
+    public static final double LACTATING_HUNGER = 0.3;   // дійна (є молоко) — на 30% швидше (разом з вагітністю +50%)
+    public static final double RUN_HUNGER = 2.0;         // бігає (тікає, гасає в тічку) — голодніє вдвічі швидше
+    public static final double REST_HUNGER = 0.5;        // відпочиває — удвічі повільніше
+    public static final double RUN_FATIGUE = 2.0;        // бігає — втомлюється вдвічі швидше
+    public static final double RUN_BLOCKS_PER_SECOND = 3.5; // «бігає» = за секунду пройшла більше стількох блоків
+    public static final int TIRED_AT = 40;               // з якої відчутої втоми корова йде відпочивати
+    public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
+
     public static final int CALF_GROW_DAYS = 100;        // за скільки діб виростає теля
     public static final int CALF_GROW_TICKS = CALF_GROW_DAYS * 24000; // вік теляти в тіках (росте на 1 за тік)
     public static final int HUNGRY_AT = 30;              // з цього голоду корова шукає їжу (ген HUNGER_THRESHOLD ±30%)
@@ -181,8 +191,42 @@ public class HungryCow extends Cow {
 
     // ===================== ГЕНИ =====================
 
-    private int hungerTimer = 0;     // секунди до наступного +1 голоду (не зберігається)
-    private int fatigueTimer = 0;
+    private double hungerCarry = 0;  // накопичений голод між секундами (не зберігається)
+    private double fatigueCarry = 0;
+    public boolean resting = false;  // зараз відпочиває (RestGoal, NurseGoal)
+    private boolean running = false; // за останню секунду пробігла більше RUN_BLOCKS_PER_SECOND
+    private double lastX = Double.NaN;
+    private double lastZ = Double.NaN;
+
+    // Чи бігла корова за останню секунду
+    private void updateActivity() {
+        if (!Double.isNaN(lastX)) {
+            double dx = this.getX() - lastX;
+            double dz = this.getZ() - lastZ;
+            running = Math.sqrt(dx * dx + dz * dz) > RUN_BLOCKS_PER_SECOND;
+        }
+        lastX = this.getX();
+        lastZ = this.getZ();
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    // Обмін речовин: як швидко корова голодніє (1 = звичайно)
+    public double metabolism() {
+        double m = 1.0;
+        if (repro.isPregnant()) m += PREGNANT_HUNGER;
+        if (milk.isLactating()) m += LACTATING_HUNGER;
+        if (running) m *= RUN_HUNGER;
+        else if (resting) m *= REST_HUNGER;
+        return m;
+    }
+
+    // 6б: чи хоче корова відпочити. Вирішує відчуття втоми; повне виснаження — рефлекс.
+    public boolean wantsRest() {
+        return fatigue >= EXHAUSTED_AT || chem.fatigueFelt() >= TIRED_AT;
+    }
     private int starveTimer = 0;
     private double growthCarry = 0;  // накопичене прискорення/сповільнення росту теляти
 
@@ -258,15 +302,20 @@ public class HungryCow extends Cow {
 
     // Раз на секунду: голод, втома і голодування з урахуванням генів
     private void geneSecondTick() {
-        int hungerEvery = Math.max(1, (int) Math.round(HUNGER_EVERY_SECONDS / gene(CowGenes.Gene.HUNGER_RATE)));
-        if (++hungerTimer >= hungerEvery) {
-            hungerTimer = 0;
+        updateActivity();
+        // голод: ген × обмін речовин (вагітність, молоко, біг, відпочинок)
+        hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() / HUNGER_EVERY_SECONDS;
+        while (hungerCarry >= 1.0) {
+            hungerCarry -= 1.0;
             hunger += TIME_SPEED;
         }
-        int fatigueEvery = Math.max(1, (int) Math.round(FATIGUE_EVERY_SECONDS / gene(CowGenes.Gene.FATIGUE_RATE)));
-        if (++fatigueTimer >= fatigueEvery) {
-            fatigueTimer = 0;
-            fatigue += TIME_SPEED;
+        // втома: ген × біг; під час відпочинку не росте (її знімає RestGoal/NurseGoal)
+        if (!resting) {
+            fatigueCarry += gene(CowGenes.Gene.FATIGUE_RATE) * (running ? RUN_FATIGUE : 1.0) / FATIGUE_EVERY_SECONDS;
+            while (fatigueCarry >= 1.0) {
+                fatigueCarry -= 1.0;
+                fatigue += TIME_SPEED;
+            }
         }
         if (hunger > STARVE_AT) {
             int starveEvery = Math.max(1, (int) Math.round(STARVE_DAMAGE_SECONDS * gene(CowGenes.Gene.STARVE_RESIST)));

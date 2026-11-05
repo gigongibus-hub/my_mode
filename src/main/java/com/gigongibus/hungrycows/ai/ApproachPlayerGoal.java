@@ -37,7 +37,7 @@ public class ApproachPlayerGoal extends Goal {
 
     // корова спокійна: не голодна, не втомлена, не подавилась
     private boolean calm() {
-        return !cow.wantsFood() && cow.fatigue < 40 && !cow.choking;
+        return !cow.wantsFood() && !cow.wantsRest() && !cow.choking;
     }
 
     @Override

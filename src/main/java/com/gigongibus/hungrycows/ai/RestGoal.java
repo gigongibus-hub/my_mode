@@ -6,7 +6,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import java.util.EnumSet;
 
 public class RestGoal extends Goal {
-    private static final int TIRED_AT = 40;           // з якої втоми корова йде відпочивати
+    // з якої втоми йде відпочивати: HungryCow.wantsRest() (відчуття втоми ≥ 40 або справжня ≥ 100)
     private static final int RECOVER_PER_SECOND = 5;  // на скільки зменшується втома за секунду відпочинку
     private static final int MAX_REST_TICKS = 400;    // максимум відпочинку за раз (20 сек)
     private final HungryCow cow;
@@ -26,7 +26,7 @@ public class RestGoal extends Goal {
     // втомлена корова з режимом розмноження не відпочиває: втома не заважає розмноженню
     @Override
     public boolean canUse() {
-        return cow.fatigue >= TIRED_AT && !cow.cycle.inEstrus();
+        return cow.wantsRest() && !cow.cycle.inEstrus();
     }
 
     @Override
@@ -37,6 +37,7 @@ public class RestGoal extends Goal {
     @Override
     public void start() {
         restTimer = 0;
+        cow.resting = true;
         cow.getNavigation().stop();
     }
 
@@ -53,5 +54,6 @@ public class RestGoal extends Goal {
     @Override
     public void stop() {
         restTimer = 0;
+        cow.resting = false;
     }
 }

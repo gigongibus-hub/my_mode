@@ -30,7 +30,13 @@ public class NurseGoal extends Goal {
     @Override
     public void start() {
         ticks = 0;
+        cow.resting = true;
         cow.getNavigation().stop();
+    }
+
+    @Override
+    public void stop() {
+        cow.resting = false;
     }
 
     @Override
