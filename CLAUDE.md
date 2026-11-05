@@ -125,6 +125,11 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - `test/HungryCowGameTests`: hungerGrows, cowFindsAndEatsFood, fatigueGrowsAndRecovers. Майданчик
   `data/hungrycows/structures/platform.nbt` (камінь 9×9, скло 2 бл.). Координати тесту — від службового блока: y=1 підлога.
   `relativePos` у 1.20.1 повертає перевернуті координати (ванільна особливість) — для повідомлень, не для перевірок.
+- `test/HungryCowFearTests` (партія "fear", майданчик `arena.nbt` 15×15): fearFromApproachingPlayer (страх росте; втеча
+  ймовірнісна — не вимагається, лише в журналі), fearFromSuddenPlayer (поріг → ціль страху → відійшла на 1,5 бл.),
+  fearFromHit (довіра падає, страх росте, втекла або вдарила). Тестовий гравець — свій `TestPlayer` (FakePlayer, вразливий),
+  доданий через `ServerLevel.addNewPlayer`; `makeMockServerPlayerInLevel()` під Forge 47 падає (Connection.channel() = null).
+  У гравця без фізики onGround = false → корова вважає, що він стрибає; тест ставить onGround = true після кожного кроку.
 - Запуск: `./gradlew runGameTestServer -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-amd64`
   (потрібна Java 17: `apt-get install -y openjdk-17-jdk-headless`; українське в журналі — `JDK_JAVA_OPTIONS="-Dstdout.encoding=UTF-8"`).
   Maven Central іноді відповідає 429 — повторити. Тести нестабільні? Запускати кілька разів поспіль.
