@@ -12,6 +12,7 @@ public class HerdUpGoal extends Goal {
     private static final double SEE_RANGE = 16.0;
     private static final double STOP_DISTANCE = 2.0;
     private static final double LEADER_STOP = 4.0;      // до ватажка підходить на 4 блоки
+    private static final double BUMP = 1.3;             // інша корова ближче цього — далі не пхається
     private static final int RUN_TICKS = 300;           // скільки триває один «підхід» (15 сек)
     private static final int PAUSE_PROESTRUS = 200;     // пауза між підходами: проеструс 10 с ...
     private static final int PAUSE_ESTRUS = 60;         // ... тічка 3 с ...
@@ -80,7 +81,10 @@ public class HerdUpGoal extends Goal {
         if (buddy == null) return;
         ticks++;
         double stop = buddy == cow.herd.leader() ? LEADER_STOP : STOP_DISTANCE;   // до ватажка — не впритул
-        if (cow.distanceToSqr(buddy) <= stop * stop) {
+        // упирається в іншу корову (крім тієї, до якої йде) — зупиняється, щоб не пхатися
+        boolean bump = !cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(BUMP),
+                c -> c != cow && c != buddy && c.isAlive()).isEmpty();
+        if (cow.distanceToSqr(buddy) <= stop * stop || (bump && cow.distanceToSqr(buddy) < 8 * 8)) {
             cow.getNavigation().stop();
             return;
         }

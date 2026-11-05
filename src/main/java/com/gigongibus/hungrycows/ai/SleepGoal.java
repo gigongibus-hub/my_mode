@@ -1,5 +1,6 @@
 package com.gigongibus.hungrycows.ai;
 
+import com.gigongibus.hungrycows.CowHome;
 import com.gigongibus.hungrycows.CowTrust;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
@@ -15,7 +16,10 @@ import java.util.Map;
 // Вночі корова йде додому (укриття) і спить: стоїть, відпочиває, гірше помічає дрібниці.
 // Якщо дому немає — спить під деревом (будь-яке накриття); якщо й дерева немає — там, де є. Голод, спрага, страх і пологи важливіші (вищий пріоритет).
 public class SleepGoal extends Goal {
-    private static final double HOME_REACH = 3.0;       // «вдома» = ближче цього (стадо стоїть поруч)
+    private static final double HOME_REACH = 1.5;       // «на своєму місці» = ближче цього
+    private static final int SPOT_SPREAD = 3;           // своє місце — до 3 блоків від спільного
+    private static final double NEAR_BASE = 5.0;        // біля спільного місця ...
+    private static final double BESIDE_SLEEPER = 1.6;   // ... і поруч з коровою, що вже спить, — теж «на місці»
     private static final double SAME_SLEEP_RANGE = 32;  // ватажок ближче цього — стадо спить там, де вона
     private static final int MAX_WALK_TICKS = 1200;     // іде додому щонайбільше 1 хв, потім спить, де є
     private static final int RECOVER_EVERY_TICKS = 20;  // втома −2 щосекунди сну
@@ -69,13 +73,14 @@ public class SleepGoal extends Goal {
                 && cow.distanceToSqr(leader) < SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) {
             home = leader.home.sleepSpot();
         }
-        if (home != null && walkTicks < MAX_WALK_TICKS
-                && cow.distanceToSqr(home.getX() + 0.5, home.getY(), home.getZ() + 0.5) > HOME_REACH * HOME_REACH) {
+        // кожна корова — своє місце поруч зі спільним (щоб стадо не збивалось у купу)
+        BlockPos spot = home != null ? personalSpot(home) : null;
+        if (spot != null && walkTicks < MAX_WALK_TICKS && !arrived(home, spot)) {
             walkTicks++;
             cow.sleeping = false;
             cow.resting = false;
             if (walkTicks == 1 || walkTicks % 20 == 0) {
-                cow.getNavigation().moveTo(home.getX() + 0.5, home.getY(), home.getZ() + 0.5, 1.0);
+                cow.getNavigation().moveTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, 1.0);
             }
             return;
         }
@@ -85,6 +90,26 @@ public class SleepGoal extends Goal {
         cow.resting = true;
         if (ticks % RECOVER_EVERY_TICKS == 0) cow.fatigue = Math.max(0, cow.fatigue - RECOVER);
         if (ticks % LISTEN_EVERY == 0) listen();
+    }
+
+    // Своє місце для сну: зсув від спільного місця (однаковий для цієї корови щоночі), якщо там можна стати
+    private BlockPos personalSpot(BlockPos base) {
+        int h = cow.getUUID().hashCode();
+        int dx = Math.floorMod(h, SPOT_SPREAD * 2 + 1) - SPOT_SPREAD;
+        int dz = Math.floorMod(h >> 8, SPOT_SPREAD * 2 + 1) - SPOT_SPREAD;
+        for (int dy = 1; dy >= -1; dy--) {
+            BlockPos p = base.offset(dx, dy, dz);
+            if (CowHome.standable(cow.level(), p)) return p;
+        }
+        return base;
+    }
+
+    // Уже на місці: дійшла до свого місця або стала біля корови, що вже спить, недалеко від спільного місця
+    private boolean arrived(BlockPos base, BlockPos spot) {
+        if (cow.distanceToSqr(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5) <= HOME_REACH * HOME_REACH) return true;
+        if (cow.distanceToSqr(base.getX() + 0.5, base.getY(), base.getZ() + 0.5) > NEAR_BASE * NEAR_BASE) return false;
+        return !cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(BESIDE_SLEEPER),
+                c -> c != cow && c.sleeping).isEmpty();
     }
 
     // Слух: хтось рухається поруч — прокидається; небезпечний — ще й тікає

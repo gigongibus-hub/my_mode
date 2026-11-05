@@ -12,6 +12,7 @@ import java.util.EnumSet;
 // Теля з матір'ю тримається матері (FollowMotherGoal), ватажок нікуди не повертається.
 public class HerdCohesionGoal extends Goal {
     private static final double SPEED = 1.1;
+    private static final double BUMP = 1.3;             // інша корова ближче цього — зупиняється
     private static final int REPATH_TICKS = 20;
     private static final int MAX_TICKS = 600;           // щонайбільше 30 с за раз
     private final HungryCow cow;
@@ -44,7 +45,14 @@ public class HerdCohesionGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return applies() && ticks < MAX_TICKS && cow.herd.distanceToLeader() > CowHerd.BACK_NEAR;
+        return applies() && ticks < MAX_TICKS && cow.herd.distanceToLeader() > CowHerd.BACK_NEAR && !bumping();
+    }
+
+    // уже в стаді й упирається в іншу корову — досить, не пхатися
+    private boolean bumping() {
+        return cow.herd.distanceToLeader() < CowHerd.FAR_FROM_LEADER
+                && !cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(BUMP),
+                c -> c != cow && c.isAlive()).isEmpty();
     }
 
     @Override

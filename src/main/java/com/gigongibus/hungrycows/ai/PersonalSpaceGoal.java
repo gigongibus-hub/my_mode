@@ -10,7 +10,7 @@ import java.util.List;
 
 // Особистий простір: якщо корова стоїть майже впритул до іншої, слабша (нижчий ранг) трохи відходить
 public class PersonalSpaceGoal extends Goal {
-    private static final double TOO_CLOSE = 1.0;        // ближче цього — затісно
+    private static final double TOO_CLOSE = 1.3;        // ближче цього — затісно
     private static final int CHECK_EVERY = 40;          // перевіряє раз на 2 с
     private final HungryCow cow;
     private int cooldown = 0;
