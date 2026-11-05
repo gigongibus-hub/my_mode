@@ -247,8 +247,13 @@ public class HungryCow extends Cow {
     // з якого голоду корова шукає їжу: ген «шукає їжу раніше» 100 → з 21, 0 → з 39
     public int hungryAt() {
         double t = HUNGRY_AT * genes.inverse(CowGenes.Gene.HUNGER_THRESHOLD);
-        if (cycle.inEstrus()) t *= CowCycle.ESTRUS_EAT_LESS;   // у тічку їсть менше
         return (int) Math.round(t);
+    }
+
+    // 6б: чи хоче корова їсти. Вирішує відчуття голоду (апетит, стрес, біль, тічка),
+    // але голодування — рефлекс: голодна понад STARVE_AT іде їсти за будь-якого відчуття.
+    public boolean wantsFood() {
+        return hunger >= STARVE_AT || chem.hungerFelt() >= hungryAt();
     }
 
     // Раз на секунду: голод, втома і голодування з урахуванням генів

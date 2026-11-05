@@ -29,7 +29,7 @@ public class CowCycle {
     // ================= ПОВЕДІНКА =================
     public static final int MOO_MIN_SECONDS = 5;        // у тічку мукає кожні 5–12 секунд
     public static final int MOO_MAX_SECONDS = 12;
-    public static final double ESTRUS_EAT_LESS = 1.5;   // у тічку шукає їжу пізніше (поріг голоду ×1.5)
+    // у тічку їсть менше: див. CowChemistry.ESTRUS_APPETITE
 
     public static final int SECONDS_PER_DAY = 1200;
 

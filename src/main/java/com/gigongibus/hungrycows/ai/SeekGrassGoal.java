@@ -104,7 +104,7 @@ public class SeekGrassGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
         if (cow.choking) return false;   // подавлена корова не шукає їжі
-        if (cow.hunger < cow.hungryAt()) return false;
+        if (!cow.wantsFood()) return false;   // 6б: вирішує відчуття голоду
         // раз на 10 секунд забуваємо, що вважали недосяжним
         if (cow.tickCount - lastClearTick > 200) {
             unreachable.clear();
@@ -125,7 +125,7 @@ public class SeekGrassGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return !cow.choking && cow.hunger >= cow.hungryAt() && target != null;
+        return !cow.choking && cow.wantsFood() && target != null;
     }
 
     private void resetEating() {

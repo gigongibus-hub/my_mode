@@ -56,6 +56,15 @@ public class CowChemistry {
     public static final int LONELY_FULL_SECONDS = 300;  // ще за 5 хв самотність доходить до 100
     public static final double LONELY_FEAR = 0.30;      // повна самотність: тікає раніше на 30%
 
+    // ================= АПЕТИТ (6б: голод як відчуття) =================
+    public static final double APPETITE_MIN = 0.7;      // риса «апетит» 0: відчуває голод на 30% слабше ...
+    public static final double APPETITE_MAX = 1.3;      // ... «апетит» 100: на 30% сильніше
+    public static final double STRESS_APPETITE_FROM = 50; // кортизол вище цього пригнічує апетит ...
+    public static final double STRESS_APPETITE_LOSS = 0.3; // ... при кортизолі 100 — на 30%
+    public static final double PAIN_APPETITE_LOSS = 0.4;   // біль 100 — апетит на 40% менший
+    public static final double UNWELL_APPETITE_LOSS = 0.4; // нездужання 100 — на 40% менший
+    public static final double ESTRUS_APPETITE = 1.0 / 1.5; // у тічку їсть менше (поріг ніби ×1.5)
+
     // ================= СТРЕС І МОЛОКО =================
     public static final double STRESS_MILK_SLOWDOWN = 0.5; // кортизол 100 → молоко відновлюється вдвічі повільніше
 
@@ -186,7 +195,24 @@ public class CowChemistry {
         return clamp(cow.fatigue * 100.0 / 60.0);
     }
 
-    public int feelHunger() { return (int) Math.round(100 - glucose()); }
+    // Наскільки сильно корова ВІДЧУВАЄ голод порівняно з тим, скільки їй бракує їжі (×0.3 … ×1.3)
+    public double appetite() {
+        double k = APPETITE_MIN + (APPETITE_MAX - APPETITE_MIN) * cow.character.fraction(Trait.APPETITE);
+        if (cortisol > STRESS_APPETITE_FROM) {
+            k *= 1.0 - STRESS_APPETITE_LOSS * (cortisol - STRESS_APPETITE_FROM) / (100 - STRESS_APPETITE_FROM);
+        }
+        k *= 1.0 - PAIN_APPETITE_LOSS * pain / 100.0;
+        k *= 1.0 - UNWELL_APPETITE_LOSS * feelUnwell() / 100.0;
+        if (cow.cycle.inEstrus()) k *= ESTRUS_APPETITE;
+        return Math.max(0.3, k);
+    }
+
+    // Відчуття голоду в тих самих одиницях, що й голод корови (порівнюється з HungryCow.hungryAt())
+    public int hungerFelt() {
+        return (int) Math.round(cow.hunger * appetite());
+    }
+
+    public int feelHunger() { return (int) Math.round(clamp((100 - glucose()) * appetite())); }
     public int feelTired() { return (int) Math.round(adenosine()); }
     public int feelFear() { return (int) Math.round(clamp(adrenaline * 0.7 + cortisol * 0.3)); }
     public int feelStress() { return (int) Math.round(cortisol); }
@@ -218,7 +244,9 @@ public class CowChemistry {
         List<String> out = new ArrayList<>();
         out.add("#Самопочуття");
         if (cow.repro.isFemale() && !cow.isBaby()) out.add("Цикл: " + cow.cycle.phase().title);
-        out.add("Голод: " + feelHunger());
+        out.add("Голод (відчуття): " + hungerFelt() + " (шукає їжу з " + cow.hungryAt() + ")");
+        out.add("Голод насправді: " + cow.hunger + (cow.hunger > HungryCow.STARVE_AT ? " — ГОЛОДУЄ" : ""));
+        out.add("Апетит: ×" + String.format("%.2f", appetite()));
         out.add("Втома: " + feelTired());
         out.add("Страх: " + feelFear());
         out.add("Стрес: " + feelStress());

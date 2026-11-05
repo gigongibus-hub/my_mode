@@ -45,7 +45,7 @@ public class DrinkMilkGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!cow.isBaby() || cow.hunger < cow.hungryAt()) return false;
+        if (!cow.isBaby() || !cow.wantsFood()) return false;
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = 20;
         mother = cow.family.findMother();
