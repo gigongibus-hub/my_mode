@@ -43,6 +43,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import com.gigongibus.hungrycows.CowCharacter.Experience;
 import com.gigongibus.hungrycows.CowCharacter.Trait;
 import com.gigongibus.hungrycows.ai.GrieveGoal;
@@ -81,6 +82,10 @@ public class HungryCow extends Cow {
     public static final double RUN_FATIGUE = 2.0;        // бігає — втомлюється вдвічі швидше
     public static final double RUN_BLOCKS_PER_SECOND = 3.5; // «бігає» = за секунду пройшла більше стількох блоків
     public static final int TIRED_AT = 40;               // з якої відчутої втоми корова йде відпочивати
+    public static final int FEAR_WALKING = 10;           // страх за секунду від гравця, що ходить поруч
+    public static final int FEAR_STILL = 2;              // ... що стоїть на місці
+    public static final int FEAR_CROUCHING = 2;          // ... що крадеться присівши
+    public static final double STILL_MOVE = 0.5;         // «стоїть на місці» = за секунду зрушив менше ніж на пів блока
     public static final int PANIC_AT = 80;               // з такого страху тікає за будь-якого відчуття (рефлекс)
     public static final int EXHAUSTED_AT = 100;          // з такої справжньої втоми відпочиває за будь-якого відчуття
 
@@ -530,12 +535,10 @@ public class HungryCow extends Cow {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }
             geneSecondTick();
+            // страх щосекунди і росте (від того, що поруч), і спадає (смілива заспокоюється швидше):
+            // нерухомий гравець (+2) майже не лякає, ходьба (+10) і біг (+40) — так
             int gain = fearGainNearby();
-            if (gain > 0) {
-                fear = Math.min(100, fear + gain);
-            } else {
-                fear = Math.max(0, fear - fearDecay());
-            }
+            fear = Math.max(0, Math.min(100, fear + gain - fearDecay()));
 
             // діагностика: показники й активні цілі
             String goals = this.goalSelector.getRunningGoals()
@@ -1118,7 +1121,26 @@ public class HungryCow extends Cow {
     }
 
     // Скільки страху за секунду дають усі, хто поруч (береться найбільше)
+    // де був кожен гравець секунду тому (щоб знати, чи він стоїть на місці); не зберігається
+    private final java.util.Map<UUID, Vec3> lastPlayerPos = new java.util.HashMap<>();
+    private final java.util.Set<UUID> stillPlayers = new java.util.HashSet<>();
+
+    private void updatePlayerStillness() {
+        stillPlayers.clear();
+        java.util.Map<UUID, Vec3> now = new java.util.HashMap<>();
+        for (Player p : this.level().players()) {
+            if (this.distanceToSqr(p) > 16 * 16) continue;
+            Vec3 pos = p.position();
+            Vec3 before = lastPlayerPos.get(p.getUUID());
+            if (before != null && before.distanceToSqr(pos) < STILL_MOVE * STILL_MOVE) stillPlayers.add(p.getUUID());
+            now.put(p.getUUID(), pos);
+        }
+        lastPlayerPos.clear();
+        lastPlayerPos.putAll(now);
+    }
+
     private int fearGainNearby() {
+        updatePlayerStillness();
         int max = 0;
         for (LivingEntity e : this.level().getEntitiesOfClass(
                 LivingEntity.class, this.getBoundingBox().inflate(10.0), this::isScary)) {
@@ -1151,9 +1173,11 @@ public class HungryCow extends Cow {
         } else if (jumping) {
             base = 35;
         } else if (player.isCrouching()) {
-            base = 2;
+            base = FEAR_CROUCHING;
+        } else if (stillPlayers.contains(player.getUUID())) {
+            base = FEAR_STILL;      // стоїть на місці: майже не лякає
         } else {
-            base = 10;
+            base = FEAR_WALKING;
         }
 
         if (t < 0) {
