@@ -51,6 +51,8 @@ public class SleepGoal extends Goal {
     private static final double CHECK_PATHS_NEAR_DOOR = 10;   // шляхи до місць усередині перевіряє лише ближче 10 блоків від входу
     private BlockPos door = null;          // вхід у дім, через який іде (спершу до нього, потім усередину)
     private boolean passedDoor = false;
+    private static final int RETRY_HOME_TICKS = 600;   // заснула надворі, хоча дім є — через 30 с знову пробує дійти додому
+    private int outsideSince = -1;
     private int retries = 0;
 
     public SleepGoal(HungryCow cow) {
@@ -88,6 +90,7 @@ public class SleepGoal extends Goal {
         failedPaths = 0;
         // повернулась уночі (поїла, попила): якщо вона надворі, знову йде через вхід
         if (door != null) passedDoor = CowHome.hasRoof(cow.level(), cow.blockPosition());
+        outsideSince = -1;
     }
 
     @Override
@@ -179,6 +182,21 @@ public class SleepGoal extends Goal {
             cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
             if (ticks % LISTEN_EVERY == 0) listen();
             return;
+        }
+        // дім є, а вона не дійшла (спить надворі): через 30 с починає шлях додому заново, а не спить так до ранку
+        if (home != null && (claimed == null || !atSpot(claimed)) && !CowHome.hasRoof(cow.level(), cow.blockPosition())) {
+            if (outsideSince < 0) {
+                outsideSince = cow.tickCount;
+            } else if (cow.tickCount - outsideSince >= RETRY_HOME_TICKS) {
+                outsideSince = -1;
+                cow.tell(cow.family.name + " не дійшла додому, пробує знову");
+                claimed = null;
+                claimBase = null;   // наступного тіку — нове місце, шлях і лічильники з нуля
+                retries = 0;
+                return;
+            }
+        } else {
+            outsideSince = -1;
         }
         // спить (і тримає своє місце, щоб інші його не займали)
         cow.getNavigation().stop();
