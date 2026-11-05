@@ -45,6 +45,10 @@ public class SleepGoal extends Goal {
     private static final double STAY_NEAR_LEADER = 6;   // під час пошуку тримається не далі 6 блоків від ватажка
     private static final int MAX_FAILED_PATHS = 5;      // стільки разів не знайшла шляху — спить, де є
     private int ticks = 0;
+    private static final int RETRY_SPOT_TICKS = 200;    // не знайшла свого місця — пробує знову через 10 с ...
+    private static final int MAX_SPOT_RETRIES = 3;      // ... щонайбільше 3 рази за ніч
+    private int retryAt = 0;
+    private int retries = 0;
 
     public SleepGoal(HungryCow cow) {
         this.cow = cow;
@@ -58,7 +62,14 @@ public class SleepGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        return cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus() && cow.tickCount >= awakeUntil;
+        // настав ранок, а ціль перервали ще вночі: звільнити своє місце
+        if (!cow.isNightTime() && claimed != null) {
+            claimed = null;
+            claimBase = null;
+            cow.sleepClaim = null;
+        }
+        // розбуджена корова з цілі не виходить: стоїть на своєму місці, поки не засне знову
+        return cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus();
     }
 
     @Override
@@ -101,12 +112,18 @@ public class SleepGoal extends Goal {
         }
         // своє місце: усередині укриття, глибше, не зайняте іншою коровою, досяжне
         if (home != null && (claimed == null || !home.equals(claimBase))) {
-            claimBase = home;
-            excluded.clear();
-            claimed = chooseSpot(home);
-            walkTicks = 0;
-            failedPaths = 0;
-            lastDist = Double.MAX_VALUE;
+            boolean newBase = !home.equals(claimBase);
+            // нове спільне місце — шукає одразу; не знайшла свого — ще кілька спроб через 10 с
+            if (newBase || (cow.tickCount >= retryAt && retries < MAX_SPOT_RETRIES)) {
+                if (newBase) retries = 0; else retries++;
+                claimBase = home;
+                excluded.clear();
+                claimed = chooseSpot(home);
+                retryAt = cow.tickCount + RETRY_SPOT_TICKS;
+                walkTicks = 0;
+                failedPaths = 0;
+                lastDist = Double.MAX_VALUE;
+            }
         }
         if (claimed != null && walkTicks < MAX_WALK_TICKS && !atSpot(claimed)) {
             walkTicks++;
@@ -114,7 +131,9 @@ public class SleepGoal extends Goal {
             cow.resting = false;
             cow.sleepClaim = claimed;
             if (walkTicks == 1 || walkTicks % 20 == 0) {
+                cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);   // довгий шлях: обійти будівлю до входу
                 boolean ok = cow.getNavigation().moveTo(claimed.getX() + 0.5, claimed.getY(), claimed.getZ() + 0.5, 1.0);
+                cow.getNavigation().resetMaxVisitedNodesMultiplier();
                 // не наближається (ходить колом) або шляху немає — це місце відкладає і бере наступне
                 double d = cow.distanceToSqr(claimed.getX() + 0.5, claimed.getY(), claimed.getZ() + 0.5);
                 if (!ok || (walkTicks % 60 == 0 && d > lastDist - 0.5)) failedPaths++;
@@ -126,6 +145,15 @@ public class SleepGoal extends Goal {
                     lastDist = Double.MAX_VALUE;
                 }
             }
+            return;
+        }
+        // розбудили: стоїть на місці без сну (і не відпочиває), прислухається, потім засинає знову
+        if (cow.tickCount < awakeUntil) {
+            cow.getNavigation().stop();
+            cow.sleeping = false;
+            cow.resting = false;
+            cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
+            if (ticks % LISTEN_EVERY == 0) listen();
             return;
         }
         // спить (і тримає своє місце, щоб інші його не займали)
@@ -184,7 +212,9 @@ public class SleepGoal extends Goal {
         int checks = 0;
         for (BlockPos p : spots) {
             if (checks++ >= MAX_SPOT_CHECKS) break;
+            cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);
             net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
+            cow.getNavigation().resetMaxVisitedNodesMultiplier();
             if (path != null && path.getEndNode() != null && path.getEndNode().asBlockPos().distManhattan(p) <= 1) return p;
             excluded.add(p);
         }
@@ -224,9 +254,11 @@ public class SleepGoal extends Goal {
     public void stop() {
         cow.sleeping = false;
         cow.resting = false;
+        heardPos.clear();
+        // ціль перервали вночі (поїсти, попити, злякалась): своє місце тримає і потім повертається туди
+        if (cow.isNightTime()) return;
         cow.sleepClaim = null;
         claimed = null;
         claimBase = null;
-        heardPos.clear();
     }
 }
