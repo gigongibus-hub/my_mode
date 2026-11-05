@@ -270,12 +270,13 @@ public class SleepGoal extends Goal {
         heardPos.clear();
         heardPos.putAll(now);
         if (heard == null) return;
+        boolean wasAwake = cow.tickCount < awakeUntil;   // уже не спить: шум лише продовжує неспання, без нового повідомлення
         awakeUntil = cow.tickCount + WAKE_TICKS;
         boolean friend = heard instanceof Player p && cow.trustOf(p) >= CowTrust.FRIEND_FROM;
         if (cow.isScary(heard) && !friend) {
             cow.fear = Math.max(cow.fear, WAKE_FEAR);
-            cow.tell(cow.family.name + " прокинулась від шуму і злякалась: " + heard.getName().getString());
-        } else {
+            if (!wasAwake) cow.tell(cow.family.name + " прокинулась від шуму і злякалась: " + heard.getName().getString());
+        } else if (!wasAwake) {
             cow.tell(cow.family.name + " прокинулась від шуму: " + heard.getName().getString());
         }
     }
