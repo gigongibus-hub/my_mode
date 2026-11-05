@@ -2,7 +2,13 @@ package com.gigongibus.hungrycows;
 
 import com.gigongibus.hungrycows.CowCharacter.Experience;
 import com.mojang.logging.LogUtils;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -21,6 +27,7 @@ import java.lang.reflect.Field;
 public class ModForgeEvents {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    public static final int TEST_LABOR_IN_SECONDS = 10;  // команда /hungrycows birth: через скільки секунд почнуться пологи
     public static final int ZOMBIE_TARGET_PRIORITY = 4;  // у зомбі: 2 гравець, 3 селянин і залізний голем, 4 корова, 5 черепаха
 
     // Список «на кого нападати» (Mob.targetSelector) закритий, тому беремо його через рефлексію.
@@ -53,6 +60,33 @@ public class ModForgeEvents {
                 targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(zombie, HungryCow.class, true));
             }
         }
+    }
+
+    // Команди для тестів (потрібні права оператора / чити):
+    //   /hungrycows birth single — вагітна самка, за 10 с пологи, одне теля
+    //   /hungrycows birth twins  — те саме, але двійнята
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event) {
+        event.getDispatcher().register(Commands.literal("hungrycows")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("birth")
+                        .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
+                        .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
+    }
+
+    private static int spawnPregnant(CommandSourceStack source, int calves) {
+        ServerLevel level = source.getLevel();
+        HungryCow cow = ModEntities.HUNGRY_COW.get().create(level);
+        if (cow == null) return 0;
+        Vec3 pos = source.getPosition();
+        cow.moveTo(pos.x, pos.y, pos.z, source.getRotation().y, 0.0F);
+        cow.repro.startTestPregnancy(TEST_LABOR_IN_SECONDS, calves);
+        cow.family.name = CowNames.random(true, level.getRandom());
+        level.addFreshEntity(cow);
+        String what = calves == 2 ? "двійнят" : "одне теля";
+        source.sendSuccess(() -> Component.literal("Вагітна корова " + cow.family.name + ": через "
+                + TEST_LABOR_IN_SECONDS + " с пологи, народить " + what), true);
+        return 1;
     }
 
     // Вибух поруч: корови, яких він зачепив, отримують досвід «поруч вибух»

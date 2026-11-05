@@ -187,7 +187,7 @@ public class CowFamily {
         List<String> lines = new ArrayList<>();
         lines.add("=== " + name + " [" + (cow.repro.isFemale() ? "Ж" : "Ч") + "]" + (cow.isBaby() ? " (теля)" : "") + " ===");
         if (cow.repro.isFemale() && !cow.isBaby()) {
-            lines.add("Народжень: " + cow.repro.births() + " з " + cow.repro.birthLimit()
+            lines.add("Телят народила: " + cow.repro.births() + " з " + cow.repro.birthLimit()
                     + (cow.repro.isExhausted() ? " (більше не може)" : ""));
             String milk = cow.milk.label();
             lines.add(milk != null ? milk + " з " + cow.milk.max() : "Молока немає");

@@ -682,6 +682,21 @@ public class HungryCow extends Cow {
         }
     }
 
+    // Гравець стоїть ззаду корови (і близько)
+    private int lastAssistHint = -1000;
+
+    private boolean isBehind(Player player) {
+        double dx = player.getX() - this.getX();
+        double dz = player.getZ() - this.getZ();
+        double dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > CowReproduction.ASSIST_REACH || dist < 1.0E-4) return dist < 1.0E-4;
+        float yaw = this.yBodyRot * ((float) Math.PI / 180F);
+        double fx = -Math.sin(yaw);   // куди дивиться корова
+        double fz = Math.cos(yaw);
+        double dot = (dx * fx + dz * fz) / dist;
+        return dot < CowReproduction.ASSIST_BEHIND_DOT;
+    }
+
     // Теля виросло.
     // Ванільний AgeableMob.setAge() викликає цей метод лише коли вік переходить через межу «теля/доросла»
     // (з від'ємного в ≥ 0 або навпаки), і вже ПІСЛЯ оновлення isBaby(). Пауза після розмноження
@@ -706,6 +721,19 @@ public class HungryCow extends Cow {
         // книга «Корововедення»: ПКМ по корові відкриває сторінки про неї
         if (stack.is(ModItems.COW_BOOK.get())) {
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) CowBook.open(serverPlayer, this);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+        // пологи: присісти ззаду й тримати ПКМ порожньою рукою = допомогти
+        if (repro.inLabor() && player.isShiftKeyDown() && stack.isEmpty()) {
+            if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
+            if (server) {
+                if (isBehind(player)) {
+                    repro.assistTick(player);
+                } else if (this.tickCount - lastAssistHint > 40) {
+                    lastAssistHint = this.tickCount;
+                    player.sendSystemMessage(Component.literal("Щоб допомогти з пологами, підійди ззаду"));
+                }
+            }
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
         // присісти + ПКМ порожньою рукою: родинне дерево в чат (поки для тестів)

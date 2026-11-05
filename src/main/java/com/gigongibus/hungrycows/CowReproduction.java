@@ -31,6 +31,22 @@ public class CowReproduction {
     public static final float BIG_FAMILY_CHANCE = 0.05F;  // 5% самок: від 10 до 12 пологів
     public static final int BIG_BIRTHS_MIN = 10;
     public static final int BIG_BIRTHS_MAX = 12;
+    // ================= ДВІЙНЯТА =================
+    public static final float TWIN_CHANCE = 0.03F;        // шанс двійні при гені 50 (у справжніх корів 1–4%)
+    public static final float TWIN_CHANCE_MIN = 0.01F;    // при гені 0
+    public static final float TWIN_CHANCE_MAX = 0.06F;    // при гені 100
+    public static final float SECOND_CALF_DEATH_MULTIPLIER = 2.0F; // друге теля гине вдвічі частіше ...
+    public static final float SECOND_CALF_DEATH_MAX = 0.9F;        // ... але не частіше за 90%
+
+    // ================= ДОПОМОГА ПРИ ПОЛОГАХ =================
+    public static final int ASSIST_HOLD_TICKS = 60;       // скільки тримати ПКМ (3 сек)
+    public static final int ASSIST_GAP_TICKS = 10;        // перерва довша за це = відпустив, відлік заново
+    public static final float ASSIST_DEATH_MULTIPLIER = 0.5F; // шанс мертвого теляти вдвічі менший
+    public static final float ASSIST_PAIN_MULTIPLIER = 0.5F;  // мати втрачає вдвічі менше здоров'я
+    public static final int ASSIST_TRUST = 5;             // довіра до того, хто допоміг
+    public static final double ASSIST_REACH = 3.0;        // з якої відстані можна допомогти
+    public static final double ASSIST_BEHIND_DOT = -0.5;  // «ззаду»: кут від голови корови більший за 120°
+
     public static final double EXHAUSTED_SLOWDOWN = 0.30; // після останніх пологів назавжди повільніша на 30%
     private static final UUID EXHAUSTED_MODIFIER_ID = UUID.fromString("7d3f5f0e-3c1b-4b8e-9a51-6b1f2c9e4a10");
 
@@ -45,6 +61,11 @@ public class CowReproduction {
     private boolean exhausted = false;     // більше не може народжувати і давати молоко після останньої лактації
     private CompoundTag fatherNode = null; // батько поточної вагітності для родинного дерева
     private UUID fatherId = null;
+    private int forcedCalves = 0;          // 0 = випадково; 1 або 2 = задано командою для тестів
+    private boolean assisted = false;      // гравець допоміг з цими пологами
+    private UUID assistPlayer = null;      // хто зараз допомагає (не зберігається)
+    private int assistStart = 0;
+    private int assistLast = -1000;
     private CompoundTag fatherGenes = null; // обидві копії генів батька поточної вагітності (для теляти)
 
     // зустріч пари (не зберігається)
@@ -195,6 +216,7 @@ public class CowReproduction {
 
         if (laborTicksLeft > 0 && laborTicksLeft % 20 == 0) {
             float pain = laborDamage() / (Math.max(20, laborTotalTicks) / 20.0F);
+            if (assisted) pain *= ASSIST_PAIN_MULTIPLIER;
             cow.setHealth(Math.max(1.0F, cow.getHealth() - pain));   // не смертельно
             if ((laborTicksLeft / 20) % 3 == 0) {
                 cow.playSound(SoundEvents.COW_HURT, 0.8F, 0.8F);
@@ -209,16 +231,28 @@ public class CowReproduction {
         pregnant = false;
         pregnantSeconds = 0;
         laborTicksLeft = 0;
-        births++;
 
-        HungryCow baby = null;
-        if (cow.getRandom().nextFloat() < calfDeathChance()) {
-            cow.playSound(SoundEvents.COW_DEATH, 0.8F, 1.3F);
-            say("Теля народилося мертвим...");
-        } else {
-            baby = ModEntities.HUNGRY_COW.get().create(cow.level());
+        // одне теля чи двійнята (команда для тестів може задати це наперед)
+        int calves = forcedCalves > 0 ? forcedCalves : (cow.getRandom().nextFloat() < twinChance() ? 2 : 1);
+        float firstDeath = calfDeathChance();
+        float secondDeath = Math.min(SECOND_CALF_DEATH_MAX, firstDeath * SECOND_CALF_DEATH_MULTIPLIER);
+        if (assisted) {
+            firstDeath *= ASSIST_DEATH_MULTIPLIER;
+            secondDeath *= ASSIST_DEATH_MULTIPLIER;
         }
-        if (baby != null) {
+        if (calves == 2) say(cow.family.name + " народжує двійнят!");
+
+        int alive = 0;
+        for (int k = 0; k < calves; k++) {
+            births++;   // ліміт рахує телят, мертві теж
+            float death = k == 0 ? firstDeath : secondDeath;
+            if (cow.getRandom().nextFloat() < death) {
+                cow.playSound(SoundEvents.COW_DEATH, 0.8F, 1.3F);
+                say((k == 0 ? "Теля" : "Друге теля") + " народилося мертвим...");
+                continue;
+            }
+            HungryCow baby = ModEntities.HUNGRY_COW.get().create(cow.level());
+            if (baby == null) continue;
             baby.setBaby(true);
             baby.moveTo(cow.getX(), cow.getY(), cow.getZ(), cow.getYRot(), 0.0F);
             baby.family.setupNewborn(cow, fatherNode);
@@ -233,18 +267,67 @@ public class CowReproduction {
             cow.level().addFreshEntity(baby);
             cow.level().broadcastEntityEvent(cow, (byte) 18);
             say("Народилося теля " + baby.family.name + "!");
+            alive++;
         }
-        // молоко з'являється після пологів; якщо теля мертве, воно все дістанеться гравцю
-        cow.milk.startLactation(baby != null);
+        // молоко з'являється після пологів; якщо всі телята мертві, воно все дістанеться гравцю
+        cow.milk.startLactation(alive > 0);
         fatherNode = null;
         fatherId = null;
         fatherGenes = null;
+        forcedCalves = 0;
+        assisted = false;
+        assistPlayer = null;
 
         if (births >= birthLimit) {
             exhausted = true;
             applyExhaustion();
-            say(cow.family.name + " більше не зможе народжувати: це були останні пологи (" + births + ")");
+            say(cow.family.name + " більше не зможе народжувати: народила телят " + births);
         }
+    }
+
+    // Шанс двійні за геном: 0 → 1%, 50 → 3%, 100 → 6%
+    private float twinChance() {
+        int g = cow.genes.value(CowGenes.Gene.TWINS);
+        return g <= 50
+                ? TWIN_CHANCE_MIN + (TWIN_CHANCE - TWIN_CHANCE_MIN) * g / 50.0F
+                : TWIN_CHANCE + (TWIN_CHANCE_MAX - TWIN_CHANCE) * (g - 50) / 50.0F;
+    }
+
+    // ---------- допомога при пологах ----------
+
+    // Гравець ззаду, присівши, тримає ПКМ (викликається з HungryCow кожні ~4 тіки, поки тримає)
+    public void assistTick(net.minecraft.world.entity.player.Player player) {
+        if (!inLabor() || assisted) return;
+        int now = cow.tickCount;
+        if (assistPlayer == null || !assistPlayer.equals(player.getUUID()) || now - assistLast > ASSIST_GAP_TICKS) {
+            assistPlayer = player.getUUID();
+            assistStart = now;   // відпустив або новий гравець: відлік заново
+            say(player.getName().getString() + " допомагає " + cow.family.name + " з пологами...");
+        }
+        assistLast = now;
+        if (now - assistStart >= ASSIST_HOLD_TICKS) {
+            assisted = true;
+            cow.addTrust(player, ASSIST_TRUST, "допомога з пологами", false);
+            say("Допомога вдалася: телята мають більше шансів вижити, " + cow.family.name + " болить менше");
+        }
+    }
+
+    public boolean isAssisted() {
+        return assisted;
+    }
+
+    // ---------- для тестів (команда /hungrycows birth) ----------
+
+    // Самка одразу вагітна, пологи за seconds секунд; calves = 1 або 2
+    public void startTestPregnancy(int seconds, int calves) {
+        sex = 1;
+        pregnant = true;
+        pregnantSeconds = seconds;
+        laborTicksLeft = 0;
+        forcedCalves = calves;
+        fatherNode = null;
+        fatherId = null;
+        fatherGenes = null;
     }
 
     private HungryCow findFather() {
@@ -269,12 +352,12 @@ public class CowReproduction {
         if (cow.isBaby()) {
             result += " | " + cow.family.calfLabel();
         } else if (isFemale()) {
-            result += " | Пологи: " + births + "/" + birthLimit + (exhausted ? " (все)" : "");
+            result += " | Телят: " + births + "/" + birthLimit + (exhausted ? " (все)" : "");
             String milk = cow.milk.label();
             if (milk != null) result += " | " + milk;
         }
         if (laborTicksLeft > 0) {
-            result += " | ПОЛОГИ ще " + (laborTicksLeft / 20 + 1) + " с";
+            result += " | ПОЛОГИ ще " + (laborTicksLeft / 20 + 1) + " с" + (assisted ? " (допомогли)" : "");
         } else if (pregnant) {
             result += " | Вагітна: " + (pregnantSeconds / 60) + ":" + String.format("%02d", pregnantSeconds % 60);
         }
@@ -295,6 +378,8 @@ public class CowReproduction {
         if (fatherId != null) tag.putUUID("FatherId", fatherId);
         if (fatherGenes != null) tag.put("FatherGenome", fatherGenes);
         tag.putInt("LaborTotal", laborTotalTicks);
+        tag.putInt("ForcedCalves", forcedCalves);
+        tag.putBoolean("Assisted", assisted);
     }
 
     public void load(CompoundTag tag) {
@@ -311,6 +396,8 @@ public class CowReproduction {
         fatherId = tag.hasUUID("FatherId") ? tag.getUUID("FatherId") : null;
         fatherGenes = tag.contains("FatherGenome") ? tag.getCompound("FatherGenome") : null;
         laborTotalTicks = tag.contains("LaborTotal") ? tag.getInt("LaborTotal") : LABOR_TICKS;
+        forcedCalves = tag.getInt("ForcedCalves");
+        assisted = tag.getBoolean("Assisted");
         if (exhausted) applyExhaustion();
     }
 }

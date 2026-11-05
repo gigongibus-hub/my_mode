@@ -53,9 +53,11 @@ public final class CowBook {
             out.add("Теля ще не розмножується");
         } else {
             if (female) {
-                out.add("Народжень: " + cow.repro.births() + " з " + cow.repro.birthLimit());
+                out.add("Телят народила: " + cow.repro.births() + " з " + cow.repro.birthLimit());
                 if (cow.repro.inLabor()) {
-                    out.add("Пологи: ще " + cow.repro.laborSecondsLeft() + " с");
+                    out.add("Пологи: ще " + cow.repro.laborSecondsLeft() + " с"
+                            + (cow.repro.isAssisted() ? " (допомогли)" : ""));
+                    out.add("Допомогти: підійди ззаду, присядь і тримай ПКМ порожньою рукою 3 с");
                 } else if (cow.repro.isPregnant()) {
                     int s = cow.repro.pregnantSecondsLeft();
                     out.add("Вагітна: ще " + (s / 60) + ":" + String.format("%02d", s % 60));
