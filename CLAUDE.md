@@ -130,6 +130,10 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   fearFromHit (довіра падає, страх росте, втекла або вдарила). Тестовий гравець — свій `TestPlayer` (FakePlayer, вразливий),
   доданий через `ServerLevel.addNewPlayer`; `makeMockServerPlayerInLevel()` під Forge 47 падає (Connection.channel() = null).
   У гравця без фізики onGround = false → корова вважає, що він стрибає; тест ставить onGround = true після кожного кроку.
+- `test/HungryCowSleepTests` (партія "sleep", майданчик `barn.nbt`: 17×17, хлів 7×7 з дощок, вхід 3×3 без дверей):
+  cowsSleepInBarn — 3 корови надворі, 60 с дня (знаходять дім), потім ніч → усі в хліві й сплять, поки шкала сну < 100.
+  10/10 (заходять за 2–16 с ночі). Відоме нестабільне місце: fearFromApproachingPlayer 1 раз з ~20 — страх 0 при гравці
+  за 1,7 бл. (причину не досліджено).
 - Запуск: `./gradlew runGameTestServer -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-amd64`
   (потрібна Java 17: `apt-get install -y openjdk-17-jdk-headless`; українське в журналі — `JDK_JAVA_OPTIONS="-Dstdout.encoding=UTF-8"`).
   Maven Central іноді відповідає 429 — повторити. Тести нестабільні? Запускати кілька разів поспіль.
