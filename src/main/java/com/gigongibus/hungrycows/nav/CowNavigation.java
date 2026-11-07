@@ -25,14 +25,14 @@ public class CowNavigation extends GroundPathNavigation {
     // обходити інших корів (перша версія з перебудовою шляху смикала корову: зіткнень 0–33 проти 0–1; тепер без перебудови)
 
     public static final boolean AVOID_COWS = true;
-    public static final double AHEAD = 1.8;           // дивиться вперед на 1,8 блока (від центру до центру)
-    public static final double SIDE_MARGIN = 0.2;     // «на шляху» = збоку ближче половин ширин + 0,2
-    public static final int CHECK_EVERY = 5;          // дивиться раз на 5 тіків
+    public static final double AHEAD = 2.2;           // дивиться вперед на 2,2 блока (від центру до центру)
+    public static final double SIDE_MARGIN = 0.35;    // «на шляху» = збоку ближче половин ширин + 0,35
+    public static final int CHECK_EVERY = 2;          // дивиться раз на 2 тіки
     public static final double MOVING = 0.03;         // «іде» = швидкість понад 0,03 блока за тік у той самий бік
     public static final double FOLLOW_SPEED = 0.3;    // іде слідом / чекає — повільно (30%)
     public static final int WAIT_TICKS = 30;          // та стоїть чи йде назустріч — чекає 1,5 с ...
     public static final int SIDESTEP_TICKS = 40;      // ... потім до 2 с відступає вбік (праворуч), обходячи її
-    public static final double SIDESTEP_PUSH = 0.06;  // сила кроку вбік (раз на 5 тіків)
+    public static final double SIDESTEP_PUSH = 0.03;  // сила кроку вбік (раз на 2 тіки)
     public static final int AVOID_TICKS = 40;         // (не вживається, поки обхід без перебудови шляху)
     public static final float AVOID_MALUS = 6.0F;     // «ціна» клітинки, де стоїть інша корова
 

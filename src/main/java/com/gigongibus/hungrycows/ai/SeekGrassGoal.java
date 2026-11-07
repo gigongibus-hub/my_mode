@@ -35,6 +35,7 @@ public class SeekGrassGoal extends Goal {
     private static final float FLOWER_CHANCE = 0.30F;     // шанс, що голодна корова піде до квітки замість звичайної їжі
     private static final float POPPY_CHANCE = 0.15F;      // шанс, що піде саме до маку замість звичайної їжі (входить у FLOWER_CHANCE)
     private static final int PLACED_BONUS = 30;           // бонус привабливості блоків, поставлених гравцем
+    private static final int PLANT_BONUS = 12;            // низька/висока трава привабливіша за трав'яний блок (Fij: їли блок частіше за траву)
     private static final int PLACED_EAT_TICKS = 200;      // скільки їсть такий блок (10 сек)
     private static final double DISTANCE_PENALTY = 2.0;   // скільки поживності «коштує» кожен блок шляху
     private static final int MAX_RUN_TICKS = 400;         // скільки максимум йти до однієї цілі (20 сек)
@@ -356,7 +357,8 @@ public class SeekGrassGoal extends Goal {
         // ідея 9: вдень корова охочіше пасеться в полі (над травою видно небо)
         BlockPos stand = (c.kind == Kind.GRASS_BLOCK || c.kind == Kind.MOSS_BLOCK) ? c.pos.above() : c.pos;
         double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
-        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field;
+        double plant = (c.block == Blocks.GRASS || c.block == Blocks.TALL_GRASS) ? PLANT_BONUS : 0;
+        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant;
     }
 
     // «апетит» до виду квітки з урахуванням відрази

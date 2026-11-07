@@ -336,8 +336,6 @@ public class HungryCowSleepTests {
                                 + (c.getLastDamageSource() == null ? "?" : c.getLastDamageSource().getMsgId()
                                 + (c.getLastDamageSource().getEntity() == null ? "" : " (" + c.getLastDamageSource().getEntity().getName().getString() + ")"))
                                 + ", " + state(h, c));
-                        // шкала сну повна, а корова надворі — вона вже засне, де є: провал одразу
-                        if (c.sleep.full() && !inBarn(h, c)) h.fail("не встигла дійти до хліва: " + state(h, c));
                     }
                     for (HungryCow c : cows) {
                         h.assertTrue(inBarn(h, c) && c.sleeping, "ще не спить у хліві: " + state(h, c));

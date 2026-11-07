@@ -57,6 +57,8 @@ public class SleepGoal extends Goal {
     private static final int LISTEN_EVERY = 10;          // прислухається раз на пів секунди
     private static final int WAKE_TICKS = 600;           // прокинулась — пів хвилини не засинає
     private static final int WAKE_FEAR = 40;             // небезпечний моб поруч: такий страх (тікає)
+    private static final double BAT_HEAR = 1.5;          // кажан будить лише ближче 1,5 блока ...
+    private static final double BAT_WAKE_CHANCE = 0.1;   // ... і з шансом 10% (Fij: часто прокидались від кажанів)
 
     private final HungryCow cow;
     private final Map<Integer, Vec3> heardPos = new HashMap<>();
@@ -192,11 +194,7 @@ public class SleepGoal extends Goal {
             beginWay(base);
         }
 
-        // шкала сну повна, а корова ще не вдома: далі не йде, засинає, де є
-        if (cow.sleep.full() && !isInside()) {
-            sleepHere();
-            return;
-        }
+        // шкала сну повна, а корова ще не вдома: раніше засинала, де є; тепер (Fij) іде далі, але вдвічі повільніше (CowSleep)
 
         // 3. Іде до свого місця
         if (claimed != null && walkTicks < MAX_WALK_TICKS && !atSpot(claimed)) {
@@ -492,6 +490,8 @@ public class SleepGoal extends Goal {
             double range = e instanceof Player p && p.isCrouching() ? HEAR_SNEAK : HEAR_RANGE;
             if (cow.distanceToSqr(e) > range * range) continue;
             if (e instanceof Player p && p.isSpectator()) continue;
+            if (e instanceof net.minecraft.world.entity.ambient.AmbientCreature
+                    && (cow.distanceToSqr(e) > BAT_HEAR * BAT_HEAR || cow.getRandom().nextDouble() >= BAT_WAKE_CHANCE)) continue;
             heard = e;
             break;
         }

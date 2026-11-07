@@ -27,7 +27,8 @@ public class CowSleep {
     public static final float EVENING_GAIN = 1F / 2F;    // увечері +1 кожні 2 с (тобто +0,5 щосекунди)
     public static final float NIGHT_GAIN = 2F / 2F;      // уночі +2 кожні 2 с
     public static final float MAX = 100F;                // шкала повна — засинає, де є
-    public static final double MAX_SLOWDOWN = 0.10;      // повна шкала — на 10% повільніша (менше — пропорційно)
+    public static final double MAX_SLOWDOWN = 0.10;      // сонна — до 10% повільніша (пропорційно шкалі) ...
+    public static final double FULL_SLOWDOWN = 0.50;     // ... а шкала повна (100) — удвічі повільніша (Fij; раніше засинала, де є)
     public static final int ROUTE_STEP = 5;              // точка дороги кожні 5 блоків
     public static final int ROUTE_MAX_POINTS = 40;       // щонайбільше стільки точок
     public static final double ROUTE_JOIN = 16;          // приєднується до дороги, якщо найближча точка не далі 16 блоків
@@ -68,7 +69,7 @@ public class CowSleep {
             }
         }
         // сонна — трохи повільніша (міняємо, лише коли різниця помітна)
-        double slow = -MAX_SLOWDOWN * sleepiness / MAX;
+        double slow = full() && !cow.sleeping ? -FULL_SLOWDOWN : -MAX_SLOWDOWN * sleepiness / MAX;
         if (Math.abs(slow - appliedSlow) >= 0.005 || (slow == 0 && appliedSlow != 0)) {
             AttributeInstance inst = cow.getAttribute(Attributes.MOVEMENT_SPEED);
             if (inst != null) {
