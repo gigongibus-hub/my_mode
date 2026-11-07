@@ -499,6 +499,12 @@ public class HungryCow extends Cow {
     private static final EntityDataAccessor<Float> DATA_SIZE =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.FLOAT);
 
+    // Свій пошук шляху: тримається далі від стін (інакше б'ється об краї входу й кути будівель)
+    @Override
+    protected net.minecraft.world.entity.ai.navigation.PathNavigation createNavigation(Level level) {
+        return new com.gigongibus.hungrycows.nav.CowNavigation(this, level);
+    }
+
     // Без тями від спеки: синхронізується, щоб гравець бачив корову лежачою на боці
     private static final EntityDataAccessor<Boolean> DATA_UNCONSCIOUS =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);

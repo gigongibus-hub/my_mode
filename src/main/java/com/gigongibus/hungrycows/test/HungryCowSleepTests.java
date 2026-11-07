@@ -85,6 +85,12 @@ public class HungryCowSleepTests {
     private static final String BIG_BARN = "bigbarn";
     private static final List<BlockPos> BIG_COWS = List.of(new BlockPos(24, 2, 37), new BlockPos(24, 2, 40), new BlockPos(24, 2, 43));
 
+    // Одна корова: без тисняви — видно, чи б'ється об стіни сама (Fij: «і так, і так буває»)
+    @GameTest(template = BARN, batch = "sleep_alone", timeoutTicks = TIMEOUT)
+    public static void cowSleepsInBarnAlone(GameTestHelper h) {
+        sleepTest(h, List.of(COWS.get(1)), "cowSleepsInBarnAlone", false);
+    }
+
     @GameTest(template = BIG_BARN, batch = "sleep_big", timeoutTicks = TIMEOUT)   // окрема партія: інакше корови бачать сусідній хлів
     public static void cowsSleepInBigBarn(GameTestHelper h) {
         sleepTest(h, BIG_COWS, "cowsSleepInBigBarn", true);
@@ -161,11 +167,27 @@ public class HungryCowSleepTests {
         int[] nightStart = { -1 };
         int[] arrived = new int[cows.size()];
         java.util.Arrays.fill(arrived, -1);
+        int[] bumps = new int[cows.size()];          // скільки разів уперлася в блок (удар об стіну) дорогою
+        boolean[] wasBump = new boolean[cows.size()];
+        StringBuilder bumpLog = new StringBuilder();
         h.onEachTick(() -> {
             if (nightStart[0] < 0) return;
             for (int i = 0; i < cows.size(); i++) {
                 HungryCow c = cows.get(i);
                 if (arrived[i] < 0 && inBarn(h, c) && c.sleeping) arrived[i] = (int) h.getTick() - nightStart[0];
+                boolean bump = arrived[i] < 0 && c.horizontalCollision && !c.sleeping;
+                if (bump && !wasBump[i]) {
+                    bumps[i]++;
+                    if (bumpLog.length() < 1500) {
+                        net.minecraft.world.level.pathfinder.Path p = c.getNavigation().getPath();
+                        bumpLog.append(String.format("%s т%d (%.2f %.2f) рух (%.2f %.2f) точка %s [%s]; ", c.family.name, h.getTick() - nightStart[0],
+                                c.getX() - h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO).x, c.getZ() - h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO).z,
+                                c.getDeltaMovement().x, c.getDeltaMovement().z,
+                                p == null || p.isDone() ? "-" : p.getNextNodePos().subtract(h.absolutePos(BlockPos.ZERO)).toShortString(),
+                                c.goalSelector.getRunningGoals().map(g -> g.getGoal().getClass().getSimpleName()).collect(java.util.stream.Collectors.joining(","))));
+                    }
+                }
+                wasBump[i] = bump;
             }
         });
         h.startSequence()
@@ -189,9 +211,10 @@ public class HungryCowSleepTests {
                     cows.forEach(net.minecraft.world.entity.Entity::discard);   // прибрати: інакше вони стають «стадом» для сусідніх тестів
                     clearBarn(h, big);
                     for (int i = 0; i < cows.size(); i++) {
-                        LOG.info("[тест] {}: {} заснула в хліві через {} с ночі", name, cows.get(i).family.name,
-                                String.format("%.1f", arrived[i] / 20.0));
+                        LOG.info("[тест] {}: {} заснула в хліві через {} с ночі, ударів об стіну {} (розмір {})", name, cows.get(i).family.name,
+                                String.format("%.1f", arrived[i] / 20.0), bumps[i], String.format("%.2f", cows.get(i).sizeScale()));
                     }
+                    if (bumpLog.length() > 0) LOG.info("[тест] {}: удари: {}", name, bumpLog);
                 })
                 .thenSucceed();
         h.runAfterDelay(TIMEOUT - 1, () -> { cows.forEach(net.minecraft.world.entity.Entity::discard); clearBarn(h, big); });
