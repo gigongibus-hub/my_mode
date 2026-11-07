@@ -307,7 +307,9 @@ public class HungryCowSleepTests {
                 // стан кожні 20 с ночі (у знімку при провалі часто вже день — його ставить наступна партія тестів)
                 if ((h.getTick() - nightStart[0]) % 200 == 0 && h.getTick() - nightStart[0] >= 600 && arrived[i] < 0) {
                     net.minecraft.world.level.pathfinder.Path pp = c.getNavigation().getPath();
-                    LOG.info("[тест] {}, ніч {} с: {} | шлях {}", name, (h.getTick() - nightStart[0]) / 20, state(h, c),
+                    net.minecraft.world.phys.Vec3 o = h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO);
+                    LOG.info("[тест] {}, ніч {} с: на майданчику ({}, {}), тік {}: {} | шлях {}", name, (h.getTick() - nightStart[0]) / 20,
+                            String.format("%.1f", c.getX() - o.x), String.format("%.1f", c.getZ() - o.z), c.tickCount, state(h, c),
                             pp == null ? "немає" : pp.getNextNodeIndex() + "/" + pp.getNodeCount() + (pp.isDone() ? " готово" : "")
                                     + (pp == null || pp.isDone() ? "" : String.format(" корова (%.2f %.2f %.2f) точка (%.2f %.2f %.2f) ширина %.2f, черга %s, швидкість %.3f",
                                     c.getX(), c.getY(), c.getZ(), pp.getNextEntityPos(c).x, pp.getNextEntityPos(c).y, pp.getNextEntityPos(c).z,

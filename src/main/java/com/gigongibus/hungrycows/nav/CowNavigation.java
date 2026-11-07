@@ -42,6 +42,9 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double WAYPOINT_REACH = 0.35; // точку пройдено, коли центр корови ближче 0,35 бл. до центру точки (по X і по Z)
     public static final double WAYPOINT_DY = 1.0;     // ... і різниця висоти менша за 1 блок
     public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
+    public static final int WAYPOINT_STUCK_TICKS = 20; // 1 с не наближається до точки (крок навскіс, пагорбок, точка блоком нижче) —
+                                                      // раз діє ванільне правило (може зрізати кут), щоб не застрягти назавжди
+    public static final double WAYPOINT_PROGRESS = 0.05; // «наближається» = за тік ближче хоча б на 0,05 бл. (сумарно)
     // Крок убік лише туди, де вільно
     public static final double SIDESTEP_CHECK = 0.6;  // рамку корови зсуває на 0,6 бл. у бік кроку й дивиться, чи там вільно
 
@@ -49,6 +52,9 @@ public class CowNavigation extends GroundPathNavigation {
     final Long2IntOpenHashMap avoid = new Long2IntOpenHashMap();
     private int nextCheck = 0;
     private int waitStart = -1;
+    private int stuckNode = -1;        // до якої точки шляху корова зараз іде (для запасного виходу)
+    private double stuckBest;          // найменша відстань до неї
+    private int stuckTicks = 0;        // скільки тіків без наближення
     private boolean slowed = false;
     private double goalSpeed = 1.0;
 
@@ -74,6 +80,7 @@ public class CowNavigation extends GroundPathNavigation {
     @Override
     public boolean moveTo(Path path, double speed) {
         goalSpeed = speed;
+        if (path != this.path) stuckNode = -1;   // новий шлях — запасний вихід рахує заново
         return super.moveTo(path, slowed ? speed * FOLLOW_SPEED : speed);
     }
 
@@ -100,6 +107,21 @@ public class CowNavigation extends GroundPathNavigation {
         double dz = Math.abs(this.mob.getZ() - at.z);
         double dy = Math.abs(this.mob.getY() - this.path.getNodePos(i).getY());
         boolean reached = dx < WAYPOINT_REACH && dz < WAYPOINT_REACH && dy < WAYPOINT_DY;
+        // запасний вихід: точка та сама, а корова 1 с не наближається — раз ванільне правило
+        double dist = dx + dz;
+        if (i != stuckNode) {
+            stuckNode = i;
+            stuckBest = dist;
+            stuckTicks = 0;
+        } else if (dist < stuckBest - WAYPOINT_PROGRESS) {
+            stuckBest = dist;
+            stuckTicks = 0;
+        } else if (!reached && ++stuckTicks >= WAYPOINT_STUCK_TICKS) {
+            stuckTicks = 0;
+            stuckNode = -1;
+            super.followThePath();   // ванільне: ширший допуск і зрізання кута (у ньому й doStuckDetection)
+            return;
+        }
         boolean straightSkip = !reached && dy < WAYPOINT_DY && dx < STRAIGHT_REACH && dz < STRAIGHT_REACH && straightAt(i);
         if (reached || straightSkip) this.path.advance();
         this.doStuckDetection(tempPos);   // як у ванільному
