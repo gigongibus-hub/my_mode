@@ -69,7 +69,7 @@ public class CowFood {
     }
 
     static {
-        food(Items.HAY_BLOCK, 10);
+        food(Items.HAY_BLOCK, 30);   // блок сіна (було 10): основний корм у хліві
 
         // квіти
         food(Items.DANDELION, 10).ground(Ground.SAFE);
