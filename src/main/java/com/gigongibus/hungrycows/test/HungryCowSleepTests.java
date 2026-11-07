@@ -91,6 +91,85 @@ public class HungryCowSleepTests {
         sleepTest(h, List.of(COWS.get(1)), "cowSleepsInBarnAlone", false);
     }
 
+    // Черга у вузькому проході (Fij: «встали в лінію і штовхають одна одну»): удень корови знаходять хлів, уночі стоять
+    // в одну лінію в проході завширшки 1 блок, що веде до входу. Обійти одна одну не можуть — черга не має заклинити.
+    private static final int CORRIDOR_Z = 8;                       // прохід уздовж z=8 до входу (вхід хліва x=9, z 7..9)
+    private static final int[] CORRIDOR_COWS_X = { 1, 3, 5, 7 };
+    private static final int CORRIDOR_NIGHT_TICKS = 120 * 20;      // усі мають заснути в хліві за 2 хв ночі
+
+    @GameTest(template = BARN, batch = "sleep_corridor", timeoutTicks = DAY_TICKS + CORRIDOR_NIGHT_TICKS + 200)
+    public static void cowsQueueInNarrowCorridor(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        List<HungryCow> cows = new java.util.ArrayList<>();
+        for (int i = 0; i < CORRIDOR_COWS_X.length; i++) {
+            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), COWS.get(i % COWS.size()));
+            c.setAge(0);
+            cows.add(c);
+        }
+        int[] nightStart = { -1 };
+        int[] waited = new int[cows.size()];
+        int[] waitStarts = new int[cows.size()];
+        boolean[] was = new boolean[cows.size()];
+        int[] asleep = new int[cows.size()];
+        java.util.Arrays.fill(asleep, -1);
+        h.onEachTick(() -> {
+            if (nightStart[0] < 0) return;
+            for (int i = 0; i < cows.size(); i++) {
+                HungryCow c = cows.get(i);
+                if (c.gate.waiting) waited[i]++;
+                if (c.gate.waiting && !was[i]) waitStarts[i]++;
+                was[i] = c.gate.waiting;
+                if (asleep[i] < 0 && inBarn(h, c) && c.sleeping) asleep[i] = (int) h.getTick() - nightStart[0];
+            }
+        });
+        Runnable clear = () -> {
+            cows.forEach(net.minecraft.world.entity.Entity::discard);
+            for (int x = 0; x <= 8; x++) {
+                for (int y = 2; y <= 3; y++) {
+                    for (int z = CORRIDOR_Z - 1; z <= CORRIDOR_Z + 1; z += 2) h.setBlock(new BlockPos(x, y, z), net.minecraft.world.level.block.Blocks.AIR);
+                }
+            }
+            clearBarn(h, false);
+        };
+        h.startSequence()
+                .thenIdle(DAY_TICKS)
+                .thenExecute(() -> {
+                    // прохід 1 блок: скло з боків (z=7 і z=9) від краю майданчика до хліва
+                    for (int x = 0; x <= 8; x++) {
+                        for (int y = 2; y <= 3; y++) {
+                            h.setBlock(new BlockPos(x, y, CORRIDOR_Z - 1), net.minecraft.world.level.block.Blocks.GLASS);
+                            h.setBlock(new BlockPos(x, y, CORRIDOR_Z + 1), net.minecraft.world.level.block.Blocks.GLASS);
+                        }
+                    }
+                    h.setBlock(new BlockPos(0, 2, CORRIDOR_Z), net.minecraft.world.level.block.Blocks.GLASS);
+                    h.setBlock(new BlockPos(0, 3, CORRIDOR_Z), net.minecraft.world.level.block.Blocks.GLASS);
+                    for (int i = 0; i < cows.size(); i++) {
+                        net.minecraft.world.phys.Vec3 v = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(new BlockPos(CORRIDOR_COWS_X[i], 2, CORRIDOR_Z)));
+                        cows.get(i).moveTo(v.x, v.y, v.z, 0, 0);
+                        cows.get(i).getNavigation().stop();
+                    }
+                    for (HungryCow c : cows) LOG.info("[тест] cowsQueueInNarrowCorridor, кінець дня: {}", state(h, c));
+                    h.getLevel().setDayTime(NIGHT);
+                    nightStart[0] = (int) h.getTick();
+                })
+                .thenWaitUntil(() -> {
+                    for (HungryCow c : cows) h.assertTrue(inBarn(h, c) && c.sleeping, "ще не спить у хліві: " + state(h, c));
+                })
+                .thenExecute(() -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < cows.size(); i++) {
+                        HungryCow c = cows.get(i);
+                        sb.append(String.format("%s%s (домінантність %.0f, у проході %d-а): заснула на %.1f с, у черзі %.1f с, ставала в чергу %d раз; ",
+                                c.family.name, c.herd.isLeader() ? " [ватажок]" : "", com.gigongibus.hungrycows.CowHerd.dominance(c), CORRIDOR_COWS_X.length - i,
+                                asleep[i] / 20.0, waited[i] / 20.0, waitStarts[i]));
+                    }
+                    LOG.info("[тест] cowsQueueInNarrowCorridor: {}", sb);
+                    clear.run();
+                })
+                .thenSucceed();
+        h.runAfterDelay(DAY_TICKS + CORRIDOR_NIGHT_TICKS + 199, clear);
+    }
+
     @GameTest(template = BIG_BARN, batch = "sleep_big", timeoutTicks = TIMEOUT)   // окрема партія: інакше корови бачать сусідній хлів
     public static void cowsSleepInBigBarn(GameTestHelper h) {
         sleepTest(h, BIG_COWS, "cowsSleepInBigBarn", true);
