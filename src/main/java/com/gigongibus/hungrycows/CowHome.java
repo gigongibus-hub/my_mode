@@ -285,6 +285,11 @@ public class CowHome {
 
     // Випадкове місце в тіні поруч (для відпочинку в сонячний день)
     public BlockPos findShade(int radius, int tries) {
+        return findShade(radius, tries, false);
+    }
+
+    // treesOnly: лише тінь дерев (без даху будівлі над головою) — щоб надворі корова не йшла ремигати до входу хліва
+    public BlockPos findShade(int radius, int tries, boolean treesOnly) {
         BlockPos o = cow.blockPosition();
         for (int i = 0; i < tries; i++) {
             int x = o.getX() + cow.getRandom().nextInt(radius * 2 + 1) - radius;
@@ -292,7 +297,7 @@ public class CowHome {
             // усі висоти: тінь може бути й під дахом, а не лише нагорі
             for (int dy = COLUMN_UP; dy >= -COLUMN_DOWN; dy--) {
                 BlockPos p = new BlockPos(x, o.getY() + dy, z);
-                if (standable(cow.level(), p) && shaded(cow.level(), p)) return p;
+                if (standable(cow.level(), p) && shaded(cow.level(), p) && !(treesOnly && hasRoof(cow.level(), p))) return p;
             }
         }
         return null;

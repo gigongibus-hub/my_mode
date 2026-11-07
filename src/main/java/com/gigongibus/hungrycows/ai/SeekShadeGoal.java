@@ -7,12 +7,15 @@ import net.minecraft.world.entity.ai.goal.Goal;
 
 import java.util.EnumSet;
 
-// Сонячний день: перед відпочинком чи ремиганням корова йде в тінь (дерева, навіс), бо на сонці швидше хоче пити
+// Сонячний день: перед відпочинком чи ремиганням корова йде в тінь дерев (не до хліва), бо на сонці швидше хоче пити
 public class SeekShadeGoal extends Goal {
     private static final int SHADE_RADIUS = 16;         // як далеко шукає тінь
     private static final int SHADE_TRIES = 40;          // скільки випадкових місць перевіряє за раз
     private static final int MAX_WALK_TICKS = 400;      // іде до тіні щонайбільше 20 с
     private static final int RETRY_TICKS = 400;         // тіні немає — наступна спроба за 20 с
+    // Надворі вдень — лише тінь дерев. Раніше найближчою тінню на пасовищі був дах біля входу: корова наїлась, ішла туди
+    // ремигати й стояла біля виходу, а стадо тягнулося за нею (Fij). Немає дерева — ремигає на сонці, де є.
+    private static final boolean TREES_ONLY_OUTSIDE = true;
     private final HungryCow cow;
     private BlockPos shade;
     private int walkTicks = 0;
@@ -39,7 +42,7 @@ public class SeekShadeGoal extends Goal {
     public boolean canUse() {
         if (cow.tickCount < nextTry || !wantsShade()) return false;
         nextTry = cow.tickCount + RETRY_TICKS;
-        shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES);
+        shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, TREES_ONLY_OUTSIDE);
         return shade != null;
     }
 
