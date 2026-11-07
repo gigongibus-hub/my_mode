@@ -15,7 +15,7 @@ import net.minecraft.world.level.GameRules;
  */
 final class TestWorld {
     private static final int CLEAR_TICKS = 1_000_000;   // ясно надовго
-    private static final int LAVA_MARGIN = 8;            // прибрати лаву на 8 блоків довкола майданчика
+    private static final int LAVA_MARGIN = 20;           // прибрати лаву на 20 блоків довкола майданчика
     private static final int LAVA_BELOW = 3, LAVA_ABOVE = 10;
     private static final int PLOT_SIZE = 81;             // найбільший майданчик (bigbarn); менші — те саме, із запасом
 
@@ -25,6 +25,7 @@ final class TestWorld {
     static void calm(GameTestHelper h) {
         ServerLevel level = h.getLevel();
         level.getGameRules().getRule(GameRules.RULE_WEATHER_CYCLE).set(false, level.getServer());
+        level.getGameRules().getRule(GameRules.RULE_DOFIRETICK).set(false, level.getServer());   // вогонь від лави не поширюється
         level.setWeatherParameters(CLEAR_TICKS, 0, false, false);
         BlockPos a = h.absolutePos(new BlockPos(0, 1, 0)), c = h.absolutePos(new BlockPos(PLOT_SIZE, 1, PLOT_SIZE));
         int floor = a.getY();   // y=1 майданчика — підлога

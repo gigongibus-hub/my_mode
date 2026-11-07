@@ -25,14 +25,15 @@ public class CowNavigation extends GroundPathNavigation {
     // обходити інших корів (перша версія з перебудовою шляху смикала корову: зіткнень 0–33 проти 0–1; тепер без перебудови)
 
     public static final boolean AVOID_COWS = true;
-    public static final double AHEAD = 2.2;           // дивиться вперед на 2,2 блока (від центру до центру)
-    public static final double SIDE_MARGIN = 0.35;    // «на шляху» = збоку ближче половин ширин + 0,35
-    public static final int CHECK_EVERY = 2;          // дивиться раз на 2 тіки
+    public static final double AHEAD = 1.7;           // дивиться вперед на 1,7 блока (від центру до центру)
+    public static final double SIDE_MARGIN = 0.15;    // «на шляху» = збоку ближче половин ширин + 0,15
+    public static final int CHECK_EVERY = 4;          // дивиться раз на 4 тіки
     public static final double MOVING = 0.03;         // «іде» = швидкість понад 0,03 блока за тік у той самий бік
-    public static final double FOLLOW_SPEED = 0.3;    // іде слідом / чекає — повільно (30%)
-    public static final int WAIT_TICKS = 30;          // та стоїть чи йде назустріч — чекає 1,5 с ...
-    public static final int SIDESTEP_TICKS = 40;      // ... потім до 2 с відступає вбік (праворуч), обходячи її
-    public static final double SIDESTEP_PUSH = 0.03;  // сила кроку вбік (раз на 2 тіки)
+    public static final double FOLLOW_SPEED = 0.6;    // іде слідом / чекає — 60% швидкості (30% виглядало як «баг»)
+    public static final int WAIT_TICKS = 20;          // та стоїть чи йде назустріч — чекає 1 с ...
+    public static final int SIDESTEP_TICKS = 20;      // ... потім до 1 с відступає вбік (праворуч), обходячи її
+    public static final double SIDESTEP_PUSH = 0.03;  // сила кроку вбік (раз на 4 тіки)
+    public static final double NEAR_GOAL = 2.5;       // ціль ближче 2,5 бл. (підходить їсти поруч з іншою) — не обходить
     public static final int AVOID_TICKS = 40;         // (не вживається, поки обхід без перебудови шляху)
     public static final float AVOID_MALUS = 6.0F;     // «ціна» клітинки, де стоїть інша корова
 
@@ -91,6 +92,12 @@ public class CowNavigation extends GroundPathNavigation {
         if (!avoid.isEmpty() && t % 100 == 0) avoid.long2IntEntrySet().removeIf(e -> e.getIntValue() < t);
 
         Vec3 pos = this.mob.position();
+        BlockPos goal = this.path.getTarget();
+        if (goal != null && goal.distToCenterSqr(pos) < NEAR_GOAL * NEAR_GOAL) {   // майже прийшла — не сповільнюватись
+            waitStart = -1;
+            setSlowed(false);
+            return;
+        }
         Vec3 next = this.path.getNextEntityPos(this.mob);
         Vec3 dir = new Vec3(next.x - pos.x, 0, next.z - pos.z);
         if (dir.lengthSqr() < 1.0E-4) return;

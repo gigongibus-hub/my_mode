@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
  * Черга біля входу (ідея Fij): корови заходять у хлів і виходять з нього по одній.
  * Корова, що йде через вхід, чекає за 3–15 блоків від нього, якщо:
  *  - у проході вже інша корова (ближче 2,5 блока до входу), або
- *  - до того самого входу йде старша (ватажок перша, далі за рангом) і вона вже ближче 15 блоків.
+ *  - до того самого входу йде ватажок і вона вже ближче 15 блоків (ватажок перша; інші — без рангів).
  * Слабша з меншою домінантністю чекає далі. Чекає щонайбільше 20 с — потім іде (щоб не застрягти).
  * Цілі (SleepGoal, GoOutGoal) кажуть approach(вхід), поки йдуть до нього, і cancel(), коли зупинились.
  * Усі числа зібрані на початку файлу.
@@ -92,15 +92,6 @@ public class CowGate {
         return Math.sqrt(c.distanceToSqr(d.getX() + 0.5, d.getY(), d.getZ() + 0.5));
     }
 
-    // Хто проходить першим: ватажок, потім домінантніша (рівні — за номером)
-    private static boolean goesBefore(HungryCow a, HungryCow b) {
-        boolean aLead = a.herd.isLeader(), bLead = b.herd.isLeader();
-        if (aLead != bLead) return aLead;
-        double da = CowHerd.dominance(a), db = CowHerd.dominance(b);
-        if (da != db) return da > db;
-        return a.getId() < b.getId();
-    }
-
     // Пройшла вхід — з черги; чи треба зараз чекати (можна кликати й щотіку: час рахується за тіками)
     public boolean mustWait() {
         if (lastCheckTick == cow.tickCount) return waiting;   // цього тіку вже перевірено
@@ -133,7 +124,8 @@ public class CowGate {
                 if (od <= DOORWAY && !o.gate.waiting && o.gate.stillTicks < STUCK_TICKS) { wait = true; break; }
                 // старша йде першою — але якщо вона прямо позаду, обійти не може (у вузькому проході стояли б обидві)
                 boolean rightBehind = od > d && o.distanceTo(cow) < BEHIND;
-                if (od <= QUEUE_RANGE && !o.gate.reachedDoor && !rightBehind && goesBefore(o, cow)) { wait = true; break; }
+                // першою проходить лише ватажок (Fij); інші — без рангів, просто по одній
+                if (od <= QUEUE_RANGE && !o.gate.reachedDoor && !rightBehind && o.herd.isLeader() && cow.herd.leader() == o) { wait = true; break; }
             }
         }
         if (wait && !told) {

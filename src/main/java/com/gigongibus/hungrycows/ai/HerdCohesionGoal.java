@@ -7,7 +7,8 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
 
-// Стадо: корова, що відійшла від ватажка далі 14 блоків, повертається в стадо (до ватажка, але не впритул).
+// Стадо: корова, що відійшла від ватажка далі свого порогу, повертається в стадо (до ватажка, але не впритул).
+// Поріг і точка повернення за рангом (Fij): вища — ближче до ватажка (8 бл.), нижча — далі (22 бл.).
 // Інстинкт поза мозком; важливіші справи (страх, їжа, вода, пологи, сон) мають вищий пріоритет.
 // Теля з матір'ю тримається матері (FollowMotherGoal), ватажок нікуди не повертається.
 public class HerdCohesionGoal extends Goal {
@@ -40,17 +41,17 @@ public class HerdCohesionGoal extends Goal {
         if (!applies()) return false;
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = 5;   // перевіряє раз на ~10 тіків (canUse викликається раз на 2 тіки, тож не через tickCount %)
-        return cow.herd.distanceToLeader() > CowHerd.FAR_FROM_LEADER;
+        return cow.herd.distanceToLeader() > cow.herd.farFromLeader();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return applies() && ticks < MAX_TICKS && cow.herd.distanceToLeader() > CowHerd.BACK_NEAR && !bumping();
+        return applies() && ticks < MAX_TICKS && cow.herd.distanceToLeader() > cow.herd.backNear() && !bumping();
     }
 
     // уже в стаді й упирається в іншу корову — досить, не пхатися
     private boolean bumping() {
-        return cow.herd.distanceToLeader() < CowHerd.FAR_FROM_LEADER
+        return cow.herd.distanceToLeader() < cow.herd.farFromLeader()
                 && !cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(BUMP),
                 c -> c != cow && c.isAlive()).isEmpty();
     }

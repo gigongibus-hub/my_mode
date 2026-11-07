@@ -17,9 +17,11 @@ public class CowHerd {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final double HERD_RANGE = 32;          // хто ближче — та в одному стаді
     public static final int UPDATE_EVERY_SECONDS = 5;    // як часто переглядає стадо
-    public static final double FAR_FROM_LEADER = 14;     // далі цього від ватажка — повертається до стада
-    public static final double BACK_NEAR = 8;            // повертається, поки не буде ближче цього
-    public static final double LEADER_SPREAD = 5;        // повертається не впритул, а в стадо: до 5 блоків від ватажка
+    // Відстань до ватажка за рангом (Fij): найсильніша після ватажка — найближче, найслабша — найдалі
+    public static final double FAR_FROM_LEADER = 14;     // (середнє; див. farFromLeader) далі цього — повертається до стада
+    public static final double FAR_TOP = 8, FAR_BOTTOM = 22;     // найвищий ранг повертається з 8 бл., найнижчий — з 22
+    public static final double BACK_MARGIN = 6;                  // повертається, поки не буде ближче (поріг − 6)
+    public static final double SPREAD_TOP = 3, SPREAD_BOTTOM = 12; // повертається в точку до 3 бл. від ватажка (найвищий) ... 12 (найнижчий)
     // лідерська сила (для ватажка): домінантність + досвід матері + трохи сміливості
     public static final double LEAD_PER_CALF = 5;        // кожне народжене теля (до 5) додає стільки
     public static final double LEAD_BRAVERY = 0.2;       // сміливість × це
@@ -112,8 +114,25 @@ public class CowHerd {
         HungryCow l = leader();
         if (l == null) return null;
         double a = cow.getRandom().nextDouble() * Math.PI * 2;
-        double r = cow.getRandom().nextDouble() * LEADER_SPREAD;
+        double r = cow.getRandom().nextDouble() * byRank(SPREAD_TOP, SPREAD_BOTTOM);
         return new Vec3(l.getX() + Math.cos(a) * r, l.getY(), l.getZ() + Math.sin(a) * r);
+    }
+
+    // 0 — найсильніша в стаді, 1 — найслабша
+    public double rankFraction() {
+        return adults <= 1 ? 0 : Math.min(1, rank / (double) (adults - 1));
+    }
+
+    private double byRank(double top, double bottom) {
+        return top + (bottom - top) * rankFraction();
+    }
+
+    public double farFromLeader() {
+        return byRank(FAR_TOP, FAR_BOTTOM);
+    }
+
+    public double backNear() {
+        return Math.max(3, farFromLeader() - BACK_MARGIN);
     }
 
     public double distanceToLeader() {
