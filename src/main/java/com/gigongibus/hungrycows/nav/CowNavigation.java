@@ -3,6 +3,7 @@ package com.gigongibus.hungrycows.nav;
 import com.gigongibus.hungrycows.HungryCow;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.level.Level;
@@ -14,6 +15,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Ходіння корови: ванільне (GroundPathNavigation), але:
  *  - пошук шляху свій (CowNodeEvaluator: тримається далі від стін);
+ *  - ходіння за шляхом без зрізання кутів (followThePath): точка пройдена, лише коли корова в ній; раніше — лише на прямій;
  *  - не врізається в інших корів (Fij): пошук шляху гри інших тварин не бачить, тому корова сама дивиться вперед.
  *    Інша корова попереду на шляху йде в той самий бік — іде слідом повільніше; стоїть або йде назустріч — шлях
  *    будується заново в обхід її клітинок (2 с ці клітинки «дорогі»). Немає де обійти (вузький прохід) — шлях однаково
@@ -36,6 +38,12 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double NEAR_GOAL = 2.5;       // ціль ближче 2,5 бл. (підходить їсти поруч з іншою) — не обходить
     public static final int AVOID_TICKS = 40;         // (не вживається, поки обхід без перебудови шляху)
     public static final float AVOID_MALUS = 6.0F;     // «ціна» клітинки, де стоїть інша корова
+    // Ходіння за шляхом (followThePath): не зрізати кути
+    public static final double WAYPOINT_REACH = 0.35; // точку пройдено, коли центр корови ближче 0,35 бл. до центру точки (по X і по Z)
+    public static final double WAYPOINT_DY = 1.0;     // ... і різниця висоти менша за 1 блок
+    public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
+    // Крок убік лише туди, де вільно
+    public static final double SIDESTEP_CHECK = 0.6;  // рамку корови зсуває на 0,6 бл. у бік кроку й дивиться, чи там вільно
 
     // клітинка (x, z) → до якого тіку її обходити
     final Long2IntOpenHashMap avoid = new Long2IntOpenHashMap();
@@ -73,6 +81,47 @@ public class CowNavigation extends GroundPathNavigation {
     public void tick() {
         if (AVOID_COWS && !this.level.isClientSide) avoidCows();
         super.tick();
+    }
+
+    // ---------- ходіння за шляхом ----------
+
+    // Як ванільний followThePath, але без зрізання кутів: ванільний переходить до наступної точки, щойно корова ближче
+    // половини своєї ширини (~0,45–0,52) або «дивиться» на наступну (canCutCorner + shouldTargetNextNodeInDirection) —
+    // широка корова зрізала поворот і зачіпала кут стіни. Тут: точка пройдена, лише коли корова справді в ній (WAYPOINT_REACH);
+    // раніше — лише на прямій ділянці (поточна, наступна й ще наступна точки на одній прямій), тобто не на повороті.
+    // «Центр точки» — та сама точка, куди корову веде гра (Path.getEntityPosAtNode), а не центр блока: для корови ширшої
+    // за блок вона в куті клітинки, і до центру блока корова ніколи б не дійшла.
+    @Override
+    protected void followThePath() {
+        Vec3 tempPos = this.getTempMobPos();
+        int i = this.path.getNextNodeIndex();
+        Vec3 at = this.path.getEntityPosAtNode(this.mob, i);
+        double dx = Math.abs(this.mob.getX() - at.x);
+        double dz = Math.abs(this.mob.getZ() - at.z);
+        double dy = Math.abs(this.mob.getY() - this.path.getNodePos(i).getY());
+        boolean reached = dx < WAYPOINT_REACH && dz < WAYPOINT_REACH && dy < WAYPOINT_DY;
+        boolean straightSkip = !reached && dy < WAYPOINT_DY && dx < STRAIGHT_REACH && dz < STRAIGHT_REACH && straightAt(i);
+        if (reached || straightSkip) this.path.advance();
+        this.doStuckDetection(tempPos);   // як у ванільному
+    }
+
+    // Точки i, i+1, i+2 на одній прямій і на одній висоті (тобто в точці i немає повороту)
+    private boolean straightAt(int i) {
+        if (i + 2 >= this.path.getNodeCount() || i < 0) return false;
+        Vec3i a = this.path.getNodePos(i), b = this.path.getNodePos(i + 1), c = this.path.getNodePos(i + 2);
+        if (a.getY() != b.getY() || b.getY() != c.getY()) return false;
+        int d1x = b.getX() - a.getX(), d1z = b.getZ() - a.getZ();
+        int d2x = c.getX() - b.getX(), d2z = c.getZ() - b.getZ();
+        return d1x == d2x && d1z == d2z;
+    }
+
+    // ---------- обхід інших корів ----------
+
+    // Чи вільно, якщо зсунути корову на SIDESTEP_CHECK у бік side: блоки (ноги й голова — уся рамка) і інші корови
+    private boolean freeTowards(Vec3 side) {
+        AABB box = this.mob.getBoundingBox().move(side.scale(SIDESTEP_CHECK));
+        if (!this.level.noCollision(this.mob, box)) return false;
+        return this.level.getEntitiesOfClass(HungryCow.class, box, o -> o != this.mob && o.isAlive()).isEmpty();
     }
 
     private void setSlowed(boolean s) {
@@ -131,10 +180,16 @@ public class CowNavigation extends GroundPathNavigation {
         if (waitStart < 0) waitStart = t;
         boolean waiting = t - waitStart < WAIT_TICKS;
         setSlowed(waiting);
-        // почекала, а та досі на шляху — крок управо (як люди в коридорі), поки не обійде (щонайбільше SIDESTEP_TICKS)
+        // почекала, а та досі на шляху — крок убік (щонайбільше SIDESTEP_TICKS), але лише туди, де вільно:
+        // праворуч вільно → праворуч; ні, а ліворуч вільно → ліворуч; обидва боки зайняті → не штовхати, чекати повільно
         if (!waiting && t - waitStart < WAIT_TICKS + SIDESTEP_TICKS) {
             Vec3 right = new Vec3(-dir.z, 0, dir.x);
-            this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(right.scale(SIDESTEP_PUSH)));
+            Vec3 side = freeTowards(right) ? right : freeTowards(right.scale(-1)) ? right.scale(-1) : null;
+            if (side != null) {
+                this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(side.scale(SIDESTEP_PUSH)));
+            } else {
+                setSlowed(true);
+            }
         }
     }
 }
