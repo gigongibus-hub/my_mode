@@ -65,6 +65,7 @@ public class HungryCowSwimWatchTests {
 
     private static HungryCow spawnCow(GameTestHelper h, BlockPos pos) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), pos);
         cow.setAge(0);
         return cow;
@@ -91,6 +92,17 @@ public class HungryCowSwimWatchTests {
                 h.setBlock(new BlockPos(i, y, 14), Blocks.GLASS);
                 h.setBlock(new BlockPos(0, y, i), Blocks.GLASS);
                 h.setBlock(new BlockPos(14, y, i), Blocks.GLASS);
+            }
+        }
+    }
+
+    // Прибрати ставок і скло після тесту: споруди лишаються у світі, і майданчики наступних партій (великий хлів) стоять
+    // на них — у залишеному ставку тонули корови з інших тестів
+    private static void clearPond(GameTestHelper h, Entity... entities) {
+        for (Entity e : entities) if (e != null && !e.isRemoved()) e.discard();
+        for (int x = 0; x <= 14; x++) {
+            for (int z = 0; z <= 14; z++) {
+                for (int y = GROUND; y <= GROUND + DEEP + 2; y++) h.setBlock(new BlockPos(x, y, z), Blocks.AIR);
             }
         }
     }
@@ -139,7 +151,9 @@ public class HungryCowSwimWatchTests {
                     cow.getCustomName() == null ? "" : cow.getCustomName().getString()));
             LOG.info("[тест] cowSwimsToShore: вийшла на берег за {} с, утома {} -> {}", String.format("%.1f", h.getTick() / 20.0),
                     startFatigue, cow.fatigue);
+            clearPond(h, cow);
         });
+        h.runAfterDelay(SHORE_TIMEOUT - 1, () -> clearPond(h, cow));
     }
 
     // ---------- 2. Утомлена корова тоне; гравець на повідку витягає її — довіра й прив'язаність ростуть ----------
@@ -171,7 +185,8 @@ public class HungryCowSwimWatchTests {
                     cow.setLeashedTo(p[0], true);
                 })
                 .thenWaitUntil(() -> {
-                    h.assertTrue(cow.isAlive(), "корова втопилась");
+                    h.assertTrue(cow.isAlive(), "корова втопилась (від " + (cow.getLastDamageSource() == null ? "?" : cow.getLastDamageSource().getMsgId())
+                            + ", напис [" + (cow.getCustomName() == null ? "" : cow.getCustomName().getString()) + "])");
                     h.assertTrue(cow.trustOf(p[0]) > before[1], String.format("ще не врятована: у воді %s, на повідку %s, довіра %d",
                             cow.isInWater(), cow.isLeashed(), cow.trustOf(p[0])));
                 })
@@ -179,11 +194,12 @@ public class HungryCowSwimWatchTests {
                     int att = cow.character.get(Trait.HUMAN_ATTACHMENT);
                     LOG.info("[тест] tiredCowSinksAndIsRescued: врятована на {} с; довіра {} -> {}, прив'язаність до людей {} -> {}",
                             String.format("%.1f", h.getTick() / 20.0), before[1], cow.trustOf(p[0]), before[2], att);
-                    h.assertTrue(att > before[2], "прив'язаність до людей не зросла");
                     removePlayer(h, p[0]);
+                    clearPond(h, cow);
+                    h.assertTrue(att > before[2], "прив'язаність до людей не зросла");
                 })
                 .thenSucceed();
-        h.runAfterDelay(RESCUE_TIMEOUT - 1, () -> { if (p[0] != null) removePlayer(h, p[0]); });
+        h.runAfterDelay(RESCUE_TIMEOUT - 1, () -> { if (p[0] != null) removePlayer(h, p[0]); clearPond(h, cow); });
     }
 
     // ---------- 3. Небезпеку (вовк) корова помічає й дивиться на неї ----------
@@ -196,7 +212,10 @@ public class HungryCowSwimWatchTests {
             double err = lookError(cow, wolf);
             h.assertTrue(err < LOOKING_AT, String.format("не дивиться на вовка: відхилення %.0f°", err));
             LOG.info("[тест] cowWatchesDanger: дивиться на вовка через {} тіків (відхилення {}°)", h.getTick(), Math.round(err));
+            cow.discard();
+            wolf.discard();
         });
+        h.runAfterDelay(DANGER_TIMEOUT - 1, () -> { cow.discard(); wolf.discard(); });
     }
 
     // ---------- 4. На друга корова дивиться довго й спокійно ----------
@@ -217,6 +236,7 @@ public class HungryCowSwimWatchTests {
                     LOG.info("[тест] cowWatchesFriendLong: найдовше дивилась на друга {} с поспіль (довіра {})",
                             String.format("%.1f", streak[1] / 20.0), cow.trustOf(p));
                     removePlayer(h, p);
+                    cow.discard();   // інакше вона — «стадо» для корів наступних тестів
                     h.assertTrue(streak[1] >= FRIEND_MIN_STREAK, "за 30 с жодного разу не дивилась на друга довго (найдовше "
                             + streak[1] + " тіків)");
                 })

@@ -50,6 +50,7 @@ public class HungryCowHeatTests {
 
     private static HungryCow spawnCow(GameTestHelper h, BlockPos pos) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), pos);
         cow.setAge(0);
         return cow;
@@ -85,6 +86,14 @@ public class HungryCowHeatTests {
             double drop = WATER_START - cow.heat.heat;
             LOG.info("[тест] heatCoolsInWater: за {} с у воді перегрівання {} -> {} (у воді: {})", WATER_WAIT / 20,
                     WATER_START, Math.round(cow.heat.heat), cow.isInWater());
+            // прибрати басейн і корову: споруди лишаються у світі під майданчиками наступних партій
+            cow.discard();
+            for (int x = 4; x <= 10; x++) {
+                for (int z = 4; z <= 10; z++) {
+                    h.setBlock(new BlockPos(x, 2, z), Blocks.AIR);
+                    h.setBlock(new BlockPos(x, 3, z), Blocks.AIR);
+                }
+            }
             h.assertTrue(drop >= WATER_MIN_DROP, "у воді перегрівання спало лише на " + Math.round(drop) + " (треба " + WATER_MIN_DROP + "+)");
             h.succeed();
         });

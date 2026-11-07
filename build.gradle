@@ -96,6 +96,8 @@ minecraft {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             property 'forge.enabledGameTestNamespaces', mod_id
+            // окрема тека: тестовий світ не змішується зі світом runServer і щоразу створюється наново (див. нижче)
+            workingDirectory project.file('run-gametest')
         }
 
         data {
@@ -204,4 +206,12 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+// Тестовий світ щоразу з нуля: інакше ставки, скло й корови з минулих запусків лишаються у світі під майданчиками
+// нових тестів (корови тонули в чужих ставках, чуже «стадо» тягнуло корів)
+tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    doFirst {
+        delete file('run-gametest/world')
+    }
 }

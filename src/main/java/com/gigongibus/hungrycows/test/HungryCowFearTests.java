@@ -108,6 +108,7 @@ public class HungryCowFearTests {
 
     private static HungryCow spawnCow(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), CENTER);
         cow.setAge(0);
         return cow;

@@ -147,6 +147,13 @@ public class HungryCow extends Cow {
     public static final double UNREST_CURIOUS = 1.0;
     public static final double UNREST_DECAY = 3.0;       // не біля хліва (або вночі, або в хліві) — спадає на 3 щосекунди
     public static final double UNREST_GO = 30;           // з такого неспокою йде на пасовище
+    // Зіткнення корів (Fij): друга корова врізалась у цю — 5% шансу, що ця хвицне її
+    public static final double KICK_COW_CHANCE = 0.05;   // шанс хвицнути ту, що врізалась
+    public static final float KICK_COW_DAMAGE = 1.0F;    // урон (пів серця) × ген «сила удару»
+    public static final float KICK_COW_KNOCKBACK = 0.4F; // відкидає трохи
+    public static final double BUMP_SPEED = 0.04;        // «врізалась» = ішла на неї швидше 0,04 блока за тік
+    public static final int BUMP_COOLDOWN = 60;          // зіткнення однієї корови рахується не частіше раз на 3 с
+    public static final int KICK_FEAR = 20;              // страх тієї, кого хвицнули (від хижака — 50)
     public double barnUnrest = 0;
     public static final int DAY_EAT_AT = 25;             // удень з цього голоду йде пастися завжди (не чекає мозку)
     public static final int MORNING_EAT_AT = 5;          // уранці (після сну) з цього голоду виходить пастися
@@ -819,6 +826,11 @@ public class HungryCow extends Cow {
 
     public void tell(String text) {
         if (!DEBUG_MESSAGES) return;
+        // немає гравців (тестовий сервер) — у журнал сервера, щоб тест бачив, що корова «думала»
+        if (this.level().players().isEmpty()) {
+            com.mojang.logging.LogUtils.getLogger().info("[корова] " + text);
+            return;
+        }
         Component msg = Component.literal(text);
         this.level().players().forEach(p -> p.sendSystemMessage(msg));
     }
@@ -1511,6 +1523,39 @@ public class HungryCow extends Cow {
         return Math.round(base * CowTrust.fearMultiplier(t));
     }
 
+    // ===================== ЗІТКНЕННЯ КОРІВ =====================
+
+    private int lastBumpTick = -1000;
+
+    // Гра штовхає тварин, що торкаються; тут дізнаємося, що ця корова врізалась в іншу
+    @Override
+    protected void doPush(Entity entity) {
+        super.doPush(entity);
+        if (!this.level().isClientSide && entity instanceof HungryCow other) bumpInto(other);
+    }
+
+    private void bumpInto(HungryCow other) {
+        if (this.isBaby() || other.isBaby() || other.sleeping || other.heat.unconscious) return;
+        double dx = other.getX() - this.getX(), dz = other.getZ() - this.getZ();
+        double len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 1.0E-3) return;
+        double toward = (this.getDeltaMovement().x * dx + this.getDeltaMovement().z * dz) / len;
+        if (toward < BUMP_SPEED) return;                              // не вона йшла на ту
+        if (this.tickCount - lastBumpTick < BUMP_COOLDOWN) return;
+        lastBumpTick = this.tickCount;
+        if (this.getRandom().nextDouble() < KICK_COW_CHANCE) other.kickCow(this);
+    }
+
+    // Хвицнути корову, що в неї врізалась
+    public void kickCow(HungryCow target) {
+        float damage = (float) (KICK_COW_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH));
+        this.lookAt(target, 30F, 30F);
+        if (!target.hurt(this.damageSources().mobAttack(this), damage)) return;
+        target.knockback(KICK_COW_KNOCKBACK, this.getX() - target.getX(), this.getZ() - target.getZ());
+        this.playSound(SoundEvents.COW_HURT, 1.0F, 1.2F);
+        tell(family.name + " хвицнула " + target.family.name + ", бо та в неї врізалась");
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
@@ -1518,7 +1563,8 @@ public class HungryCow extends Cow {
         Entity attacker = source.getEntity();
         if (result && !this.level().isClientSide && attacker != null) {
             // пам'ять місця: тут ударили (окрім удару, що рятує подавлену корову)
-            if (!(attacker instanceof Player && choking)) memory.addPlace(this.blockPosition(), CowMemory.PLACE_HURT);
+            // (хвицання сусідки — не «погане місце»)
+            if (!(attacker instanceof Player && choking) && !(attacker instanceof HungryCow)) memory.addPlace(this.blockPosition(), CowMemory.PLACE_HURT);
             if (attacker instanceof Player player) {
                 lastPlayerHitTick = this.tickCount;
                 lastHitBy = player.getUUID();
@@ -1544,6 +1590,8 @@ public class HungryCow extends Cow {
                         }
                     }
                 }
+            } else if (attacker instanceof HungryCow) {
+                fear = Math.min(100, fear + painFear(KICK_FEAR));   // хвицнула сусідка — злякалась трохи
             } else {
                 // страх лише від ударів істот, а не від голоду чи отрути
                 fear = Math.min(100, fear + painFear(50));

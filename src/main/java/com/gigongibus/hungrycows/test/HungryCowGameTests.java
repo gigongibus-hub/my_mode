@@ -45,6 +45,7 @@ public class HungryCowGameTests {
     // Поставити дорослу корову на майданчик удень
     private static HungryCow spawnCow(GameTestHelper h, BlockPos pos) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), pos);
         cow.setAge(0);   // доросла (теля їсть лише молоко)
         return cow;

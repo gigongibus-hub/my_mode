@@ -100,6 +100,7 @@ public class HungryCowSleepTests {
     @GameTest(template = BARN, batch = "sleep_corridor", timeoutTicks = DAY_TICKS + CORRIDOR_NIGHT_TICKS + 200)
     public static void cowsQueueInNarrowCorridor(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         List<HungryCow> cows = new java.util.ArrayList<>();
         for (int i = 0; i < CORRIDOR_COWS_X.length; i++) {
             HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), COWS.get(i % COWS.size()));
@@ -195,6 +196,7 @@ public class HungryCowSleepTests {
     @GameTest(template = BIG_BARN, batch = "pasture", timeoutTicks = PASTURE_TICKS + 100)
     public static void cowsGoOutToPasture(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         h.setBlock(new BlockPos(45, 2, 36), net.minecraft.world.level.block.Blocks.MELON);
         h.setBlock(new BlockPos(45, 2, 44), net.minecraft.world.level.block.Blocks.MELON);
         List<HungryCow> cows = IN_BARN.stream().map(p -> {
@@ -260,6 +262,7 @@ public class HungryCowSleepTests {
 
     private static void sleepTest(GameTestHelper h, List<BlockPos> spawns, String name, boolean big) {
         h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
         List<HungryCow> cows = spawns.stream().map(p -> {
             HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), p);
             c.setAge(0);
@@ -272,6 +275,8 @@ public class HungryCowSleepTests {
         boolean[] wasBump = new boolean[cows.size()];
         StringBuilder bumpLog = new StringBuilder();
         int[] maxInDoor = { 0 };                     // найбільше корів одночасно в проході (черга: має бути 1)
+        int[] cowBumps = { 0 };                      // зіткнень між коровами (торкнулись, і хоч одна йшла)
+        java.util.Set<Long> touching = new java.util.HashSet<>();
         int[] doorAt = new int[cows.size()];         // коли кожна вперше ступила в прохід
         java.util.Arrays.fill(doorAt, -1);
         int[] waitedTicks = new int[cows.size()];    // скільки стояла в черзі
@@ -307,6 +312,16 @@ public class HungryCowSleepTests {
                         <= com.gigongibus.hungrycows.CowGate.DOORWAY * com.gigongibus.hungrycows.CowGate.DOORWAY) inDoor++;
             }
             maxInDoor[0] = Math.max(maxInDoor[0], inDoor);
+            for (int a = 0; a < cows.size(); a++) {
+                for (int b = a + 1; b < cows.size(); b++) {
+                    HungryCow ca = cows.get(a), cb = cows.get(b);
+                    long key = a * 100L + b;
+                    boolean moving = ca.getDeltaMovement().horizontalDistance() > 0.03 || cb.getDeltaMovement().horizontalDistance() > 0.03;
+                    boolean touch = ca.getBoundingBox().inflate(0.05).intersects(cb.getBoundingBox()) && !ca.sleeping && !cb.sleeping;
+                    if (touch && moving && touching.add(key)) cowBumps[0]++;
+                    if (!touch) touching.remove(key);
+                }
+            }
         });
         h.startSequence()
                 .thenIdle(DAY_TICKS)
@@ -317,7 +332,10 @@ public class HungryCowSleepTests {
                 })
                 .thenWaitUntil(() -> {
                     for (HungryCow c : cows) {
-                        if (!c.isAlive()) h.fail("корова загинула: " + c.family.name);
+                        if (!c.isAlive()) h.fail("корова загинула: " + c.family.name + " (здоров'я " + c.getHealth() + ", зникла: " + c.getRemovalReason() + ") від "
+                                + (c.getLastDamageSource() == null ? "?" : c.getLastDamageSource().getMsgId()
+                                + (c.getLastDamageSource().getEntity() == null ? "" : " (" + c.getLastDamageSource().getEntity().getName().getString() + ")"))
+                                + ", " + state(h, c));
                         // шкала сну повна, а корова надворі — вона вже засне, де є: провал одразу
                         if (c.sleep.full() && !inBarn(h, c)) h.fail("не встигла дійти до хліва: " + state(h, c));
                     }
@@ -341,8 +359,16 @@ public class HungryCowSleepTests {
                                 doorAt[i] / 20.0, waitedTicks[i] / 20.0));
                     }
                     LOG.info("[тест] {}: черга — найбільше в проході разом {}; {}", name, maxInDoor[0], order);
+                    LOG.info("[тест] {}: зіткнень між коровами вночі {}", name, cowBumps[0]);
                 })
                 .thenSucceed();
-        h.runAfterDelay(TIMEOUT - 1, () -> { cows.forEach(net.minecraft.world.entity.Entity::discard); clearBarn(h, big); });
+        // час вийшов: сказати, хто де (раніше прибирання корів тут виглядало як «корова загинула»), і прибрати
+        h.runAfterDelay(TIMEOUT - 1, () -> {
+            StringBuilder sb = new StringBuilder();
+            for (HungryCow c : cows) sb.append(state(h, c)).append("; ");
+            cows.forEach(net.minecraft.world.entity.Entity::discard);
+            clearBarn(h, big);
+            h.fail("час вийшов, не всі сплять у хліві: " + sb);
+        });
     }
 }
