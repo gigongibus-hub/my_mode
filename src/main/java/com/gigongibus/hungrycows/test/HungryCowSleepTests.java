@@ -126,7 +126,22 @@ public class HungryCowSleepTests {
         int[] firstOut = new int[cows.size()];
         java.util.Arrays.fill(firstOut, -1);
         double[] farthest = new double[cows.size()];   // найдалі від хліва (блоків від стін зовні)
+        int[] maxInDoor = { 0 };
+        int[] doorAt = new int[cows.size()];
+        java.util.Arrays.fill(doorAt, -1);
+        int[] waited = new int[cows.size()];
         h.onEachTick(() -> {
+            int inDoor = 0;
+            for (int i = 0; i < cows.size(); i++) {
+                HungryCow c = cows.get(i);
+                BlockPos gd = c.gate.door();
+                boolean in = c.gate.active() && gd != null && c.distanceToSqr(gd.getX() + 0.5, gd.getY(), gd.getZ() + 0.5)
+                        <= com.gigongibus.hungrycows.CowGate.DOORWAY * com.gigongibus.hungrycows.CowGate.DOORWAY;
+                if (in) inDoor++;
+                if (in && doorAt[i] < 0) doorAt[i] = (int) h.getTick();
+                if (c.gate.waiting) waited[i]++;
+            }
+            maxInDoor[0] = Math.max(maxInDoor[0], inDoor);
             for (int i = 0; i < cows.size(); i++) {
                 HungryCow c = cows.get(i);
                 if (firstOut[i] < 0 && !com.gigongibus.hungrycows.CowHome.hasRoof(h.getLevel(), c.blockPosition())) firstOut[i] = (int) h.getTick();
@@ -149,6 +164,13 @@ public class HungryCowSleepTests {
                                 firstOut[i] < 0 ? "лишилась у хліві" : String.format("вийшла на %.0f с, відійшла від хліва на %.0f бл.", firstOut[i] / 20.0, farthest[i])));
                     }
                     LOG.info("[тест] cowsGoOutToPasture: вийшло {} з {}, відійшли на {}+ бл. — {}: {}", out, cows.size(), (int) FAR_FROM_BARN, far, sb);
+                    StringBuilder q = new StringBuilder();
+                    for (int i = 0; i < cows.size(); i++) {
+                        HungryCow c = cows.get(i);
+                        q.append(String.format("%s%s (домінантність %.0f): у прохід на %.1f с, у черзі %.1f с; ", c.family.name,
+                                c.herd.isLeader() ? " [ватажок]" : "", com.gigongibus.hungrycows.CowHerd.dominance(c), doorAt[i] / 20.0, waited[i] / 20.0));
+                    }
+                    LOG.info("[тест] cowsGoOutToPasture: черга — найбільше в проході разом {}; {}", maxInDoor[0], q);
                     cows.forEach(net.minecraft.world.entity.Entity::discard);   // прибрати: інакше вони стають «стадом» для сусідніх тестів
                     clearBarn(h, true);
                     h.assertTrue(far >= 1, "за 3 хв жодна корова не відійшла від хліва на " + (int) FAR_FROM_BARN + "+ блоків: " + sb);
@@ -170,6 +192,10 @@ public class HungryCowSleepTests {
         int[] bumps = new int[cows.size()];          // скільки разів уперлася в блок (удар об стіну) дорогою
         boolean[] wasBump = new boolean[cows.size()];
         StringBuilder bumpLog = new StringBuilder();
+        int[] maxInDoor = { 0 };                     // найбільше корів одночасно в проході (черга: має бути 1)
+        int[] doorAt = new int[cows.size()];         // коли кожна вперше ступила в прохід
+        java.util.Arrays.fill(doorAt, -1);
+        int[] waitedTicks = new int[cows.size()];    // скільки стояла в черзі
         h.onEachTick(() -> {
             if (nightStart[0] < 0) return;
             for (int i = 0; i < cows.size(); i++) {
@@ -188,7 +214,20 @@ public class HungryCowSleepTests {
                     }
                 }
                 wasBump[i] = bump;
+                BlockPos gd = c.gate.door();
+                if (c.gate.active() && gd != null && c.distanceToSqr(gd.getX() + 0.5, gd.getY(), gd.getZ() + 0.5)
+                        <= com.gigongibus.hungrycows.CowGate.DOORWAY * com.gigongibus.hungrycows.CowGate.DOORWAY && doorAt[i] < 0) {
+                    doorAt[i] = (int) h.getTick() - nightStart[0];
+                }
+                if (c.gate.waiting) waitedTicks[i]++;
             }
+            int inDoor = 0;
+            for (HungryCow c : cows) {
+                BlockPos gd = c.gate.door();
+                if (c.gate.active() && gd != null && c.distanceToSqr(gd.getX() + 0.5, gd.getY(), gd.getZ() + 0.5)
+                        <= com.gigongibus.hungrycows.CowGate.DOORWAY * com.gigongibus.hungrycows.CowGate.DOORWAY) inDoor++;
+            }
+            maxInDoor[0] = Math.max(maxInDoor[0], inDoor);
         });
         h.startSequence()
                 .thenIdle(DAY_TICKS)
@@ -215,6 +254,14 @@ public class HungryCowSleepTests {
                                 String.format("%.1f", arrived[i] / 20.0), bumps[i], String.format("%.2f", cows.get(i).sizeScale()));
                     }
                     if (bumpLog.length() > 0) LOG.info("[тест] {}: удари: {}", name, bumpLog);
+                    StringBuilder order = new StringBuilder();
+                    for (int i = 0; i < cows.size(); i++) {
+                        HungryCow c = cows.get(i);
+                        order.append(String.format("%s%s (домінантність %.0f): у прохід на %.1f с, у черзі %.1f с; ", c.family.name,
+                                c.herd.isLeader() ? " [ватажок]" : "", com.gigongibus.hungrycows.CowHerd.dominance(c),
+                                doorAt[i] / 20.0, waitedTicks[i] / 20.0));
+                    }
+                    LOG.info("[тест] {}: черга — найбільше в проході разом {}; {}", name, maxInDoor[0], order);
                 })
                 .thenSucceed();
         h.runAfterDelay(TIMEOUT - 1, () -> { cows.forEach(net.minecraft.world.entity.Entity::discard); clearBarn(h, big); });

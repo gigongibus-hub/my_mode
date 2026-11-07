@@ -239,6 +239,7 @@ public class HungryCow extends Cow {
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
+    public final CowGate gate = new CowGate(this);                    // черга біля входу: по одній, ватажок перша
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі

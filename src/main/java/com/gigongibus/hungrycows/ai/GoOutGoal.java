@@ -16,7 +16,8 @@ import java.util.EnumSet;
 // за 8–24 блоки; далі корова поводиться як звичайно (пасеться, гуляє, п'є).
 public class GoOutGoal extends Goal {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    private static final int DECIDE_EVERY = 600;            // вирішує раз на 30 с
+    private static final int DECIDE_EVERY = 600;            // вирішує раз на 30 с ...
+    private static final int DECIDE_LEADER_OUT = 200;       // ... а коли ватажок уже надворі — раз на 10 с (Fij)
     private static final double BASE_CHANCE = 0.30;         // звичайний шанс вийти
     private static final double ACTIVITY_MIN = 0.5;         // лінива ×0,5 ... активна ×1,5
     private static final double CURIOSITY_BONUS = 0.20;     // допитлива до +20%
@@ -84,7 +85,9 @@ public class GoOutGoal extends Goal {
     @Override
     public boolean canUse() {
         if (cooldown > 0) { cooldown--; return false; }
-        cooldown = DECIDE_EVERY / 2;   // canUse викликається раз на 2 тіки
+        HungryCow lead = cow.herd.leader();
+        boolean leaderOut = lead != null && lead != cow && !inShelter(lead);
+        cooldown = (leaderOut ? DECIDE_LEADER_OUT : DECIDE_EVERY) / 2;   // canUse викликається раз на 2 тіки
         if (!cow.isDayTime() || cow.isBaby() || cow.sleeping || cow.cycle.inEstrus()) return false;
         if (!inShelter(cow)) {
             // надворі біля хліва: неспокій дійшов до межі — іде на пасовище (без кидання шансу)
@@ -135,11 +138,24 @@ public class GoOutGoal extends Goal {
     public void tick() {
         if (target == null) return;
         walkTicks++;
+        // у черзі біля входу — щотіку (за секунду корова проскочила б межу черги)
+        if (cow.gate.active() && cow.gate.mustWait()) {
+            cow.gate.holdStill();
+            walkTicks--;   // час у черзі не рахується в хвилину дороги
+            return;
+        }
         if (walkTicks != 1 && walkTicks % 20 != 0) return;
         // спершу до входу (якщо він відомий), потім надвір
         if (!passedDoor && door != null && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5) <= 4) {
             passedDoor = true;
             lastDist = Double.MAX_VALUE;
+        }
+        // черга біля входу: по одній, старша перша (CowGate)
+        if (!passedDoor && door != null) cow.gate.approach(door);
+        if (cow.gate.mustWait()) {
+            cow.gate.holdStill();
+            lastDist = Double.MAX_VALUE;
+            return;
         }
         BlockPos goal = passedDoor || door == null ? target : door;
         boolean grounded = cow.onGround() || cow.isInWater();
@@ -216,6 +232,7 @@ public class GoOutGoal extends Goal {
         }
         if (target != null && underSky()) cow.tell(cow.family.name + " вийшла на пасовище");
         target = null;
+        cow.gate.cancel();
         cow.getNavigation().stop();
     }
 }

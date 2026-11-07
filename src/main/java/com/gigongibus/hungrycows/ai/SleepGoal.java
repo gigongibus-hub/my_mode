@@ -40,6 +40,8 @@ public class SleepGoal extends Goal {
     private static final double CHECK_NEAR_BASE = 12;    // шлях до місць перевіряє лише ближче 12 блоків від спільного місця
     private static final double SAME_SLEEP_RANGE = 32;   // ватажок ближче цього — стадо спить там, де вона
     private static final int MAX_WALK_TICKS = 2400;      // іде додому щонайбільше 2 хв, потім спить, де є (і пізніше пробує знову)
+    private static final int WAIT_LEADER_MIN = 200;      // увечері ватажок ще не вдома — інші зволікають 10 ...
+    private static final int WAIT_LEADER_MAX = 400;      // ... – 20 с (ватажок уже вдома — ідуть одразу)
     private static final int MAX_FAILED_PATHS = 5;       // стільки разів шляху немає / не наближається — інше місце
     private static final int LEARN_DOOR_EVERY = 100;     // вхід невідомий — пробує дізнатися раз на 5 с
     private static final int RETRY_HOME_TICKS = 600;     // спить надворі, хоча дім є — через 30 с знову йде додому
@@ -95,13 +97,29 @@ public class SleepGoal extends Goal {
     public boolean canUse() {
         // настав ранок, а ціль перервали ще вночі: звільнити своє місце
         if (!cow.isNightTime() && claimed != null) forgetNight();
+        if (!cow.isNightTime()) leaderWaitUntil = -1;
         // розбуджена корова з цілі не виходить: стоїть на своєму місці, поки не засне знову
-        return cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus();
+        if (!(cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus())) return false;
+        return !waitingForLeader();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return canUse();
+        return cow.isNightTime() && !cow.isBaby() && !cow.cycle.inEstrus();
+    }
+
+    // Увечері ватажок ще не вдома: інші трохи зволікають (10–20 с), а щойно вона зайшла — ідуть одразу (Fij)
+    private int leaderWaitUntil = -1;
+
+    private boolean waitingForLeader() {
+        HungryCow leader = cow.herd.leader();
+        if (leader == null || leader == cow || cow.sleep.full() || isInside()) return false;
+        if (cow.distanceToSqr(leader) > SAME_SLEEP_RANGE * SAME_SLEEP_RANGE) return false;
+        if (leader.sleeping || CowHome.hasRoof(leader.level(), leader.blockPosition())) return false;   // ватажок уже вдома
+        if (leaderWaitUntil < 0) {
+            leaderWaitUntil = cow.tickCount + WAIT_LEADER_MIN + cow.getRandom().nextInt(WAIT_LEADER_MAX - WAIT_LEADER_MIN + 1);
+        }
+        return cow.tickCount < leaderWaitUntil;
     }
 
     @Override
@@ -186,6 +204,12 @@ public class SleepGoal extends Goal {
             awake();
             cow.sleepClaim = claimed;
             trample();
+            // у черзі біля входу — щотіку (за секунду корова проскочила б межу черги)
+            if (cow.gate.active() && cow.gate.mustWait()) {
+                cow.gate.holdStill();
+                walkTicks--;   // час у черзі не рахується в 2 хв дороги
+                return;
+            }
             if (walkTicks == 1 || walkTicks % 20 == 0) walkStep(base);
             return;
         }
@@ -232,6 +256,14 @@ public class SleepGoal extends Goal {
     // Один крок дороги (раз на секунду): вхід → своє місце; перевірка досяжності поблизу; заміна місця, якщо не виходить
     private void walkStep(BlockPos base) {
         boolean grounded = cow.onGround() || cow.isInWater();
+        // черга біля входу: по одній, старша перша (CowGate)
+        if (!passedDoor && door != null) cow.gate.approach(door);
+        if (cow.gate.mustWait()) {
+            cow.gate.holdStill();
+            failedPaths = 0;
+            lastDist = Double.MAX_VALUE;
+            return;
+        }
         // своєю дорогою: точку пройдено — до наступної; остання — далі до свого місця
         if (routeIdx >= 0) {
             BlockPos rp = cow.sleep.routePoint(routeIdx);
@@ -490,6 +522,7 @@ public class SleepGoal extends Goal {
     public void stop() {
         awake();
         heardPos.clear();
+        cow.gate.cancel();
         // ціль перервали вночі (поїсти, попити, злякалась): своє місце тримає і потім повертається туди
         if (!cow.isNightTime()) forgetNight();
     }
