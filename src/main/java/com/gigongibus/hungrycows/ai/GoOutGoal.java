@@ -24,7 +24,7 @@ public class GoOutGoal extends Goal {
     private static final double RAIN = 0.3;                 // дощ: ×0,3
     private static final int OUT_MIN = 8, OUT_MAX = 24;     // куди йде: 8–24 блоки від себе
     private static final int SPOT_TRIES = 40;               // скільки місць пробує
-    private static final int OUT_ENOUGH = 4;                // «вийшла» = під небом і щонайменше 4 блоки від місця, де стояла в хліві
+    private static final double ARRIVED = 3;                // «вийшла» = дійшла до вибраного місця на пасовищі (ближче 3 блоків)
     private static final int MAX_WALK_TICKS = 1200;         // іде щонайбільше 1 хв
     private static final int MAX_FAILS = 5;                 // шляху немає / не наближається 5 разів — передумала
     private static final double SPEED = 1.0;
@@ -54,8 +54,10 @@ public class GoOutGoal extends Goal {
         return true;
     }
 
+    // «У хліві» = над головою дах. Не шелтер з балами: посеред великого хліва стіни далі 6 блоків, і там бали 0 —
+    // корова там ніколи не вирішувала вийти
     private boolean inShelter(HungryCow c) {
-        return CowHome.shelterScore(c.level(), c.blockPosition()) > 0;
+        return CowHome.hasRoof(c.level(), c.blockPosition());
     }
 
     // Надворі = над головою немає даху (за блоками, як шукає дім; світло неба в щойно збудованих місцях буває ще не пораховане)
@@ -103,8 +105,8 @@ public class GoOutGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         if (target == null || !cow.isDayTime() || walkTicks >= MAX_WALK_TICKS || fails >= MAX_FAILS) return false;
-        // вийшла: під небом і відійшла від хліва
-        return !(underSky() && startPos != null && cow.blockPosition().distManhattan(startPos) >= OUT_ENOUGH);
+        // вийшла = дійшла до вибраного місця на пасовищі (а не просто ступила за двері)
+        return !(underSky() && cow.distanceToSqr(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) <= ARRIVED * ARRIVED);
     }
 
     @Override

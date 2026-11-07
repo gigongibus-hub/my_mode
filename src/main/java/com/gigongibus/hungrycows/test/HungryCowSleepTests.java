@@ -94,6 +94,17 @@ public class HungryCowSleepTests {
     // за 3 хв хоча б одна виходить надвір (рішення за характером, GoOutGoal)
     private static final List<BlockPos> IN_BARN = List.of(new BlockPos(42, 2, 38), new BlockPos(42, 2, 40), new BlockPos(42, 2, 42));
     private static final int PASTURE_TICKS = 3 * 60 * 20;
+    private static final double FAR_FROM_BARN = 6;   // «пішла на пасовище» = щонайменше 6 блоків від стін хліва (не стоїть біля виходу)
+
+    // Скільки блоків від корови до найближчої стіни хліва ззовні (0 — усередині чи впритул)
+    private static double outsideBarn(GameTestHelper h, HungryCow c) {
+        net.minecraft.world.phys.Vec3 a = h.absoluteVec(new net.minecraft.world.phys.Vec3(32, 0, 32));
+        net.minecraft.world.phys.Vec3 b = h.absoluteVec(new net.minecraft.world.phys.Vec3(49, 0, 49));
+        double minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x), minZ = Math.min(a.z, b.z), maxZ = Math.max(a.z, b.z);
+        double dx = Math.max(0, Math.max(minX - c.getX(), c.getX() - maxX));
+        double dz = Math.max(0, Math.max(minZ - c.getZ(), c.getZ() - maxZ));
+        return Math.sqrt(dx * dx + dz * dz);
+    }
 
     // Раніше падав: дорога надвір у обхід стін довша за 32 блоки (FOLLOW_RANGE = найдовша дорога пошуку шляху). Тепер 64.
     @GameTest(template = BIG_BARN, batch = "pasture", timeoutTicks = PASTURE_TICKS + 100)
@@ -108,30 +119,33 @@ public class HungryCowSleepTests {
         }).toList();
         int[] firstOut = new int[cows.size()];
         java.util.Arrays.fill(firstOut, -1);
+        double[] farthest = new double[cows.size()];   // найдалі від хліва (блоків від стін зовні)
         h.onEachTick(() -> {
             for (int i = 0; i < cows.size(); i++) {
                 HungryCow c = cows.get(i);
                 if (firstOut[i] < 0 && !com.gigongibus.hungrycows.CowHome.hasRoof(h.getLevel(), c.blockPosition())) firstOut[i] = (int) h.getTick();
+                farthest[i] = Math.max(farthest[i], outsideBarn(h, c));
             }
         });
         h.startSequence()
                 .thenIdle(PASTURE_TICKS)
                 .thenExecute(() -> {
-                    int out = 0;
+                    int out = 0, far = 0;
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < cows.size(); i++) {
                         HungryCow c = cows.get(i);
                         if (firstOut[i] >= 0) out++;
+                        if (farthest[i] >= FAR_FROM_BARN) far++;
                         sb.append(String.format("%s (активність %d, допитливість %d, полохливість %d): %s; ", c.family.name,
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.ACTIVITY),
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.CURIOSITY),
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.FEARFULNESS),
-                                firstOut[i] < 0 ? "лишилась у хліві" : String.format("вийшла на %.0f с", firstOut[i] / 20.0)));
+                                firstOut[i] < 0 ? "лишилась у хліві" : String.format("вийшла на %.0f с, відійшла від хліва на %.0f бл.", firstOut[i] / 20.0, farthest[i])));
                     }
-                    LOG.info("[тест] cowsGoOutToPasture: вийшло {} з {}: {}", out, cows.size(), sb);
+                    LOG.info("[тест] cowsGoOutToPasture: вийшло {} з {}, відійшли на {}+ бл. — {}: {}", out, cows.size(), (int) FAR_FROM_BARN, far, sb);
                     cows.forEach(net.minecraft.world.entity.Entity::discard);   // прибрати: інакше вони стають «стадом» для сусідніх тестів
                     clearBarn(h, true);
-                    h.assertTrue(out >= 1, "за 3 хв жодна корова не вийшла з хліва: " + sb);
+                    h.assertTrue(far >= 1, "за 3 хв жодна корова не відійшла від хліва на " + (int) FAR_FROM_BARN + "+ блоків: " + sb);
                 })
                 .thenSucceed();
         h.runAfterDelay(PASTURE_TICKS + 99, () -> { cows.forEach(net.minecraft.world.entity.Entity::discard); clearBarn(h, true); });
