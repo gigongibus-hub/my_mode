@@ -22,22 +22,24 @@ import net.minecraft.world.phys.Vec3;
  */
 public class CowNavigation extends GroundPathNavigation {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    // обходити інших корів. ВИМКНЕНО: заміри тестами (4+4 прогони) — з обходом зіткнень не менше, а більше (0–33 проти 0–1):
-    // корова раз у раз перебудовує шлях і смикається. Треба переробити (див. CLAUDE.md)
-    public static final boolean AVOID_COWS = false;
+    // обходити інших корів (перша версія з перебудовою шляху смикала корову: зіткнень 0–33 проти 0–1; тепер без перебудови)
+
+    public static final boolean AVOID_COWS = true;
     public static final double AHEAD = 1.8;           // дивиться вперед на 1,8 блока (від центру до центру)
     public static final double SIDE_MARGIN = 0.2;     // «на шляху» = збоку ближче половин ширин + 0,2
     public static final int CHECK_EVERY = 5;          // дивиться раз на 5 тіків
     public static final double MOVING = 0.03;         // «іде» = швидкість понад 0,03 блока за тік у той самий бік
-    public static final double FOLLOW_SPEED = 0.5;    // іде слідом — удвічі повільніше
-    public static final int AVOID_TICKS = 40;         // клітинки корови, яку обходить, «дорогі» 2 с
-    public static final int REPATH_COOLDOWN = 20;     // обхід будує не частіше раз на секунду
+    public static final double FOLLOW_SPEED = 0.3;    // іде слідом / чекає — повільно (30%)
+    public static final int WAIT_TICKS = 30;          // та стоїть чи йде назустріч — чекає 1,5 с ...
+    public static final int SIDESTEP_TICKS = 40;      // ... потім до 2 с відступає вбік (праворуч), обходячи її
+    public static final double SIDESTEP_PUSH = 0.06;  // сила кроку вбік (раз на 5 тіків)
+    public static final int AVOID_TICKS = 40;         // (не вживається, поки обхід без перебудови шляху)
     public static final float AVOID_MALUS = 6.0F;     // «ціна» клітинки, де стоїть інша корова
 
     // клітинка (x, z) → до якого тіку її обходити
     final Long2IntOpenHashMap avoid = new Long2IntOpenHashMap();
     private int nextCheck = 0;
-    private int nextRepath = 0;
+    private int waitStart = -1;
     private boolean slowed = false;
     private double goalSpeed = 1.0;
 
@@ -107,25 +109,25 @@ public class CowNavigation extends GroundPathNavigation {
             blocker = o;
         }
         if (blocker == null) {
+            waitStart = -1;
             setSlowed(false);
             return;
         }
         Vec3 ov = blocker.getDeltaMovement();
         if (ov.x * dir.x + ov.z * dir.z > MOVING) {   // іде попереду в той самий бік — слідом, повільніше
+            waitStart = -1;
             setSlowed(true);
             return;
         }
-        setSlowed(false);
-        if (t < nextRepath) return;
-        nextRepath = t + REPATH_COOLDOWN;
-        // стоїть або йде назустріч: її клітинки «дорогі» — новий шлях в обхід
-        AABB b = blocker.getBoundingBox();
-        for (int x = (int) Math.floor(b.minX); x <= (int) Math.floor(b.maxX); x++) {
-            for (int z = (int) Math.floor(b.minZ); z <= (int) Math.floor(b.maxZ); z++) avoid.put(key(x, z), t + AVOID_TICKS);
+        // стоїть або йде назустріч: зачекати (дуже повільно) до WAIT_TICKS, потім іти далі як є (без перебудови шляху —
+        // перебудова смикала корову й зіткнень ставало більше)
+        if (waitStart < 0) waitStart = t;
+        boolean waiting = t - waitStart < WAIT_TICKS;
+        setSlowed(waiting);
+        // почекала, а та досі на шляху — крок управо (як люди в коридорі), поки не обійде (щонайбільше SIDESTEP_TICKS)
+        if (!waiting && t - waitStart < WAIT_TICKS + SIDESTEP_TICKS) {
+            Vec3 right = new Vec3(-dir.z, 0, dir.x);
+            this.mob.setDeltaMovement(this.mob.getDeltaMovement().add(right.scale(SIDESTEP_PUSH)));
         }
-        BlockPos target = this.path.getTarget();
-        Path p = this.createPath(target, 0);
-        if (p == null) p = this.createPath(target, 1);
-        if (p != null) this.moveTo(p, goalSpeed);
     }
 }
