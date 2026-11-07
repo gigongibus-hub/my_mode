@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos;
 /**
  * Черга біля входу (ідея Fij): корови заходять у хлів і виходять з нього по одній.
  * Корова, що йде через вхід, чекає за 3–15 блоків від нього, якщо:
- *  - у проході вже інша корова (ближче 2,5 блока до входу), або
+ *  - у проході вже стільки корів, скільки пропускає вхід (ширина − 1: 3 → 2, 4 → 3, 5 → 4), або
  *  - до того самого входу йде ватажок і вона вже ближче 15 блоків (ватажок перша; інші — без рангів).
  * Слабша з меншою домінантністю чекає далі. Чекає щонайбільше 20 с — потім іде (щоб не застрягти).
  * Цілі (SleepGoal, GoOutGoal) кажуть approach(вхід), поки йдуть до нього, і cancel(), коли зупинились.
@@ -22,6 +22,9 @@ public class CowGate {
     public static final double SAME_DOOR = 3;         // «той самий вхід» = входи ближче 3 блоків
     public static final double LOOK_RANGE = 32;       // кого перевіряє
     public static final int MAX_WAIT_TICKS = 400;     // чекає щонайбільше 20 с, потім іде
+    // Скільки корів разом у проході (Fij): ширина входу мінус 1 (3 → 2, 4 → 3, 5 → 4; вузький 1–2 → одна)
+    public static final int MAX_DOOR_WIDTH = 10;      // ширше не міряє
+    public static final int INWARD_STEPS = 3;         // ширину міряє на перших 3 кроках углиб від входу (найвужче місце — стіна)
     public static final double BEHIND = 3;            // старша прямо позаду (ближче 3 бл. і далі від входу) — пройти не може, тож іде сама
     public static final int STUCK_TICKS = 60;         // у проході 3 с стоїть на місці — застрягла, прохід не займає
     public static final double STUCK_MOVE = 0.3;      // «стоїть» = за 3 с зрушила менше 0,3 бл.
@@ -31,6 +34,7 @@ public class CowGate {
     private boolean reachedDoor = false; // уже була в проході
     private BlockPos passedDoor = null; // цей вхід уже пройшла (до cancel)
     private double waitDist;
+    private int capacity = 1;            // скільки корів разом пропускає цей вхід
     private int waitedTicks = 0;
     private int lastCheckTick = -1;
     private int lastApproachTick = -1000;
@@ -72,12 +76,46 @@ public class CowGate {
         stillTicks = 0;
         reachedDoor = false;
         waiting = false;
+        capacity = Math.max(1, doorWidth(d) - 1);
         if (!same) {
             told = false;
             waitedTicks = 0;
             double dom = cow.character.fraction(Trait.DOMINANCE);
             waitDist = WAIT_MIN + (WAIT_MAX - WAIT_MIN) * (0.5 * (1 - dom) + 0.5 * cow.getRandom().nextDouble());
         }
+    }
+
+    public int capacity() {
+        return capacity;
+    }
+
+    // Чи можна стояти в клітинці (і над нею вільно — корова висока)
+    private boolean open(BlockPos p) {
+        var level = cow.level();
+        return level.getBlockState(p).getCollisionShape(level, p).isEmpty()
+                && level.getBlockState(p.above()).getCollisionShape(level, p.above()).isEmpty();
+    }
+
+    // Ширина входу: з точки перед входом — крок углиб (туди, де дах), і там скільки вільних клітинок поспіль упоперек;
+    // береться найвужче з перших кроків (там стіна з прорізом)
+    private int doorWidth(BlockPos door) {
+        for (net.minecraft.core.Direction in : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            BlockPos first = door.relative(in);
+            if (!open(first) || !CowHome.hasRoof(cow.level(), first)) continue;
+            net.minecraft.core.Direction side = in.getClockWise();
+            int best = MAX_DOOR_WIDTH;
+            BlockPos p = door;
+            for (int step = 0; step <= INWARD_STEPS; step++) {
+                if (step > 0) p = p.relative(in);
+                if (!open(p)) break;
+                int w = 1;
+                for (int k = 1; k < MAX_DOOR_WIDTH && open(p.relative(side, k)); k++) w++;
+                for (int k = 1; k < MAX_DOOR_WIDTH && open(p.relative(side, -k)); k++) w++;
+                best = Math.min(best, w);
+            }
+            return Math.max(1, best);
+        }
+        return 2;   // не зрозуміла, де вхід — пропускає по одній (2 − 1)
     }
 
     // Ціль зупинилась: з черги вийшла
@@ -115,13 +153,14 @@ public class CowGate {
             return false;
         }
         boolean wait = false;
+        int inDoorway = 0;
         if (!reachedDoor && d <= waitDist && waitedTicks < MAX_WAIT_TICKS) {
             for (HungryCow o : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(LOOK_RANGE),
                     o -> o != cow && o.isAlive() && o.gate.active())) {
                 if (o.gate.door.distSqr(door) > SAME_DOOR * SAME_DOOR) continue;
                 double od = distTo(o, o.gate.door);
-                // у проході інша (і йде, а не застрягла)
-                if (od <= DOORWAY && !o.gate.waiting && o.gate.stillTicks < STUCK_TICKS) { wait = true; break; }
+                // у проході інші (і йдуть, а не застрягли): широкий вхід пропускає кількох (capacity)
+                if (od <= DOORWAY && !o.gate.waiting && o.gate.stillTicks < STUCK_TICKS && ++inDoorway >= capacity) { wait = true; break; }
                 // старша йде першою — але якщо вона прямо позаду, обійти не може (у вузькому проході стояли б обидві)
                 boolean rightBehind = od > d && o.distanceTo(cow) < BEHIND;
                 // першою проходить лише ватажок (Fij); інші — без рангів, просто по одній
