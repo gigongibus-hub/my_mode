@@ -31,6 +31,7 @@ import java.util.Set;
 public class SeekGrassGoal extends Goal {
     // з якого голоду шукає їжу: HungryCow.hungryAt() (30, ген ±30%)
     private static final int SEARCH_RADIUS = 15;          // радіус пошуку їжі по горизонталі
+    private static final int WIDE_RADIUS = 30;            // голодна (40+) і поруч нічого — шукає далі (з хліва на пасовище)
     private static final int SEARCH_HEIGHT = 3;           // радіус пошуку по висоті
     private static final float FLOWER_CHANCE = 0.30F;     // шанс, що голодна корова піде до квітки замість звичайної їжі
     private static final float POPPY_CHANCE = 0.15F;      // шанс, що піде саме до маку замість звичайної їжі (входить у FLOWER_CHANCE)
@@ -104,6 +105,9 @@ public class SeekGrassGoal extends Goal {
         return true;
     }
 
+    private int radius = SEARCH_RADIUS;
+    private boolean lastFoundNothing = false;
+
     @Override
     public boolean canUse() {
         if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
@@ -116,7 +120,9 @@ public class SeekGrassGoal extends Goal {
         }
         if (cooldown > 0) { cooldown--; return false; }
         if (!cow.onGround() && !cow.isInWater()) return false;   // у повітрі гра не будує шлях: уся їжа здавалась би недосяжною
+        radius = (lastFoundNothing && cow.hunger >= HungryCow.NIGHT_EAT_AT) ? WIDE_RADIUS : SEARCH_RADIUS;
         target = findFood();
+        lastFoundNothing = target == null && radius == SEARCH_RADIUS;
         // нічого не знайшла: наступний пошук приблизно за 4 с, а не за 1 с (пошук важкий для сервера)
         cooldown = target != null ? 10 : 40;
         stuckTicks = 0;
@@ -470,8 +476,8 @@ public class SeekGrassGoal extends Goal {
         List<Candidate> bluet = new ArrayList<>();
         int grassBlocks = 0;
 
-        BlockPos from = origin.offset(-SEARCH_RADIUS, -SEARCH_HEIGHT, -SEARCH_RADIUS);
-        BlockPos to = origin.offset(SEARCH_RADIUS, SEARCH_HEIGHT, SEARCH_RADIUS);
+        BlockPos from = origin.offset(-radius, -SEARCH_HEIGHT, -radius);
+        BlockPos to = origin.offset(radius, SEARCH_HEIGHT, radius);
         // зазвичай усі чанки навколо завантажені: тоді не перевіряємо кожен блок окремо
         boolean allLoaded = cow.level().hasChunksAt(from, to);
         for (BlockPos p : BlockPos.betweenClosed(from, to)) {

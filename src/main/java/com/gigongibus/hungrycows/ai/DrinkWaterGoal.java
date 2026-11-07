@@ -20,7 +20,8 @@ import java.util.Set;
 
 // Спрага: корова йде до води (джерело води або котел з водою) і п'є 3 секунди
 public class DrinkWaterGoal extends Goal {
-    private static final int SEARCH_RADIUS = 16;        // як далеко шукає воду
+    private static final int SEARCH_RADIUS = 16;        // як далеко шукає воду ...
+    private static final int WIDE_RADIUS = 30;          // ... поруч нема, а спрага 45+ — шукає далі
     private static final int SEARCH_HEIGHT = 4;
     private static final int MAX_PATH_CHECKS = 4;       // скільки найближчих місць перевіряти, чи можна дійти
     private static final double REACH = 2.0;            // з якої відстані п'є
@@ -46,6 +47,9 @@ public class DrinkWaterGoal extends Goal {
         return true;
     }
 
+    private int radius = SEARCH_RADIUS;
+    private boolean lastFoundNothing = false;
+
     @Override
     public boolean canUse() {
         if (cow.isBaby() || !cow.shouldSeekWater()) return false;   // теля п'є лише молоко
@@ -54,7 +58,9 @@ public class DrinkWaterGoal extends Goal {
             lastClearTick = cow.tickCount;
         }
         if (cooldown > 0) { cooldown--; return false; }
+        radius = (lastFoundNothing && cow.thirst >= HungryCow.NIGHT_DRINK_AT) ? WIDE_RADIUS : SEARCH_RADIUS;
         target = findWater();
+        lastFoundNothing = target == null && radius == SEARCH_RADIUS;
         cooldown = target != null ? 10 : SEARCH_COOLDOWN;
         return target != null;
     }
@@ -108,8 +114,8 @@ public class DrinkWaterGoal extends Goal {
     private BlockPos findWater() {
         BlockPos o = cow.blockPosition();
         List<BlockPos> found = new ArrayList<>();
-        for (BlockPos p : BlockPos.betweenClosed(o.offset(-SEARCH_RADIUS, -SEARCH_HEIGHT, -SEARCH_RADIUS),
-                o.offset(SEARCH_RADIUS, SEARCH_HEIGHT, SEARCH_RADIUS))) {
+        for (BlockPos p : BlockPos.betweenClosed(o.offset(-radius, -SEARCH_HEIGHT, -radius),
+                o.offset(radius, SEARCH_HEIGHT, radius))) {
             if (unreachable.contains(p)) continue;
             // вода, над якою повітря (можна напитись з берега), або котел
             if (cow.level().getBlockState(p).is(Blocks.WATER_CAULDRON)

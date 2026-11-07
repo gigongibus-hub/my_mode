@@ -80,6 +80,9 @@ import java.util.stream.Collectors;
 
 public class HungryCow extends Cow {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
+    public static final int NIGHT_EAT_AT = 40;           // уночі голод 40+ — встає й іде їсти (Fij: раніше лише з 60 і гинули)
+    public static final int NIGHT_DRINK_AT = 45;         // спрага 45+ — іде пити, навіть уночі зі сну
+    public static final double SLEEP_NEEDS = 0.5;        // уві сні голод і спрага ростуть удвічі повільніше (Fij)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
     // ================= ОБМІН РЕЧОВИН І ВТОМА (6б) =================
@@ -319,6 +322,7 @@ public class HungryCow extends Cow {
 
     public boolean shouldSeekFood() {
         if (hunger >= STARVE_AT) return true;   // рефлекс: голодування
+        if (hunger >= NIGHT_EAT_AT) return true;   // помітно голодна — встає зі сну й іде їсти
         // удень корова пасеться: помітно голодна — іде їсти; уранці після сну — виходить пастися майже одразу
         if (isDayTime()) {
             if (hunger >= DAY_EAT_AT) return true;
@@ -352,6 +356,7 @@ public class HungryCow extends Cow {
 
     public boolean shouldSeekWater() {
         if (thirst >= DEHYDRATE_AT) return true;   // рефлекс: зневоднення
+        if (thirst >= NIGHT_DRINK_AT) return true;  // помітна спрага — встає зі сну й іде пити
         return CowBrain.enabled ? brain.is(CowBrain.Action.DRINK) && thirst >= CowBrain.EAT_MIN_HUNGER : wantsWater();
     }
 
@@ -596,7 +601,8 @@ public class HungryCow extends Cow {
     private void geneSecondTick() {
         updateActivity();
         // спрага: ген × сонце × спека × біг × молоко
-        thirstCarry += gene(CowGenes.Gene.THIRST_RATE) * thirstRate() / THIRST_EVERY_SECONDS;
+        double sleepK = sleeping ? SLEEP_NEEDS : 1.0;   // уві сні — удвічі повільніше
+        thirstCarry += gene(CowGenes.Gene.THIRST_RATE) * thirstRate() * sleepK / THIRST_EVERY_SECONDS;
         while (thirstCarry >= 1.0) {
             thirstCarry -= 1.0;
             thirst += TIME_SPEED;
@@ -610,7 +616,7 @@ public class HungryCow extends Cow {
             dehydrateTimer = 0;
         }
         // голод: ген × обмін речовин (вагітність, молоко, біг, відпочинок)
-        hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() / HUNGER_EVERY_SECONDS;
+        hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() * sleepK / HUNGER_EVERY_SECONDS;
         while (hungerCarry >= 1.0) {
             hungerCarry -= 1.0;
             hunger += TIME_SPEED;

@@ -35,7 +35,8 @@ public class SleepGoal extends Goal {
     private static final double HOME_REACH = 1.0;        // «на своєму місці» = ближче цього
     private static final int SPOT_RADIUS = 5;            // своє місце шукає до 5 блоків від спільного
     private static final double CLAIM_RANGE = 16;        // чиї зайняті місця враховує
-    private static final double CLAIM_SPACE = 1.5;       // своє місце + сусідні клітинки (квадрат відстані): спершу шукає з простором
+    private static final double CLAIM_SPACE = 4.0;       // між місцями хоч одна вільна клітинка (квадрат відстані 2 бл.; Fij: спали впритул)
+    private static final double SLEEP_NEAR = 4.0;        // але й не далеко: спершу місця, де інша корова ближче 4 блоків
     private static final int MAX_SPOT_CHECKS = 6;        // скільки найкращих місць перевіряє, чи можна дійти
     private static final double CHECK_NEAR_BASE = 12;    // шлях до місць перевіряє лише ближче 12 блоків від спільного місця
     private static final double SAME_SLEEP_RANGE = 32;   // ватажок ближче цього — стадо спить там, де вона
@@ -413,6 +414,17 @@ public class SleepGoal extends Goal {
     }
 
     // Чи займає це місце інша корова (уже спить там або йде туди)
+    // Чи є чиєсь місце для сну не далі SLEEP_NEAR (або ще нікого — тоді все одно)
+    private boolean nearOther(BlockPos p) {
+        boolean any = false;
+        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
+                c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
+            any = true;
+            if (c.sleepClaim.distSqr(p) <= SLEEP_NEAR * SLEEP_NEAR) return true;
+        }
+        return !any;
+    }
+
     private boolean claimedByOther(BlockPos p) {
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
                 c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
@@ -451,6 +463,8 @@ public class SleepGoal extends Goal {
         if (spots.isEmpty()) return null;
         BlockPos me = cow.blockPosition();
         spots.sort((x, y) -> {
+            int n = Boolean.compare(!nearOther(x), !nearOther(y));   // спершу поруч зі стадом (не далі SLEEP_NEAR)
+            if (n != 0) return n;
             int c = Integer.compare(depth(y, building), depth(x, building));   // глибше — раніше
             return c != 0 ? c : Double.compare(x.distSqr(me), y.distSqr(me));
         });
