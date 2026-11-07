@@ -266,9 +266,15 @@ public class SeekGrassGoal extends Goal {
         return (int) Math.round(base * cow.gene(CowGenes.Gene.GRASS_DIGEST));
     }
 
+    private static final int PASTURE_FROM_ROOF = 6;   // трава «на пасовищі» = до найближчого даху понад 6 блоків (радість, дофамін)
+
     private void eatTarget(BlockState state) {
         Block block = state.getBlock();
         cow.onAte();   // для ремигання
+        boolean grass = block == Blocks.GRASS_BLOCK || block == Blocks.GRASS || block == Blocks.TALL_GRASS;
+        if (grass && com.gigongibus.hungrycows.CowHome.roofDistance(cow.level(), target, PASTURE_FROM_ROOF) > PASTURE_FROM_ROOF) {
+            cow.chem.onFreshPasture();   // свіжа трава на пасовищі — трохи радості: мозок вчиться виходити
+        }
         ServerLevel server = cow.level() instanceof ServerLevel sl ? sl : null;
         if (block == Blocks.GRASS_BLOCK) {
             cow.level().setBlockAndUpdate(target, Blocks.DIRT.defaultBlockState());

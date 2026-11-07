@@ -139,6 +139,14 @@ public class HungryCow extends Cow {
     // Ванільний пошук шляху: корова точно в центрі блока (так ставить яйце призову чи /summon) за деякої ширини
     // (ген розміру) ніколи не «проходить» першу точку шляху — стоїть, доки її не штовхнуть. Виправлення:
     public static final int PATH_STUCK_TICKS = 10;       // стоїть на першій точці у своїй клітинці стільки тіків — до наступної точки
+    // Неспокій біля хліва (Fij): удень надворі ближче NEAR_BARN блоків від даху корова стає неспокійною (тут витоптано, тісно)
+    // і йде на пасовище (GoOutGoal), коли неспокій дійде до UNREST_GO. Активна й допитлива — швидше; на пасовищі спадає.
+    public static final int NEAR_BARN = 6;               // «біля хліва» = дах ближче 6 блоків
+    public static final double UNREST_GAIN = 2.0;        // щосекунди біля хліва: +2 × (0,5 + активність) + 1 × допитливість
+    public static final double UNREST_CURIOUS = 1.0;
+    public static final double UNREST_DECAY = 3.0;       // не біля хліва (або вночі, або в хліві) — спадає на 3 щосекунди
+    public static final double UNREST_GO = 30;           // з такого неспокою йде на пасовище
+    public double barnUnrest = 0;
     public static final int DAY_EAT_AT = 25;             // удень з цього голоду йде пастися завжди (не чекає мозку)
     public static final int MORNING_EAT_AT = 5;          // уранці (після сну) з цього голоду виходить пастися
     public static final int MORNING_FROM = 23500;        // ранок: від світанку ...
@@ -343,6 +351,18 @@ public class HungryCow extends Cow {
 
     // Ніч (лише у світах зі сходом і заходом сонця)
     // Ніч для сну — за часом доби, з сутінків (щоб устигнути дійти); дощ і гроза — не ніч
+    // Неспокій біля хліва: росте вдень надворі поруч із будівлею, спадає деінде
+    private void updateBarnUnrest() {
+        boolean near = isDayTime() && !this.isBaby() && !CowHome.hasRoof(this.level(), this.blockPosition())
+                && CowHome.roofDistance(this.level(), this.blockPosition(), NEAR_BARN) <= NEAR_BARN;
+        if (near) {
+            barnUnrest = Math.min(100, barnUnrest + UNREST_GAIN * (0.5 + character.fraction(Trait.ACTIVITY))
+                    + UNREST_CURIOUS * character.fraction(Trait.CURIOSITY));
+        } else {
+            barnUnrest = Math.max(0, barnUnrest - UNREST_DECAY);
+        }
+    }
+
     private int pathStuckTicks = 0;
 
     // Корова має шлях, але стоїть (чи пливе на місці) на поточній точці у своїй же клітинці й не рухається — перейти до наступної
@@ -728,6 +748,7 @@ public class HungryCow extends Cow {
             home.secondTick();
             herd.secondTick();
             sleep.secondTick();
+            updateBarnUnrest();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
             }

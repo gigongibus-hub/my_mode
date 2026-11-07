@@ -48,6 +48,7 @@ public class CowChemistry {
     public static final double ADRENALINE_ON_ALARM = 15; // інша корова поруч злякалась
     public static final double DOPAMINE_ON_TREAT = 30;
     public static final double DOPAMINE_ON_EAT = 8;
+    public static final double DOPAMINE_ON_PASTURE = 6;   // трава на пасовищі (далеко від будівель): трохи радості — мозок вчиться виходити
     public static final double OXYTOCIN_ON_NURSING = 30;
     public static final double OXYTOCIN_ON_BIRTH = 60;
 
@@ -193,6 +194,10 @@ public class CowChemistry {
 
     public void onEat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_EAT * g(Gene.HORMONE_SENSITIVITY));
+    }
+
+    public void onFreshPasture() {
+        dopamine = clamp(dopamine + DOPAMINE_ON_PASTURE * g(Gene.HORMONE_SENSITIVITY));
     }
 
     public void onNursing() {

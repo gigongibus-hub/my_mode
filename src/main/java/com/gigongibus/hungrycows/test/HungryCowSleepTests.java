@@ -94,7 +94,7 @@ public class HungryCowSleepTests {
     // за 3 хв хоча б одна виходить надвір (рішення за характером, GoOutGoal)
     private static final List<BlockPos> IN_BARN = List.of(new BlockPos(42, 2, 38), new BlockPos(42, 2, 40), new BlockPos(42, 2, 42));
     private static final int PASTURE_TICKS = 3 * 60 * 20;
-    private static final double FAR_FROM_BARN = 6;   // «пішла на пасовище» = щонайменше 6 блоків від стін хліва (не стоїть біля виходу)
+    private static final double FAR_FROM_BARN = 10;  // «пішла на пасовище» = щонайменше 10 блоків від стін хліва (не стоїть біля виходу)
 
     // Скільки блоків від корови до найближчої стіни хліва ззовні (0 — усередині чи впритул)
     private static double outsideBarn(GameTestHelper h, HungryCow c) {

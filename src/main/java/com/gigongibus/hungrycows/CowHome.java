@@ -143,6 +143,21 @@ public class CowHome {
         return false;
     }
 
+    // Скільки блоків до найближчого місця під дахом (8 напрямків, крок 2) — до max; нічого не знайшла — max + 1.
+    // Для «біля хліва» і «пасовище» (далеко від будівель)
+    public static int roofDistance(Level level, BlockPos pos, int max) {
+        for (int r = 2; r <= max; r += 2) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dz == 0) continue;
+                    BlockPos p = pos.offset(dx * r, 0, dz * r);
+                    if (level.isLoaded(p) && hasRoof(level, p)) return r;
+                }
+            }
+        }
+        return max + 1;
+    }
+
     // Наскільки добре місце як дім (0 = не годиться): дах +3, кожна стіна +2, усі 4 стіни ще +2 (до 13)
     public static int shelterScore(Level level, BlockPos pos) {
         if (!standable(level, pos) || !hasRoof(level, pos)) return 0;

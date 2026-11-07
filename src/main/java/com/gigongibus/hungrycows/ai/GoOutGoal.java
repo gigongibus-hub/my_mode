@@ -9,7 +9,8 @@ import net.minecraft.world.level.block.Blocks;
 
 import java.util.EnumSet;
 
-// Вихід на пасовище (ідея Fij). Удень корова в хліві (під дахом) час від часу вирішує, чи вийти надвір.
+// Вихід на пасовище (ідея Fij). Удень корова в хліві (під дахом) час від часу вирішує, чи вийти надвір;
+// надворі біля хліва — іде далі, коли «неспокій біля хліва» (HungryCow.barnUnrest) дійшов до межі.
 // Шанс залежить від характеру: активна й допитлива виходить частіше, полохлива рідше, товариська майже напевно йде
 // за ватажком, якщо та вже надворі. У дощ виходить утричі рідше. «Вийти» = через вхід на відкрите місце (бажано трава)
 // за 8–24 блоки; далі корова поводиться як звичайно (пасеться, гуляє, п'є).
@@ -22,7 +23,9 @@ public class GoOutGoal extends Goal {
     private static final double FEAR_MALUS = 0.20;          // полохлива до −20%
     private static final double FOLLOW_LEADER = 0.50;       // ватажок надворі: товариська до +50%
     private static final double RAIN = 0.3;                 // дощ: ×0,3
-    private static final int OUT_MIN = 8, OUT_MAX = 24;     // куди йде: 8–24 блоки від себе
+    private static final int OUT_MIN = 12, OUT_MAX = 28;    // куди йде: 12–28 блоків від себе
+    private static final int PASTURE_FROM_ROOF = 10;        // пасовище = до найближчого даху понад 10 блоків (не біля дверей)
+    private static final int GRASS_AROUND = 2;              // траву рахує в квадраті 5×5 навколо місця
     private static final int SPOT_TRIES = 40;               // скільки місць пробує
     private static final double ARRIVED = 3;                // «вийшла» = дійшла до вибраного місця на пасовищі (ближче 3 блоків)
     private static final int MAX_WALK_TICKS = 1200;         // іде щонайбільше 1 хв
@@ -83,7 +86,15 @@ public class GoOutGoal extends Goal {
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = DECIDE_EVERY / 2;   // canUse викликається раз на 2 тіки
         if (!cow.isDayTime() || cow.isBaby() || cow.sleeping || cow.cycle.inEstrus()) return false;
-        if (!inShelter(cow)) return false;
+        if (!inShelter(cow)) {
+            // надворі біля хліва: неспокій дійшов до межі — іде на пасовище (без кидання шансу)
+            if (cow.barnUnrest < HungryCow.UNREST_GO) return false;
+            if (cow.tickCount >= decidedUntil) {
+                decidedUntil = cow.tickCount + DECISION_TICKS;
+                retryCooldown = 0;
+            }
+            return tryFindTarget();
+        }
         if (cow.tickCount >= decidedUntil) {
             if (cow.getRandom().nextDouble() >= chance()) return false;
             decidedUntil = cow.tickCount + DECISION_TICKS;   // вирішила: шукає дорогу надвір цю хвилину
@@ -166,9 +177,16 @@ public class GoOutGoal extends Goal {
                 break;
             }
         }
-        BlockPos near = cow.home.entrance() != null ? cow.home.entrance() : o;
-        spots.sort(java.util.Comparator.comparingDouble((BlockPos p) -> p.distSqr(near))
-                .thenComparing(p -> cow.level().getBlockState(p.below()).is(Blocks.GRASS_BLOCK) ? 0 : 1));
+        // справжнє пасовище: далеко від будівель (спершу ті, що понад PASTURE_FROM_ROOF від даху), де найбільше трави
+        java.util.Map<BlockPos, Integer> roof = new java.util.HashMap<>();
+        java.util.Map<BlockPos, Integer> grass = new java.util.HashMap<>();
+        for (BlockPos p : spots) {
+            roof.put(p, CowHome.roofDistance(cow.level(), p, PASTURE_FROM_ROOF));
+            grass.put(p, grassAround(p));
+        }
+        spots.sort(java.util.Comparator.comparingInt((BlockPos p) -> roof.get(p) > PASTURE_FROM_ROOF ? 0 : 1)
+                .thenComparing(p -> -grass.get(p))
+                .thenComparing(p -> -roof.get(p)));
         int checks = 0;
         for (BlockPos p : spots) {
             if (checks++ >= PATH_CHECKS) break;
@@ -180,8 +198,22 @@ public class GoOutGoal extends Goal {
         return null;
     }
 
+    // Скільки трави (трав'яний блок під ногами) у квадраті навколо місця
+    private int grassAround(BlockPos p) {
+        int n = 0;
+        for (int dx = -GRASS_AROUND; dx <= GRASS_AROUND; dx++) {
+            for (int dz = -GRASS_AROUND; dz <= GRASS_AROUND; dz++) {
+                if (cow.level().getBlockState(p.offset(dx, -1, dz)).is(Blocks.GRASS_BLOCK)) n++;
+            }
+        }
+        return n;
+    }
+
     @Override
     public void stop() {
+        if (target != null && underSky() && cow.distanceToSqr(target.getX() + 0.5, target.getY(), target.getZ() + 0.5) <= ARRIVED * ARRIVED) {
+            cow.barnUnrest = 0;   // на пасовищі неспокій минув
+        }
         if (target != null && underSky()) cow.tell(cow.family.name + " вийшла на пасовище");
         target = null;
         cow.getNavigation().stop();
