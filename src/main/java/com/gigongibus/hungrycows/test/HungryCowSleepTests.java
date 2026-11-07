@@ -95,9 +95,8 @@ public class HungryCowSleepTests {
     private static final List<BlockPos> IN_BARN = List.of(new BlockPos(42, 2, 38), new BlockPos(42, 2, 40), new BlockPos(42, 2, 42));
     private static final int PASTURE_TICKS = 3 * 60 * 20;
 
-    // ВІДОМИЙ ПРОВАЛ (required = false): корови вирішують вийти, але ванільний пошук шляху зсередини великого хліва назовні
-    // обривається біля стіни (3–11 кроків); ззовні всередину той самий хлів проходиться. Виправити — у кроці «своя навігація».
-    @GameTest(template = BIG_BARN, batch = "pasture", timeoutTicks = PASTURE_TICKS + 100, required = false)
+    // Раніше падав: дорога надвір у обхід стін довша за 32 блоки (FOLLOW_RANGE = найдовша дорога пошуку шляху). Тепер 64.
+    @GameTest(template = BIG_BARN, batch = "pasture", timeoutTicks = PASTURE_TICKS + 100)
     public static void cowsGoOutToPasture(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
         h.setBlock(new BlockPos(45, 2, 36), net.minecraft.world.level.block.Blocks.MELON);

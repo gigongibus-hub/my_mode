@@ -15,7 +15,9 @@ public class ModEvents {
 
     @SubscribeEvent
     public static void registerAttributes(EntityAttributeCreationEvent event) {
-        event.put(ModEntities.HUNGRY_COW.get(), Cow.createAttributes().add(Attributes.FOLLOW_RANGE, 32.0).build());
+        // FOLLOW_RANGE = найдовша дорога, яку будує пошук шляху гри (PathFinder: walkedDistance < maxRange). 32 замало для
+        // великого хліва (з середини надвір в обхід стін довше), тому 64. Корова ні на кого не полює, тож більше він ні на що не впливає.
+        event.put(ModEntities.HUNGRY_COW.get(), Cow.createAttributes().add(Attributes.FOLLOW_RANGE, 64.0).build());
     }
 
     @SubscribeEvent
