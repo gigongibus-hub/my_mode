@@ -1,0 +1,187 @@
+package com.gigongibus.hungrycows.ai;
+
+import com.gigongibus.hungrycows.CowCharacter.Trait;
+import com.gigongibus.hungrycows.CowHome;
+import com.gigongibus.hungrycows.HungryCow;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.level.block.Blocks;
+
+import java.util.EnumSet;
+
+// Вихід на пасовище (ідея Fij). Удень корова в хліві (під дахом) час від часу вирішує, чи вийти надвір.
+// Шанс залежить від характеру: активна й допитлива виходить частіше, полохлива рідше, товариська майже напевно йде
+// за ватажком, якщо та вже надворі. У дощ виходить утричі рідше. «Вийти» = через вхід на відкрите місце (бажано трава)
+// за 8–24 блоки; далі корова поводиться як звичайно (пасеться, гуляє, п'є).
+public class GoOutGoal extends Goal {
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    private static final int DECIDE_EVERY = 600;            // вирішує раз на 30 с
+    private static final double BASE_CHANCE = 0.30;         // звичайний шанс вийти
+    private static final double ACTIVITY_MIN = 0.5;         // лінива ×0,5 ... активна ×1,5
+    private static final double CURIOSITY_BONUS = 0.20;     // допитлива до +20%
+    private static final double FEAR_MALUS = 0.20;          // полохлива до −20%
+    private static final double FOLLOW_LEADER = 0.50;       // ватажок надворі: товариська до +50%
+    private static final double RAIN = 0.3;                 // дощ: ×0,3
+    private static final int OUT_MIN = 8, OUT_MAX = 24;     // куди йде: 8–24 блоки від себе
+    private static final int SPOT_TRIES = 40;               // скільки місць пробує
+    private static final int OUT_ENOUGH = 4;                // «вийшла» = під небом і щонайменше 4 блоки від місця, де стояла в хліві
+    private static final int MAX_WALK_TICKS = 1200;         // іде щонайбільше 1 хв
+    private static final int MAX_FAILS = 5;                 // шляху немає / не наближається 5 разів — передумала
+    private static final double SPEED = 1.0;
+    private static final int DECISION_TICKS = 1200;          // вирішила вийти — пробує цю хвилину ...
+    private static final int RETRY_TICKS = 100;              // ... кожні 5 с, доки не знайде, куди можна дійти
+    private static final int PATH_CHECKS = 4;                // скільки місць надворі перевіряє шляхом за спробу
+
+    private final HungryCow cow;
+    private int cooldown = 0;
+    private int decidedUntil = -1;   // поки tickCount < цього — вже вирішила вийти й шукає дорогу
+    private int retryCooldown = 0;
+    private BlockPos target;
+    private BlockPos door;
+    private boolean passedDoor;
+    private BlockPos startPos;
+    private int walkTicks;
+    private int fails;
+    private double lastDist;
+
+    public GoOutGoal(HungryCow cow) {
+        this.cow = cow;
+        this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+    }
+
+    @Override
+    public boolean requiresUpdateEveryTick() {
+        return true;
+    }
+
+    private boolean inShelter(HungryCow c) {
+        return CowHome.shelterScore(c.level(), c.blockPosition()) > 0;
+    }
+
+    // Надворі = над головою немає даху (за блоками, як шукає дім; світло неба в щойно збудованих місцях буває ще не пораховане)
+    private boolean underSky() {
+        return !CowHome.hasRoof(cow.level(), cow.blockPosition());
+    }
+
+    // Шанс вийти за характером, ватажком і погодою
+    public double chance() {
+        double c = BASE_CHANCE * (ACTIVITY_MIN + cow.character.fraction(Trait.ACTIVITY));
+        c += CURIOSITY_BONUS * cow.character.fraction(Trait.CURIOSITY);
+        c -= FEAR_MALUS * cow.character.fraction(Trait.FEARFULNESS);
+        HungryCow leader = cow.herd.leader();
+        if (leader != null && leader != cow && !inShelter(leader)) {
+            c += FOLLOW_LEADER * cow.character.fraction(Trait.SOCIABILITY);
+        }
+        if (cow.level().isRaining()) c *= RAIN;
+        return Math.max(0, Math.min(1, c));
+    }
+
+    @Override
+    public boolean canUse() {
+        if (cooldown > 0) { cooldown--; return false; }
+        cooldown = DECIDE_EVERY / 2;   // canUse викликається раз на 2 тіки
+        if (!cow.isDayTime() || cow.isBaby() || cow.sleeping || cow.cycle.inEstrus()) return false;
+        if (!inShelter(cow)) return false;
+        if (cow.tickCount >= decidedUntil) {
+            if (cow.getRandom().nextDouble() >= chance()) return false;
+            decidedUntil = cow.tickCount + DECISION_TICKS;   // вирішила: шукає дорогу надвір цю хвилину
+            retryCooldown = 0;
+        }
+        return tryFindTarget();
+    }
+
+    // Вирішила вийти: шукає місце надворі, до якого справді можна дійти (не знайшла — ще раз за 5 с)
+    private boolean tryFindTarget() {
+        if (retryCooldown > 0) { retryCooldown--; cooldown = 0; return false; }
+        retryCooldown = RETRY_TICKS / 2;
+        cooldown = 0;
+        target = findOutside();
+        if (target != null) decidedUntil = -1;
+        return target != null;
+    }
+
+    @Override
+    public boolean canContinueToUse() {
+        if (target == null || !cow.isDayTime() || walkTicks >= MAX_WALK_TICKS || fails >= MAX_FAILS) return false;
+        // вийшла: під небом і відійшла від хліва
+        return !(underSky() && startPos != null && cow.blockPosition().distManhattan(startPos) >= OUT_ENOUGH);
+    }
+
+    @Override
+    public void start() {
+        startPos = cow.blockPosition();
+        door = cow.home.entrance();
+        passedDoor = door == null;
+        walkTicks = 0;
+        fails = 0;
+        lastDist = Double.MAX_VALUE;
+        cow.tell(cow.family.name + " виходить на пасовище");
+    }
+
+    @Override
+    public void tick() {
+        if (target == null) return;
+        walkTicks++;
+        if (walkTicks != 1 && walkTicks % 20 != 0) return;
+        // спершу до входу (якщо він відомий), потім надвір
+        if (!passedDoor && door != null && cow.distanceToSqr(door.getX() + 0.5, door.getY(), door.getZ() + 0.5) <= 4) {
+            passedDoor = true;
+            lastDist = Double.MAX_VALUE;
+        }
+        BlockPos goal = passedDoor || door == null ? target : door;
+        boolean grounded = cow.onGround() || cow.isInWater();
+        cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);   // обійти будівлю до входу
+        boolean ok = cow.getNavigation().moveTo(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5, SPEED);
+        cow.getNavigation().resetMaxVisitedNodesMultiplier();
+        if (!ok && grounded) fails++;
+        if (walkTicks % 60 == 0) {
+            double d = cow.distanceToSqr(goal.getX() + 0.5, goal.getY(), goal.getZ() + 0.5);
+            if (d > lastDist - 0.5) fails++;
+            lastDist = d;
+        }
+        if (fails >= MAX_FAILS && !passedDoor) {   // до входу не дійти — прямо надвір
+            passedDoor = true;
+            fails = 0;
+        }
+    }
+
+    // Відкрите місце надворі (без даху), бажано на траві, до якого гра знаходить шлях: кандидати ближче до входу (якщо
+    // відомий) — першими; перевіряє шляхом не більше PATH_CHECKS
+    private BlockPos findOutside() {
+        if (!cow.onGround() && !cow.isInWater()) return null;   // у повітрі шлях не будується — спробує пізніше
+        BlockPos o = cow.blockPosition();
+        java.util.List<BlockPos> spots = new java.util.ArrayList<>();
+        for (int i = 0; i < SPOT_TRIES; i++) {
+            double angle = cow.getRandom().nextDouble() * Math.PI * 2;
+            int r = OUT_MIN + cow.getRandom().nextInt(OUT_MAX - OUT_MIN + 1);
+            int x = o.getX() + (int) Math.round(Math.cos(angle) * r);
+            int z = o.getZ() + (int) Math.round(Math.sin(angle) * r);
+            for (int dy = 3; dy >= -3; dy--) {
+                BlockPos p = new BlockPos(x, o.getY() + dy, z);
+                if (!cow.level().isLoaded(p)) break;
+                if (!CowHome.standable(cow.level(), p) || CowHome.hasRoof(cow.level(), p)) continue;
+                spots.add(p.immutable());
+                break;
+            }
+        }
+        BlockPos near = cow.home.entrance() != null ? cow.home.entrance() : o;
+        spots.sort(java.util.Comparator.comparingDouble((BlockPos p) -> p.distSqr(near))
+                .thenComparing(p -> cow.level().getBlockState(p.below()).is(Blocks.GRASS_BLOCK) ? 0 : 1));
+        int checks = 0;
+        for (BlockPos p : spots) {
+            if (checks++ >= PATH_CHECKS) break;
+            cow.getNavigation().setMaxVisitedNodesMultiplier(CowHome.PATH_SEARCH_MULTIPLIER);
+            net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(p, 1);
+            cow.getNavigation().resetMaxVisitedNodesMultiplier();
+            if (path != null && path.getEndNode() != null && path.getEndNode().asBlockPos().distManhattan(p) <= 1) return p;
+        }
+        return null;
+    }
+
+    @Override
+    public void stop() {
+        if (target != null && underSky()) cow.tell(cow.family.name + " вийшла на пасовище");
+        target = null;
+        cow.getNavigation().stop();
+    }
+}

@@ -59,6 +59,7 @@ import com.gigongibus.hungrycows.ai.RuminateGoal;
 import com.gigongibus.hungrycows.ai.SeekShadeGoal;
 import com.gigongibus.hungrycows.ai.SleepGoal;
 import com.gigongibus.hungrycows.ai.ScanGoal;
+import com.gigongibus.hungrycows.ai.GoOutGoal;
 import com.gigongibus.hungrycows.ai.WatchGoal;
 import com.gigongibus.hungrycows.ai.SwimGoal;
 import com.gigongibus.hungrycows.ai.MateGoal;
@@ -612,6 +613,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
         this.goalSelector.addGoal(11, new RuminateGoal(this));             // ремигання після їжі (лише з мозком)
+        this.goalSelector.addGoal(11, new GoOutGoal(this));                // удень з хліва на пасовище (за характером, за ватажком; дощ — рідше)
         this.goalSelector.addGoal(12, new FindFosterGoal(this));           // теля-сирота шукає іншу матір
         this.goalSelector.addGoal(13, new BrainTemptGoal(this));           // йде за ласощами
         this.goalSelector.addGoal(14, new AvoidBluetGoal(this));           // відходить від черемші

@@ -156,7 +156,9 @@ public class CowHome {
     // Край укриття: поруч (з будь-якого з 4 боків) клітинка під відкритим небом — поріг, прохід входу
     private static boolean atEdge(Level level, BlockPos pos) {
         for (Direction d : Direction.Plane.HORIZONTAL) {
-            if (level.canSeeSky(pos.relative(d).above())) return true;
+            BlockPos n = pos.relative(d);
+            // поруч відкрите місце (не стіна й без даху) — за блоками, а не за світлом неба (воно буває ще не пораховане)
+            if (!wallBlock(level, n) && !hasRoof(level, n)) return true;
         }
         return false;
     }
