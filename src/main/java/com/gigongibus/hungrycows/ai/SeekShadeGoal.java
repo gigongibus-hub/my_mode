@@ -1,21 +1,19 @@
 package com.gigongibus.hungrycows.ai;
 
-import com.gigongibus.hungrycows.CowBrain;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
 
 import java.util.EnumSet;
 
-// Сонячний день: перед відпочинком чи ремиганням корова йде в тінь дерев (не до хліва), бо на сонці швидше хоче пити
+// Сонячний день: перегріта корова (перегрівання 30+) іде в тінь — спершу дерев, бо на сонці перегрівається й хоче пити
 public class SeekShadeGoal extends Goal {
     private static final int SHADE_RADIUS = 16;         // як далеко шукає тінь
     private static final int SHADE_TRIES = 40;          // скільки випадкових місць перевіряє за раз
     private static final int MAX_WALK_TICKS = 400;      // іде до тіні щонайбільше 20 с
     private static final int RETRY_TICKS = 400;         // тіні немає — наступна спроба за 20 с
-    // Надворі вдень — лише тінь дерев. Раніше найближчою тінню на пасовищі був дах біля входу: корова наїлась, ішла туди
-    // ремигати й стояла біля виходу, а стадо тягнулося за нею (Fij). Немає дерева — ремигає на сонці, де є.
-    private static final boolean TREES_ONLY_OUTSIDE = true;
+    // Спершу тінь дерев: найближчою тінню на пасовищі часто є дах біля входу, і корови стояли біля виходу (Fij)
+    private static final boolean TREES_FIRST = true;
     private final HungryCow cow;
     private BlockPos shade;
     private int walkTicks = 0;
@@ -31,24 +29,24 @@ public class SeekShadeGoal extends Goal {
         return true;
     }
 
-    // хоче відпочити чи ремигати, а стоїть на сонці
+    // Тінь шукає лише тоді, коли їй жарко (перегрівання 30+), а стоїть на сонці. Раніше — щоразу перед відпочинком
+    // чи ремиганням, і корови надто часто йшли в тінь (Fij)
     private boolean wantsShade() {
-        if (cow.isBaby() || !cow.inSun()) return false;
-        if (CowBrain.enabled) return cow.brain.is(CowBrain.Action.REST) || cow.brain.is(CowBrain.Action.RUMINATE);
-        return cow.wantsRest();
+        return cow.inSun() && cow.heat.wantsShade() && !cow.heat.unconscious;
     }
 
     @Override
     public boolean canUse() {
         if (cow.tickCount < nextTry || !wantsShade()) return false;
         nextTry = cow.tickCount + RETRY_TICKS;
-        shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, TREES_ONLY_OUTSIDE);
+        shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, TREES_FIRST);           // спершу тінь дерев ...
+        if (shade == null) shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false); // ... немає — будь-яка (навіс, хлів)
         return shade != null;
     }
 
     @Override
     public boolean canContinueToUse() {
-        return shade != null && cow.inSun() && walkTicks < MAX_WALK_TICKS && wantsShade();
+        return shade != null && cow.inSun() && walkTicks < MAX_WALK_TICKS && !cow.heat.unconscious;
     }
 
     @Override

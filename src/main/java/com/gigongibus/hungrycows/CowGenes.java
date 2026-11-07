@@ -133,7 +133,9 @@ public class CowGenes {
         BRAIN_FAMILY(Group.BRAIN, "схильність до рідних"),
         BRAIN_RUMINATE(Group.BRAIN, "схильність ремигати"),
         BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися"),
-        BRAIN_DRINK(Group.BRAIN, "схильність пити");
+        BRAIN_DRINK(Group.BRAIN, "схильність пити"),
+        // ---- тіло, додано пізніше (у кінці, щоб не зсунути інші) ----
+        HEAT_TOLERANCE(Group.BODY, "витривалість до спеки");
 
         public final Group group;
         public final String title;

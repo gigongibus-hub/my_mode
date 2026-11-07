@@ -130,7 +130,8 @@ public class CowChemistry {
         double rise = Math.max(0, adrenaline - adrBase) / 100.0 * CORTISOL_FROM_FEAR * 100
                 + (isLonely() ? CORTISOL_FROM_LONELY * loneliness() / 100.0 : 0)
                 + (cow.hunger > HungryCow.STARVE_AT ? CORTISOL_FROM_STARVE : 0)
-                + pain / 100.0 * CORTISOL_FROM_PAIN * 100;
+                + pain / 100.0 * CORTISOL_FROM_PAIN * 100
+                + CowHeat.STROKE_CORTISOL * cow.heat.strokeLevel();   // тепловий удар
         cortisol = clamp(cortisol + rise * stressK);
         cortisol = toward(cortisol, CORTISOL_BASE * g(Gene.CORTISOL_BASE), CORTISOL_DECAY * g(Gene.CORTISOL_DECAY));
 
@@ -162,6 +163,7 @@ public class CowChemistry {
         // температура: отрута й біль піднімають
         double t = TEMP_NORMAL + pain * 0.01;
         if (cow.hasEffect(MobEffects.POISON) || cow.toxinActive()) t += 1.0;
+        t += CowHeat.STROKE_FEVER * cow.heat.strokeLevel();   // перегрівання 50+ → жар → нездужання
         temperature += (t - temperature) * 0.1;
     }
 

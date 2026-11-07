@@ -44,6 +44,7 @@ import net.minecraft.world.phys.Vec3;
 import com.gigongibus.hungrycows.CowCharacter.Experience;
 import com.gigongibus.hungrycows.CowCharacter.Trait;
 import com.gigongibus.hungrycows.ai.GrieveGoal;
+import com.gigongibus.hungrycows.ai.UnconsciousGoal;
 import java.util.EnumMap;
 import java.util.UUID;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -237,6 +238,7 @@ public class HungryCow extends Cow {
     public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
+    public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі
@@ -330,6 +332,7 @@ public class HungryCow extends Cow {
         if (inSun()) r *= SUN_THIRST;
         if (this.level().getBiome(this.blockPosition()).value().getBaseTemperature() > HOT_BIOME) r *= HOT_THIRST;
         if (isRunning()) r *= RUN_THIRST;
+        if (heat.stroke()) r *= CowHeat.STROKE_THIRST;   // тепловий удар — п'є вдвічі частіше
         if (milk.isLactating()) r += LACTATING_THIRST;
         if (this.isBaby()) r *= CALF_THIRST;
         return r;
@@ -496,10 +499,23 @@ public class HungryCow extends Cow {
     private static final EntityDataAccessor<Float> DATA_SIZE =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.FLOAT);
 
+    // Без тями від спеки: синхронізується, щоб гравець бачив корову лежачою на боці
+    private static final EntityDataAccessor<Boolean> DATA_UNCONSCIOUS =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);
+
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
         this.entityData.define(DATA_SIZE, 1.0F);
+        this.entityData.define(DATA_UNCONSCIOUS, false);
+    }
+
+    public boolean isUnconsciousVisual() {
+        return this.entityData.get(DATA_UNCONSCIOUS);
+    }
+
+    public void setUnconsciousVisual(boolean v) {
+        if (this.entityData.get(DATA_UNCONSCIOUS) != v) this.entityData.set(DATA_UNCONSCIOUS, v);
     }
 
     public float sizeScale() {
@@ -618,6 +634,7 @@ public class HungryCow extends Cow {
     // менше число = важливіше. Ванільні цілі корови теж тут, але змінені під наш мод.
     @Override
     protected void registerGoals() {
+        this.goalSelector.addGoal(0, new UnconsciousGoal(this));           // без тями від спеки: лежить, не рухається
         this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
         this.goalSelector.addGoal(1, new LaborGoal(this));                 // пологи: стоїть на місці
         this.goalSelector.addGoal(2, new DefendCalfGoal(this));            // б'є того, хто вдарив теля
@@ -748,6 +765,7 @@ public class HungryCow extends Cow {
             home.secondTick();
             herd.secondTick();
             sleep.secondTick();
+            heat.secondTick();
             updateBarnUnrest();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
@@ -763,7 +781,8 @@ public class HungryCow extends Cow {
                     .map(g -> g.getGoal().getClass().getSimpleName().replace("Goal", ""))
                     .collect(Collectors.joining(","));
             String name = "Голод: " + hunger + " | Втома: " + fatigue + " | Страх: " + fear
-                    + (sleep.sleepiness > 0 ? " | Сон: " + Math.round(sleep.sleepiness) : "");
+                    + (sleep.sleepiness > 0 ? " | Сон: " + Math.round(sleep.sleepiness) : "")
+                    + (heat.heat > 0 ? " | Спека: " + Math.round(heat.heat) : "");
             Player nearest = this.level().getNearestPlayer(this, 16.0);
             if (nearest != null) {
                 name += " | Довіра: " + trustOf(nearest);
@@ -771,6 +790,9 @@ public class HungryCow extends Cow {
             name += " | " + goals;
             if (choking) {
                 name = "ПОДАВИЛАСЬ! | " + name;
+            }
+            if (heat.unconscious) {
+                name = "БЕЗ ТЯМИ (спека)! | " + name;
             }
             if (eatingTicksLeft > 0) {
                 name = "ЇСТЬ ще " + (eatingTicksLeft / 20 + 1) + " с | " + name;
@@ -1154,6 +1176,20 @@ public class HungryCow extends Cow {
         }
         if (stack.is(ModItems.COW_BOOK.get())) {
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) CowBook.open(serverPlayer, this);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+        // відро води: охолодити перегріту корову (без тями — приходить до тями); відро стає порожнім
+        if (stack.is(Items.WATER_BUCKET) && (heat.heat > 0 || isUnconsciousVisual())) {
+            if (server) {
+                boolean rescued = heat.pourWater();
+                player.setItemInHand(hand, net.minecraft.world.item.ItemUtils.createFilledResult(stack, player, new ItemStack(Items.BUCKET)));
+                this.playSound(net.minecraft.sounds.SoundEvents.BUCKET_EMPTY, 1.0F, 1.0F);
+                if (this.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                    sl.sendParticles(net.minecraft.core.particles.ParticleTypes.SPLASH, getX(), getY() + getBbHeight(), getZ(), 30, 0.4, 0.3, 0.4, 0.1);
+                }
+                if (rescued) addTrust(player, CowHeat.RESCUE_TRUST, "облив водою від спеки", false);
+                tell(family.name + ": облили водою, перегрівання " + Math.round(heat.heat));
+            }
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
         // пологи: присісти ззаду й тримати ПКМ порожньою рукою = допомогти
@@ -1571,6 +1607,7 @@ public class HungryCow extends Cow {
         memory.save(tag);
         home.save(tag);
         sleep.save(tag);
+        heat.save(tag);
     }
 
     @Override
@@ -1598,6 +1635,8 @@ public class HungryCow extends Cow {
         memory.load(tag);
         home.load(tag);
         sleep.load(tag);
+        heat.load(tag);
+        setUnconsciousVisual(heat.unconscious);
         onGenesChanged();
     }
 }
