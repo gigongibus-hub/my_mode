@@ -31,6 +31,7 @@ import java.util.Set;
 public class SeekGrassGoal extends Goal {
     // з якого голоду шукає їжу: HungryCow.hungryAt() (30, ген ±30%)
     private static final int SEARCH_RADIUS = 15;          // радіус пошуку їжі по горизонталі
+    private static final int UNREACHABLE_FORGET = 1200;   // недосяжну їжу пам'ятає 1 хв (було 10 с: смикалась між сном і їжею, спам у чаті)
     private static final int WIDE_RADIUS = 30;            // голодна (40+) і поруч нічого — шукає далі (з хліва на пасовище)
     private static final int SEARCH_HEIGHT = 3;           // радіус пошуку по висоті
     private static final float FLOWER_CHANCE = 0.30F;     // шанс, що голодна корова піде до квітки замість звичайної їжі
@@ -114,7 +115,7 @@ public class SeekGrassGoal extends Goal {
         if (cow.choking) return false;   // подавлена корова не шукає їжі
         if (!cow.shouldSeekFood()) return false;   // вирішує мозок (або відчуття голоду, якщо мозок вимкнено)
         // раз на 10 секунд забуваємо, що вважали недосяжним
-        if (cow.tickCount - lastClearTick > 200) {
+        if (cow.tickCount - lastClearTick > UNREACHABLE_FORGET) {   // раз на хвилину забуває, що вважала недосяжним
             unreachable.clear();
             lastClearTick = cow.tickCount;
         }
@@ -130,6 +131,7 @@ public class SeekGrassGoal extends Goal {
         eatTicks = 0;
         if (target != null) {
             lastDist = cow.distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+            cow.sleep.wokeToEat();   // уночі встала поїсти — сон −50
         }
         return target != null;
     }
@@ -248,7 +250,7 @@ public class SeekGrassGoal extends Goal {
         }
 
         if (stuckTicks >= 60 || runTicks > MAX_RUN_TICKS) {
-            if (DEBUG) {
+            if (DEBUG && !unreachable.contains(target)) {
                 Component msg = Component.literal("Недосяжна їжа: " + target.getX() + " "
                         + target.getY() + " " + target.getZ() + " | голод " + cow.hunger);
                 cow.level().players().forEach(p -> p.sendSystemMessage(msg));

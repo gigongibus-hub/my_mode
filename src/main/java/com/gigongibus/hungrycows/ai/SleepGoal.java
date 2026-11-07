@@ -414,6 +414,31 @@ public class SleepGoal extends Goal {
     }
 
     // Чи займає це місце інша корова (уже спить там або йде туди)
+    // Клітинки всередині будівлі, з'єднані зі спільним місцем: під дахом і не край (поріг, прохід; навіс ззовні біля стіни
+    // теж «дах + стіна», але туди йдуть лише через край — тому не потрапляє). Fij: корова спала надворі під навісом біля стіни
+    private java.util.Set<BlockPos> interior(BlockPos base) {
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        if (!CowHome.hasRoof(cow.level(), base) || CowHome.atEdge(cow.level(), base)) return seen;
+        seen.add(base.immutable());
+        queue.add(base.immutable());
+        while (!queue.isEmpty()) {
+            BlockPos c = queue.poll();
+            for (net.minecraft.core.Direction d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos n = c.relative(d).above(dy);
+                    if (Math.abs(n.getX() - base.getX()) > SPOT_RADIUS || Math.abs(n.getZ() - base.getZ()) > SPOT_RADIUS) continue;
+                    if (seen.contains(n) || !CowHome.standable(cow.level(), n)) continue;
+                    if (!CowHome.hasRoof(cow.level(), n) || CowHome.atEdge(cow.level(), n)) continue;
+                    seen.add(n.immutable());
+                    queue.add(n.immutable());
+                    break;
+                }
+            }
+        }
+        return seen;
+    }
+
     // Чи є чиєсь місце для сну не далі SLEEP_NEAR (або ще нікого — тоді все одно)
     private boolean nearOther(BlockPos p) {
         boolean any = false;
@@ -451,10 +476,12 @@ public class SleepGoal extends Goal {
     // здалеку гра шлях часто не знаходить, тому тоді бере найглибше без перевірки (перевірить, коли підійде)
     private BlockPos chooseSpotOnce(BlockPos base) {
         boolean building = CowHome.shelterScore(cow.level(), base) > 0;
+        java.util.Set<BlockPos> interior = building ? interior(base) : null;
         java.util.List<BlockPos> spots = new java.util.ArrayList<>();
         for (BlockPos p : BlockPos.betweenClosed(base.offset(-SPOT_RADIUS, -1, -SPOT_RADIUS), base.offset(SPOT_RADIUS, 1, SPOT_RADIUS))) {
             if (!CowHome.standable(cow.level(), p)) continue;
-            boolean inside = building ? CowHome.shelterScore(cow.level(), p) > 0 : CowHome.shaded(cow.level(), p);
+            boolean inside = building ? interior.contains(p) || (interior.isEmpty() && CowHome.shelterScore(cow.level(), p) > 0)
+                    : CowHome.shaded(cow.level(), p);
             if (!inside) continue;
             BlockPos ip = p.immutable();
             if (excluded.contains(ip) || claimedByOther(ip)) continue;

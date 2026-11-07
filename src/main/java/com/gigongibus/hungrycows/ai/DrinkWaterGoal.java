@@ -72,6 +72,7 @@ public class DrinkWaterGoal extends Goal {
 
     @Override
     public void start() {
+        cow.sleep.wokeToEat();   // уночі встала попити — сон −50
         drinkTicks = 0;
         runTicks = 0;
     }

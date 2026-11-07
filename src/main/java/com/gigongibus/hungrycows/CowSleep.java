@@ -28,6 +28,8 @@ public class CowSleep {
     public static final float NIGHT_GAIN = 2F / 2F;      // уночі +2 кожні 2 с
     public static final float MAX = 100F;                // шкала повна — засинає, де є
     public static final double MAX_SLOWDOWN = 0.10;      // сонна — до 10% повільніша (пропорційно шкалі) ...
+    public static final float WAKE_TO_EAT = 50F;         // уночі встала поїсти/попити — сон −50 (Fij), не частіше раз на хвилину
+    public static final int WAKE_TO_EAT_COOLDOWN = 1200;
     public static final double FULL_SLOWDOWN = 0.50;     // ... а шкала повна (100) — удвічі повільніша (Fij; раніше засинала, де є)
     public static final int ROUTE_STEP = 5;              // точка дороги кожні 5 блоків
     public static final int ROUTE_MAX_POINTS = 40;       // щонайбільше стільки точок
@@ -52,6 +54,15 @@ public class CowSleep {
     }
 
     // ---------- шкала сну ----------
+
+    private int lastWakeToEat = -100000;
+
+    // Уночі встала поїсти чи попити: сон спадає, щоб спокійно дійти (а не засинати по дорозі)
+    public void wokeToEat() {
+        if (cow.sleep != this || cow.tickCount - lastWakeToEat < WAKE_TO_EAT_COOLDOWN || sleepiness <= 0) return;
+        lastWakeToEat = cow.tickCount;
+        sleepiness = Math.max(0, sleepiness - WAKE_TO_EAT);
+    }
 
     public boolean full() {
         return sleepiness >= MAX;
