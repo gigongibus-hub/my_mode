@@ -444,6 +444,15 @@ public class SeekGrassGoal extends Goal {
         return null;
     }
 
+    // Сіно як корм (Fij): лише те, що трохи вище підлоги — до нього можна підійти збоку й стати поруч на тій самій висоті
+    // (стоїть на підлозі, як у годівниці). Сіно, з якого зроблено підлогу (поруч на цій висоті лише інші блоки), — не їжа.
+    private boolean feedHay(BlockPos p) {
+        for (net.minecraft.core.Direction d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            if (com.gigongibus.hungrycows.CowHome.standable(cow.level(), p.relative(d))) return true;
+        }
+        return false;
+    }
+
     // Вибирає, куди йти їсти
     private BlockPos findFood() {
         BlockPos origin = cow.blockPosition();
@@ -463,6 +472,7 @@ public class SeekGrassGoal extends Goal {
             if (state.isAir()) continue;
             Kind k = classify(state);
             if (k == Kind.NONE) continue;
+            if (state.is(Blocks.HAY_BLOCK) && !feedHay(p)) continue;   // сіно-підлогу під ногами не їсть
             if (k == Kind.GRASS_BLOCK) grassBlocks++;
             if (unreachable.contains(p)) continue;
             // відраза: цю їжу сама не їсть (хіба що голодує)

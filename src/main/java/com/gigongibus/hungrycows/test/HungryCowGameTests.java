@@ -89,6 +89,32 @@ public class HungryCowGameTests {
         });
     }
 
+    // 4. Сіно: їсть лише те, що трохи вище підлоги (як у годівниці), а підлогу із сіна під ногами не чіпає
+    private static final BlockPos HAY_COW = new BlockPos(2, 2, 4);
+    private static final BlockPos HAY_FEED = new BlockPos(6, 2, 4);   // блок сіна, що стоїть на підлозі
+    private static final int HAY_TIMEOUT = 1200;
+
+    @GameTest(template = PLATFORM, timeoutTicks = HAY_TIMEOUT)
+    public static void cowEatsRaisedHayNotFloor(GameTestHelper h) {
+        for (int x = 1; x <= 7; x++) {
+            for (int z = 1; z <= 7; z++) h.setBlock(new BlockPos(x, 1, z), Blocks.HAY_BLOCK);   // підлога із сіна
+        }
+        h.setBlock(HAY_FEED, Blocks.HAY_BLOCK);
+        HungryCow cow = spawnCow(h, HAY_COW);
+        cow.hunger = FOOD_HUNGER;
+        h.succeedWhen(() -> {
+            assertAlive(h, cow);
+            for (int x = 1; x <= 7; x++) {
+                for (int z = 1; z <= 7; z++) {
+                    h.assertTrue(h.getBlockState(new BlockPos(x, 1, z)).is(Blocks.HAY_BLOCK), "з'їла сіно з підлоги на " + x + " " + z);
+                }
+            }
+            h.assertTrue(h.getBlockState(HAY_FEED).isAir(), "сіно в годівниці ще не з'їдене: " + describe(h, cow));
+            LOG.info("[тест] cowEatsRaisedHayNotFloor: з'їла сіно з годівниці, підлога ціла, голод {} -> {} через {} тіків",
+                    FOOD_HUNGER, cow.hunger, h.getTick());
+        });
+    }
+
     // 3. Втома накопичується, а виснажена корова відпочиває і втома спадає
     @GameTest(template = PLATFORM, timeoutTicks = FATIGUE_TIMEOUT)
     public static void fatigueGrowsAndRecovers(GameTestHelper h) {

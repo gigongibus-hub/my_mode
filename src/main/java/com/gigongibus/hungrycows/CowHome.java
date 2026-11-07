@@ -31,6 +31,7 @@ public class CowHome {
     public static final int COLUMN_DOWN = 6;            // ... до y−6 (і дах, і підлогу всередині будівлі)
     public static final int ROOF_HEIGHT = 16;           // дах шукає не вище стількох блоків над головою (великий хлів — стеля високо; було 6)
     public static final int MIN_WALLS = 2;              // скільки боків мають бути закриті
+    public static final int EDGE_PENALTY = 3;           // поріг / прохід входу (поруч відкрите небо): −3 бали — спати можна, але краще глибше (Fij)
     public static final int WALL_DISTANCE = 6;          // стіна — не далі стількох блоків у кожен бік (великий хлів — стіни далеко; було 3, 12 — забагато: усе «дім»)
     public static final int RECHECK_SECONDS = 30;       // як часто перевіряє, чи дім ще годиться
     public static final double MAX_HOME_DISTANCE = 64;  // дім далі цього — забуває його
@@ -147,7 +148,17 @@ public class CowHome {
         if (!standable(level, pos) || !hasRoof(level, pos)) return 0;
         int w = walls(level, pos);
         if (w < MIN_WALLS) return 0;
-        return 3 + 2 * w + (w == 4 ? 2 : 0);
+        int score = 3 + 2 * w + (w == 4 ? 2 : 0);
+        if (atEdge(level, pos)) score = Math.max(1, score - EDGE_PENALTY);
+        return score;
+    }
+
+    // Край укриття: поруч (з будь-якого з 4 боків) клітинка під відкритим небом — поріг, прохід входу
+    private static boolean atEdge(Level level, BlockPos pos) {
+        for (Direction d : Direction.Plane.HORIZONTAL) {
+            if (level.canSeeSky(pos.relative(d).above())) return true;
+        }
+        return false;
     }
 
     // Чи може корова туди дійти (наприклад, у хлів із зачиненими дверима — ні)
