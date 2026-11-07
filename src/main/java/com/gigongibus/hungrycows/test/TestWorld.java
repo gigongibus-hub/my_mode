@@ -17,7 +17,8 @@ final class TestWorld {
     private static final int CLEAR_TICKS = 1_000_000;   // ясно надовго
     private static final int LAVA_MARGIN = 20;           // прибрати лаву на 20 блоків довкола майданчика
     private static final int LAVA_BELOW = 3, LAVA_ABOVE = 10;
-    private static final int PLOT_SIZE = 81;             // найбільший майданчик (bigbarn); менші — те саме, із запасом
+    private static final int PLOT_SIZE = 81;
+    private static final int TICK_MARGIN = 32;           // ділянки світу (чанки) на 32 бл. довкола майданчика роблять активними             // найбільший майданчик (bigbarn); менші — те саме, із запасом
 
     private TestWorld() {
     }
@@ -29,6 +30,13 @@ final class TestWorld {
         level.setWeatherParameters(CLEAR_TICKS, 0, false, false);
         BlockPos a = h.absolutePos(new BlockPos(0, 1, 0)), c = h.absolutePos(new BlockPos(PLOT_SIZE, 1, PLOT_SIZE));
         int floor = a.getY();   // y=1 майданчика — підлога
+        // Без гравця тестовий сервер обробляє тварин лише в чанках самого майданчика; корова, що перейшла межу чанка
+        // (напр. z=64), «застигала» назавжди (лічильник тіків стояв). Примусово активні чанки з запасом довкола
+        for (int cx = (Math.min(a.getX(), c.getX()) - TICK_MARGIN) >> 4; cx <= (Math.max(a.getX(), c.getX()) + TICK_MARGIN) >> 4; cx++) {
+            for (int cz = (Math.min(a.getZ(), c.getZ()) - TICK_MARGIN) >> 4; cz <= (Math.max(a.getZ(), c.getZ()) + TICK_MARGIN) >> 4; cz++) {
+                level.setChunkForced(cx, cz, true);
+            }
+        }
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
         for (int x = Math.min(a.getX(), c.getX()) - LAVA_MARGIN; x <= Math.max(a.getX(), c.getX()) + LAVA_MARGIN; x++) {
             for (int z = Math.min(a.getZ(), c.getZ()) - LAVA_MARGIN; z <= Math.max(a.getZ(), c.getZ()) + LAVA_MARGIN; z++) {
