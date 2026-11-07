@@ -29,9 +29,9 @@ public class CowHome {
     public static final int BEST_SCORE = 13;            // найкращий можливий дім (дах + 4 стіни)
     public static final int COLUMN_UP = 6;              // у кожному місці перевіряє висоти від y+6 ...
     public static final int COLUMN_DOWN = 6;            // ... до y−6 (і дах, і підлогу всередині будівлі)
-    public static final int ROOF_HEIGHT = 6;            // дах шукає не вище стількох блоків над головою
+    public static final int ROOF_HEIGHT = 16;           // дах шукає не вище стількох блоків над головою (великий хлів — стеля високо; було 6)
     public static final int MIN_WALLS = 2;              // скільки боків мають бути закриті
-    public static final int WALL_DISTANCE = 3;          // стіна — не далі стількох блоків
+    public static final int WALL_DISTANCE = 6;          // стіна — не далі стількох блоків у кожен бік (великий хлів — стіни далеко; було 3, 12 — забагато: усе «дім»)
     public static final int RECHECK_SECONDS = 30;       // як часто перевіряє, чи дім ще годиться
     public static final double MAX_HOME_DISTANCE = 64;  // дім далі цього — забуває його
     public static final double ADOPT_RANGE = 32;        // свого дому немає — переймає дім корови зі стада ближче цього

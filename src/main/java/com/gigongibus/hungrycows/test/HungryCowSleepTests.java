@@ -54,8 +54,22 @@ public class HungryCowSleepTests {
     // Нічлігом у хліві: 3 корови надворі вдень знаходять хлів, а вночі всі заходять і засинають
     @GameTest(template = BARN, batch = BATCH, timeoutTicks = TIMEOUT)
     public static void cowsSleepInBarn(GameTestHelper h) {
+        sleepTest(h, COWS, "cowsSleepInBarn");
+    }
+
+    // Великий хлів (bigbarn.nbt: майданчик 81×81, щоб сусідні тести були далі 32 блоків; хлів посередині, усередині 15×15,
+    // стеля на висоті 10 блоків, вхід 3×3 на заході): дах високо, стіни далеко
+    private static final String BIG_BARN = "bigbarn";
+    private static final List<BlockPos> BIG_COWS = List.of(new BlockPos(24, 2, 37), new BlockPos(24, 2, 40), new BlockPos(24, 2, 43));
+
+    @GameTest(template = BIG_BARN, batch = "sleep_big", timeoutTicks = TIMEOUT)   // окрема партія: інакше корови бачать сусідній хлів
+    public static void cowsSleepInBigBarn(GameTestHelper h) {
+        sleepTest(h, BIG_COWS, "cowsSleepInBigBarn");
+    }
+
+    private static void sleepTest(GameTestHelper h, List<BlockPos> spawns, String name) {
         h.getLevel().setDayTime(NOON);
-        List<HungryCow> cows = COWS.stream().map(p -> {
+        List<HungryCow> cows = spawns.stream().map(p -> {
             HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), p);
             c.setAge(0);
             return c;
@@ -73,7 +87,7 @@ public class HungryCowSleepTests {
         h.startSequence()
                 .thenIdle(DAY_TICKS)
                 .thenExecute(() -> {
-                    for (HungryCow c : cows) LOG.info("[тест] cowsSleepInBarn, кінець дня: {}", state(h, c));
+                    for (HungryCow c : cows) LOG.info("[тест] {}, кінець дня: {}", name, state(h, c));
                     h.getLevel().setDayTime(NIGHT);
                     nightStart[0] = (int) h.getTick();
                 })
@@ -89,7 +103,7 @@ public class HungryCowSleepTests {
                 })
                 .thenExecute(() -> {
                     for (int i = 0; i < cows.size(); i++) {
-                        LOG.info("[тест] cowsSleepInBarn: {} заснула в хліві через {} с ночі", cows.get(i).family.name,
+                        LOG.info("[тест] {}: {} заснула в хліві через {} с ночі", name, cows.get(i).family.name,
                                 String.format("%.1f", arrived[i] / 20.0));
                     }
                 })
