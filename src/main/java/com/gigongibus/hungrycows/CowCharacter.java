@@ -70,7 +70,9 @@ public class CowCharacter {
         EXPLOSION("поруч вибух",
                 Trait.FEARFULNESS, 5, Trait.STRESS_SENSITIVITY, 5),
         FIRE("поруч вогонь",
-                Trait.FEARFULNESS, 3, Trait.STRESS_SENSITIVITY, 3);
+                Trait.FEARFULNESS, 3, Trait.STRESS_SENSITIVITY, 3),
+        RESCUED_FROM_WATER("гравець витягнув з води",
+                Trait.HUMAN_ATTACHMENT, 8, Trait.OBEDIENCE, 2);
 
         public final String title;
         final Object[] changes;   // пари: Trait, скільки

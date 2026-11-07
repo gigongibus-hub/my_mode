@@ -20,10 +20,7 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
-import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.animal.Animal;
@@ -61,6 +58,9 @@ import com.gigongibus.hungrycows.ai.MotherCalfGoal;
 import com.gigongibus.hungrycows.ai.RuminateGoal;
 import com.gigongibus.hungrycows.ai.SeekShadeGoal;
 import com.gigongibus.hungrycows.ai.SleepGoal;
+import com.gigongibus.hungrycows.ai.ScanGoal;
+import com.gigongibus.hungrycows.ai.WatchGoal;
+import com.gigongibus.hungrycows.ai.SwimGoal;
 import com.gigongibus.hungrycows.ai.MateGoal;
 import com.gigongibus.hungrycows.ai.DefendCalfGoal;
 import com.gigongibus.hungrycows.ai.DrinkMilkGoal;
@@ -344,10 +344,10 @@ public class HungryCow extends Cow {
     // Ніч для сну — за часом доби, з сутінків (щоб устигнути дійти); дощ і гроза — не ніч
     private int pathStuckTicks = 0;
 
-    // Корова має шлях, але стоїть на його першій точці (у своїй же клітинці) і не рухається — перейти до наступної точки
+    // Корова має шлях, але стоїть (чи пливе на місці) на поточній точці у своїй же клітинці й не рухається — перейти до наступної
     private void unstickPath() {
         net.minecraft.world.level.pathfinder.Path p = this.getNavigation().getPath();
-        boolean stuck = p != null && !p.isDone() && p.getNextNodeIndex() + 1 < p.getNodeCount() && this.onGround()
+        boolean stuck = p != null && !p.isDone() && p.getNextNodeIndex() + 1 < p.getNodeCount() && (this.onGround() || this.isInWater())
                 && p.getNextNodePos().equals(this.blockPosition())
                 && this.getDeltaMovement().horizontalDistanceSqr() < 1.0E-6;
         if (!stuck) {
@@ -597,7 +597,7 @@ public class HungryCow extends Cow {
     // менше число = важливіше. Ванільні цілі корови теж тут, але змінені під наш мод.
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(0, new FloatGoal(this));                 // пливти, щоб не втопитися
+        this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
         this.goalSelector.addGoal(1, new LaborGoal(this));                 // пологи: стоїть на місці
         this.goalSelector.addGoal(2, new DefendCalfGoal(this));            // б'є того, хто вдарив теля
         this.goalSelector.addGoal(3, new FearGoal(this));                  // страх і напади ворожої корови
@@ -625,8 +625,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(20, new FollowMotherGoal(this));         // теля тримається біля матері
         this.goalSelector.addGoal(21, new BrainStrollGoal(this));          // гуляти
         this.goalSelector.addGoal(21, new PersonalSpaceGoal(this));        // затісно — слабша трохи відходить
-        this.goalSelector.addGoal(22, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(23, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(22, new WatchGoal(this));                // дивиться на важливих: небезпеку, теля, друга, чужого (замість LookAtPlayerGoal)
+        this.goalSelector.addGoal(23, new ScanGoal(this));                 // пильність: оглядається (замість RandomLookAroundGoal)
     }
 
     // За чим корова йде (замість пшениці, яку вона більше не їсть): ласощі, що дають довіру
@@ -868,7 +868,7 @@ public class HungryCow extends Cow {
     }
 
     // Ця корова — мати тієї (рідна чи прийомна, поки та маленька)
-    private boolean isMotherOf(HungryCow calf) {
+    public boolean isMotherOf(HungryCow calf) {
         return calf.isBaby() && this.getUUID().equals(calf.family.motherIdOrNull());
     }
 

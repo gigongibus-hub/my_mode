@@ -60,11 +60,12 @@
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
-0 Float · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
+0 Swim · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
 9 BullCourt, Sleep, SeekShade · 10 Rest · 11 Ruminate · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
 14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
-21 BrainStroll, PersonalSpace · 22 LookAtPlayer · 23 RandomLookAround. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
-`super.registerGoals()` не викликається: усі ванільні цілі задано явно.
+21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
+`super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
+Ванільними лишаються лише пошук шляху (A*) і ходіння за шляхом (`GroundPathNavigation`) — крок 2: своя `CowNavigation`.
 Мозок (`CowBrain`) вибирає 1 з 10 дій; цілі питають `cow.brain.is/allows(Action)` або `shouldSeekFood/shouldRest/
 shouldFlee/keepFleeing` (рефлекси обходять мозок). Без мозку (`CowBrain.enabled = false`) — старі правила.
 Ruminate, Investigate, MotherCalf працюють лише з мозком.
@@ -99,6 +100,14 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   поруч → максимум): ходить 3, стрибає 35, біжить 40, стоїть 2; + кожен блок наближення 2…4 (що ближче, то більше);
   присівши ×0.67. Гравець у вирізаному гарбузі: корова не впізнає (`trustOf` = 0, довіра зберігається, `realTrustOf`),
   страх ×1.5 (ідея Fij). Мозок: дія, що 2 с не запускається, відкладається на 10 с; страх ≥ порогу → одразу «стерегтися».
+- Свої цілі замість ванільних (Fij): `SwimGoal` (0) — пливе до найближчого берега (кільцями), гребе сама, якщо вода
+  не пускає (0,4 бл./с, теля 0,7); у воді втома +3/с (теля ×1,5), після 5 с страх +4/с (до 50); утома 70+ — тоне (не
+  тримається на воді); гравець на повідку витягнув — довіра +30, досвід «гравець витягнув з води» (прив'язаність +8, слухняність +2).
+  «Пливе» = у воді й не на дні, або голова під водою; стоїть на дні з головою над водою — бреде (не плавання, не тоне).
+  `WatchGoal` (22) — дивиться на важливих: небезпеку (вовк, зомбі, ворожий гравець) не спускає з очей; теля, друга довго
+  й спокійно; чужого насторожено; рухомих помічає втричі частіше; допитлива довше, полохлива частіше на чужих.
+  `ScanGoal` (23) — пильність: оглядається частіше напружена ×3, самотня ×2, вночі ×1,5, ватажок ×1,5; спокійна в стаді ×0,5;
+  лише погляд (не рух), тож оглядається й під час пасіння.
 - Мати померла: теля 5 хв ходить біля місця смерті, потім шукає іншу; 70% відмова (50%, якщо просто забуло матір).
 
 ## Технічні уроки
@@ -119,6 +128,9 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - Ванільний `followThePath`: точку пройдено, коли |x − (вузол + (ширина+1)/2)| < ширина/2; корова точно в центрі блока
   (яйце призову, /summon) за деякої ширини (ген розміру) стоїть на першій точці назавжди, поки не штовхнуть.
   Виправлено в `HungryCow.unstickPath()` (10 тіків на першій точці у своїй клітинці → `path.advance()`). Знайдено GameTest-ом.
+- Ванільна умова плавання (вода вище 0,4 від ніг) хибна для корови: спливши, корова занурена мало й «перестає плисти».
+  Ванільна вода часом майже не пускає корову вперед (залежить від занурення, тобто від гена розміру) — тому `SwimGoal` гребе сам.
+  `unstickPath()` діє й у воді (не лише на землі). Ціль, що коротко перервалась, не обнуляє «час у воді» (3 с запасу).
 - Не вмикати access transformer у `build.gradle`: у ForgeGradle 6 після нього з компіляції зникають бібліотеки Forge
   (`net.minecraftforge.eventbus`, `fml`, `brigadier` «does not exist»). Закриті поля брати через `ObfuscationReflectionHelper`.
 
@@ -135,6 +147,10 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   cowsSleepInBarn — 3 корови надворі, 60 с дня (знаходять дім), потім ніч → усі в хліві й сплять, поки шкала сну < 100.
   10/10 (заходять за 2–16 с ночі). Відоме нестабільне місце: fearFromApproachingPlayer 1 раз з ~20 — страх 0 при гравці
   за 1,7 бл. (причину не досліджено).
+- `test/HungryCowSwimWatchTests` (партія "swim", `arena.nbt` + ставок, збудований тестом): cowSwimsToShore (глибина 2;
+  виходить за ~7,5 с), tiredCowSinksAndIsRescued (глибина 3, у пастці; утома 70 → тоне; повідок → врятована: довіра +26…31,
+  прив'язаність +5…6), cowWatchesDanger (вовк без ШІ — дивиться за ~0,3–0,8 с), cowWatchesFriendLong (друг ≥25 тіків поспіль).
+  10 прогонів: 9/10; один раз cowsSleepInBarn — корова спала надворі (причину не досліджено; раніше 13/13).
 - Запуск: `./gradlew runGameTestServer -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-amd64`
   (потрібна Java 17: `apt-get install -y openjdk-17-jdk-headless`; українське в журналі — `JDK_JAVA_OPTIONS="-Dstdout.encoding=UTF-8"`).
   Maven Central іноді відповідає 429 — повторити. Тести нестабільні? Запускати кілька разів поспіль.
