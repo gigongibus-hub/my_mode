@@ -30,6 +30,7 @@ public final class CowBook {
         out.add("#" + cow.family.name);
         out.add("Стать: " + (female ? "самка" : "бик"));
         out.add("Вік: " + (cow.isBaby() ? "теля" : "доросла"));
+        out.add(cow.aging.line());
         out.add("Здоров'я: " + Math.round(cow.getHealth()) + " з " + Math.round(cow.getMaxHealth()));
         if (cow.repro.isExhausted()) out.add("Більше не народжує, ходить повільніше");
 
@@ -96,6 +97,7 @@ public final class CowBook {
         // 5. Родовід
         out.add("#Родовід");
         out.addAll(cow.family.familyLines());
+        out.addAll(cow.inbreeding.lines());
 
         // 6. Характер
         out.add("#Характер");

@@ -264,7 +264,9 @@ public class HungryCow extends Cow {
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
-    public final CowGate gate = new CowGate(this);                    // черга біля входу: по одній, ватажок перша
+    public final CowGate gate = new CowGate(this);
+    public final CowInbreeding inbreeding = new CowInbreeding(this);
+    public final CowAging aging = new CowAging(this);                 // вік і старість (~1000 діб)  // спорідненість батьків і вади (ідеї 14–15)                    // черга біля входу: по одній, ватажок перша
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі
@@ -574,8 +576,8 @@ public class HungryCow extends Cow {
         float size = SIZE_MIN + (SIZE_MAX - SIZE_MIN) * genes.value(CowGenes.Gene.SIZE) / 100.0F;
         this.entityData.set(DATA_SIZE, size);
 
-        double health = gene(CowGenes.Gene.HEALTH) * (1.0 + (size - 1.0) * SIZE_HEALTH);
-        double speed = gene(CowGenes.Gene.WALK_SPEED) * (1.0 - (size - 1.0) * SIZE_SLOWDOWN);
+        double health = gene(CowGenes.Gene.HEALTH) * (1.0 + (size - 1.0) * SIZE_HEALTH) * inbreeding.healthFactor();
+        double speed = gene(CowGenes.Gene.WALK_SPEED) * (1.0 - (size - 1.0) * SIZE_SLOWDOWN) * inbreeding.speedFactor();
         double knockback = Math.max(0.0, KNOCKBACK_RESIST_MAX * (genes.value(CowGenes.Gene.KNOCKBACK_RESIST) - 50) / 50.0);
         setGeneModifier(Attributes.MAX_HEALTH, HEALTH_GENE_ID, "Health gene", health - 1.0, AttributeModifier.Operation.MULTIPLY_BASE);
         setGeneModifier(Attributes.MOVEMENT_SPEED, SPEED_GENE_ID, "Speed gene", speed - 1.0, AttributeModifier.Operation.MULTIPLY_BASE);
@@ -803,6 +805,8 @@ public class HungryCow extends Cow {
             sleep.secondTick();
             heat.secondTick();
             updateBullSpeed();
+            aging.secondTick();
+            if (!this.isAlive()) return;
             updateBarnUnrest();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
@@ -1743,6 +1747,8 @@ public class HungryCow extends Cow {
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
+        inbreeding.save(tag);
+        aging.save(tag);
     }
 
     @Override
@@ -1771,6 +1777,8 @@ public class HungryCow extends Cow {
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);
+        inbreeding.load(tag);
+        aging.load(tag);
         setUnconsciousVisual(heat.unconscious);
         onGenesChanged();
     }

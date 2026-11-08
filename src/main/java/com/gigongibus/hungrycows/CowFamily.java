@@ -152,6 +152,7 @@ public class CowFamily {
     public CompoundTag asNode() {
         CompoundTag node = new CompoundTag();
         node.putString("Name", name);
+        node.putUUID("Id", cow.getUUID());   // для спорідненості (імена повторюються)
         copyParents(ancestors, node, TREE_DEPTH - 1);
         return node;
     }
@@ -163,6 +164,7 @@ public class CowFamily {
             CompoundTag src = from.getCompound(key);
             CompoundTag dst = new CompoundTag();
             dst.putString("Name", src.getString("Name"));
+            if (src.hasUUID("Id")) dst.putUUID("Id", src.getUUID("Id"));
             copyParents(src, dst, levels - 1);
             to.put(key, dst);
         }

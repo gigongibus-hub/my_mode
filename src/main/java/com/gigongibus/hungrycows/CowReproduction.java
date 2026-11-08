@@ -106,7 +106,7 @@ public class CowReproduction {
     }
 
     public boolean isInfertile() {
-        return infertile || freemartin;
+        return infertile || freemartin || cow.inbreeding.sterile() || cow.aging.old();
     }
 
     public boolean isFreemartin() {
@@ -289,6 +289,13 @@ public class CowReproduction {
         }
         if (calves == 2) say(cow.family.name + " народжує двійнят!");
 
+        // близькоспоріднене схрещування: більше мертвих телят (CowInbreeding)
+        double kin = CowInbreeding.coefficient(cow.family.asNode(), fatherNode);
+        if (kin > 0) {
+            firstDeath = Math.min((float) CowInbreeding.DEATH_MAX, firstDeath + CowInbreeding.stillbirthBonus(kin));
+            secondDeath = Math.min((float) CowInbreeding.DEATH_MAX, secondDeath + CowInbreeding.stillbirthBonus(kin));
+            say("Батьки теляти — родичі (спорідненість " + Math.round(kin * 1000) / 10.0 + "%)");
+        }
         int alive = 0;
         java.util.List<HungryCow> born = new java.util.ArrayList<>();
         for (int k = 0; k < calves; k++) {
@@ -305,6 +312,9 @@ public class CowReproduction {
             baby.moveTo(cow.getX(), cow.getY(), cow.getZ(), cow.getYRot(), 0.0F);
             baby.family.setupNewborn(cow, fatherNode);
             baby.genes.inherit(cow.genes.saveTag(), fatherGenes, cow.getRandom());
+            baby.inbreeding.onBorn(kin);
+            baby.aging.newborn();
+            if (baby.inbreeding.anomaly != CowInbreeding.Anomaly.NONE) say("У теляти вада: " + baby.inbreeding.anomaly.title);
             baby.character.newborn(cow.getRandom());
             baby.onGenesChanged();
             baby.repro.rollBirthLimit();   // ліміт телят — уже за успадкованими генами

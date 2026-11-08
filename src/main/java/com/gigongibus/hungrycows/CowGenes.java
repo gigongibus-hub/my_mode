@@ -101,7 +101,7 @@ public class CowGenes {
         KNOCKBACK_RESIST(Group.BODY, "стійкість до відкидання"),
         STAMINA(Group.BODY, "витривалість (пізніше)"),
         SIZE(Group.BODY, "розмір"),
-        LIFESPAN(Group.BODY, "тривалість життя (пізніше)"),
+        LIFESPAN(Group.BODY, "тривалість життя"),
         // ---- гормони й стрес (10) ----
         ADRENALINE_BASE(Group.HORMONES, "адреналін"),
         CORTISOL_BASE(Group.HORMONES, "кортизол"),
@@ -199,6 +199,18 @@ public class CowGenes {
             int fromFather = father != null ? pick(father, g, random) : pick(mother, g, random);
             if (fromMother >= 0) copyA[i] = mutate(fromMother, random);
             if (fromFather >= 0) copyB[i] = mutate(fromFather, random);
+        }
+    }
+
+    // Близькоспоріднене схрещування: з шансом F обидві копії гена однакові (успадковані від спільного предка)
+    public void makeHomozygous(double f, RandomSource random) {
+        if (f <= 0) return;
+        for (Gene g : Gene.values()) {
+            int i = g.ordinal();
+            if (random.nextDouble() < f) {
+                if (random.nextBoolean()) copyB[i] = copyA[i];
+                else copyA[i] = copyB[i];
+            }
         }
     }
 
