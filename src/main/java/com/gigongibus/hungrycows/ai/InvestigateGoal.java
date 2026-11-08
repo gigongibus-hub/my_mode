@@ -11,9 +11,12 @@ import java.util.EnumSet;
 public class InvestigateGoal extends Goal {
     private static final double STOP_DISTANCE = 4.0;
     private static final double SPEED = 0.7;            // повільно, обережно
-    private static final int MAX_TICKS = 300;           // роздивляється до 15 с
+    private static final int MAX_TICKS = 300;
+    private static final int NOVEL_TICKS = 160;        // нове роздивляється 8 с           // роздивляється до 15 с
     private final HungryCow cow;
-    private Player target;
+    private net.minecraft.world.entity.LivingEntity target;
+    private boolean novel;   // етап 7: роздивляється нову істоту (не гравця)
+    private static final double NOVEL_RANGE = 10;      // нову істоту помічає до 10 бл. (якщо бачить)
     private int ticks = 0;
 
     public InvestigateGoal(HungryCow cow) {
@@ -30,18 +33,33 @@ public class InvestigateGoal extends Goal {
     public boolean canUse() {
         if (!cow.brain.is(CowBrain.Action.CURIOUS)) return false;
         target = cow.brain.stranger();
+        novel = false;
+        if (target == null) {
+            // етап 7: нове (такого ще не бачила) трохи приємне — підходить роздивитись; схоже на небезпечне — ні
+            for (net.minecraft.world.entity.LivingEntity e : cow.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
+                    cow.getBoundingBox().inflate(NOVEL_RANGE), e -> !(e instanceof HungryCow) && !(e instanceof Player) && e.isAlive()
+                            && !cow.isScary(e) && cow.vision.canSee(e) && cow.memory.isNovel(e))) {
+                target = e;
+                novel = true;
+                break;
+            }
+        }
         return target != null;
     }
 
     @Override
     public boolean canContinueToUse() {
         return cow.brain.is(CowBrain.Action.CURIOUS) && target != null && target.isAlive()
-                && !target.isSpectator() && ticks < MAX_TICKS;
+                && !target.isSpectator() && ticks < MAX_TICKS && (!novel || ticks < NOVEL_TICKS);
     }
 
     @Override
     public void start() {
         ticks = 0;
+        if (novel) {
+            cow.memory.onInvestigate(target);
+            cow.tell(cow.family.name + " роздивляється нове: " + target.getName().getString());
+        }
     }
 
     @Override
@@ -58,6 +76,7 @@ public class InvestigateGoal extends Goal {
 
     @Override
     public void stop() {
+        if (novel && target != null && ticks >= NOVEL_TICKS / 2) cow.memory.doneInvestigating(target);
         target = null;
         cow.getNavigation().stop();
     }

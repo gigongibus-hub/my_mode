@@ -62,7 +62,7 @@ public class HungryCowSmellTests {
             ok[1] = cow.smell.smells(pig);
             wall(h, Blocks.STONE);
         });
-        h.runAtTickTime(120, () -> {
+        h.runAtTickTime(140, () -> {   // запах «свіжий» ще 2 с після останнього нюху — тому через 3 с після стіни
             ok[2] = !cow.smell.smells(pig);
             LOG.info("[тест] smellThroughWoodNotStone: відкрито {}, крізь дошки {}, крізь камінь не чує {}", ok[0], ok[1], ok[2]);
             wall(h, Blocks.AIR);

@@ -462,6 +462,42 @@ public class CowBrain {
         for (int i = 0; i < w2.length; i++) w2[i] *= (float) (1.0 - WEIGHT_DECAY);
     }
 
+    // ---------- етап 7: біль і приємне ----------
+    public static final double ONE_SHOT_PAIN = 4;     // урон від 4 (2 серця) — вчить з одного разу ...
+    public static final double ONE_SHOT_RATE = 10;    // ... у 10 разів сильніше за звичайну спробу
+    public static final int CONSEQUENCE_TICKS = 200;  // біль чи приємне пов'язуються з дією за останні 10 с
+    public int oneShotLessons = 0;
+
+    // Біль: дія, яку робила (чи щойно закінчила, до 10 с тому), — рідше; сильний біль — одразу й надовго
+    public void onPain(float damage) {
+        if (!enabled) return;
+        double r = -Math.min(1.0, damage / 10.0);
+        boolean strong = damage >= ONE_SHOT_PAIN;
+        if (consequence(r * (strong ? ONE_SHOT_RATE : 1.0)) && strong) {
+            oneShotLessons++;
+            cow.tell(cow.family.name + " запам'ятала з одного разу: після «" + (epActive ? epAction.title : "попередньої дії") + "» дуже боляче");
+        }
+    }
+
+    // Приємне (частування): дія, яку робила, — частіше
+    public void onPleasure(double amount) {
+        if (enabled) consequence(Math.min(1.0, amount) * 0.5);
+    }
+
+    private boolean consequence(double reward) {
+        double lr = learnRate();
+        if (epActive && epProbs[epAction.ordinal()] > 0) {
+            trainEpisode(epInput, epProbs, epAction.ordinal(), lr * reward);
+            return true;
+        }
+        Past p = past.peekFirst();
+        if (p != null && cow.tickCount - p.tick <= CONSEQUENCE_TICKS) {
+            trainEpisode(p.x, p.p, p.action, lr * reward);
+            return true;
+        }
+        return false;
+    }
+
     private void trainEpisode(double[] x, double[] p, int action, double strength) {
         if (strength == 0) return;
         double[] g = new double[ACTIONS.length];

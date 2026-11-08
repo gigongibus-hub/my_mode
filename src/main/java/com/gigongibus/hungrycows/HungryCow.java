@@ -915,6 +915,7 @@ public class HungryCow extends Cow {
             episodes.secondTick();
             psyche.secondTick();
             updateBullSpeed();
+            updatePainSpeed();
             aging.secondTick();
             if (!this.isAlive()) return;
             disease.secondTick();
@@ -1718,6 +1719,27 @@ public class HungryCow extends Cow {
 
     // Бик на 15% швидший (міняється, лише коли змінилось, — бик виріс)
     private static final UUID BULL_SPEED_ID = UUID.fromString("3c2b1a09-8f7e-4d6c-9b5a-4f3e2d1c0b9a");
+    private static final UUID PAIN_SPEED_ID = UUID.fromString("5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e9f");
+    public static final double LIMP_FROM = 30;    // відчутий біль понад 30 — кульгає ...
+    public static final double LIMP_MAX = 0.25;   // ... до −25% швидкості при болю 100
+    private double painSlow = 0;
+
+    // Етап 7: болить — кульгає (повільніша); ендорфіни приглушують біль, тож під час утечі не кульгає
+    private void updatePainSpeed() {
+        double felt = chem.feltPain();
+        double slow = felt > LIMP_FROM ? LIMP_MAX * (felt - LIMP_FROM) / (100 - LIMP_FROM) : 0;
+        if (Math.abs(slow - painSlow) < 0.01) return;
+        painSlow = slow;
+        var inst = this.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (inst == null) return;
+        inst.removeModifier(PAIN_SPEED_ID);
+        if (slow > 0) inst.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(PAIN_SPEED_ID, "Pain limp", -slow,
+                net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
+    }
+
+    public boolean limping() {
+        return painSlow > 0.03;
+    }
     private boolean bullSpeedApplied = false;
 
     private void updateBullSpeed() {

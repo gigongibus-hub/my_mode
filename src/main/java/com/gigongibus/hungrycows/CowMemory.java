@@ -204,6 +204,54 @@ public class CowMemory {
         return new BlockPos(cx, pos.getY(), cz);
     }
 
+    // ---------- етап 7: цікавість до нового ----------
+    public static final double CURIOUS_JOY = 3;          // підійшла роздивитись нове — трохи приємно (дофамін +3)
+    public static final int DANGER_WINDOW = 200;         // за 10 с після роздивляння стало погано — нове небезпечне
+    public static final double SIMILAR_DANGER = 0.6;     // ... і до схожого (того ж роду: моби / тварини) цікавість менша
+    private final java.util.Set<String> knownTypes = new java.util.HashSet<>();
+    private final Map<String, Double> typeDanger = new HashMap<>();
+    private String investigating = null;
+    private int investigateTick = -100000;
+
+    public static String typeKey(net.minecraft.world.entity.Entity e) {
+        return net.minecraft.world.entity.EntityType.getKey(e.getType()).toString();
+    }
+
+    private static String category(net.minecraft.world.entity.Entity e) {
+        return e instanceof net.minecraft.world.entity.monster.Enemy ? "cat:моби" : "cat:тварини";
+    }
+
+    // Нове (такого ще не роздивлялась) і не схоже на небезпечне
+    public boolean isNovel(net.minecraft.world.entity.LivingEntity e) {
+        String k = typeKey(e);
+        return !knownTypes.contains(k) && typeDanger.getOrDefault(k, 0.0) < 0.5 && typeDanger.getOrDefault(category(e), 0.0) < 0.5;
+    }
+
+    public void onInvestigate(net.minecraft.world.entity.LivingEntity e) {
+        investigating = typeKey(e) + "|" + category(e);
+        investigateTick = cow.tickCount;
+        cow.chem.onTasty(CURIOUS_JOY);
+    }
+
+    public void doneInvestigating(net.minecraft.world.entity.LivingEntity e) {
+        knownTypes.add(typeKey(e));
+    }
+
+    // Стало погано (удар, біль): якщо щойно роздивлялась нове — воно небезпечне, а до схожого цікавість менша
+    public void onHarm() {
+        if (investigating == null || cow.tickCount - investigateTick > DANGER_WINDOW) return;
+        String[] kc = investigating.split("\\|");
+        typeDanger.put(kc[0], 1.0);
+        typeDanger.merge(kc[1], SIMILAR_DANGER, Math::max);
+        knownTypes.add(kc[0]);
+        cow.tell(cow.family.name + ": нове виявилось небезпечним — " + kc[0].replace("minecraft:", "") + " (до схожого тепер обережна)");
+        investigating = null;
+    }
+
+    public boolean thinksDangerous(String typeKey) {
+        return typeDanger.getOrDefault(typeKey, 0.0) >= 0.5;
+    }
+
     // ---------- раз на секунду ----------
 
     public void secondTick() {
@@ -264,12 +312,36 @@ public class CowMemory {
         long bad = places.values().stream().filter(v -> v < 0).count();
         out.add("Пам'ятає місць: добрих " + good + ", поганих " + bad);
         out.add("Це місце: " + String.format("%+.2f", placeValue(cow.blockPosition())));
+        // етап 7: біль і приємне
+        out.add("Біль: відчуває " + cow.chem.feelPain() + " з " + Math.round(cow.chem.rawPain()) + (cow.chem.endorphinLevel() > 10 ? " (ендорфіни приглушують)" : "")
+                + (cow.limping() ? ", кульгає" : ""));
+        if (cow.brain.oneShotLessons > 0) out.add("Уроків болю з одного разу: " + cow.brain.oneShotLessons);
+        if (!knownTypes.isEmpty()) out.add("Роздивилась нового: " + knownTypes.size());
+        typeDanger.forEach((k, v) -> { if (v >= 0.5) out.add("Обережна з: " + k.replace("minecraft:", "").replace("cat:", "")); });
         return out;
     }
 
     // ---------- збереження ----------
 
+    private void saveCuriosity(CompoundTag tag) {
+        net.minecraft.nbt.ListTag k = new net.minecraft.nbt.ListTag();
+        for (String s : knownTypes) k.add(net.minecraft.nbt.StringTag.valueOf(s));
+        tag.put("KnownTypes", k);
+        CompoundTag d = new CompoundTag();
+        typeDanger.forEach(d::putDouble);
+        tag.put("TypeDanger", d);
+    }
+
+    private void loadCuriosity(CompoundTag tag) {
+        knownTypes.clear();
+        for (net.minecraft.nbt.Tag t : tag.getList("KnownTypes", net.minecraft.nbt.Tag.TAG_STRING)) knownTypes.add(t.getAsString());
+        typeDanger.clear();
+        CompoundTag d = tag.getCompound("TypeDanger");
+        for (String k : d.getAllKeys()) typeDanger.put(k, d.getDouble(k));
+    }
+
     public void save(CompoundTag tag) {
+        saveCuriosity(tag);
         CompoundTag c = new CompoundTag();
         CompoundTag av = new CompoundTag();
         aversion.forEach((k, v) -> av.putDouble(k, v));
@@ -294,6 +366,7 @@ public class CowMemory {
     }
 
     public void load(CompoundTag tag) {
+        loadCuriosity(tag);
         if (!tag.contains("Memory")) return;
         CompoundTag c = tag.getCompound("Memory");
         aversion.clear();

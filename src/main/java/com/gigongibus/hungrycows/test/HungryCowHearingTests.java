@@ -90,7 +90,8 @@ public class HungryCowHearingTests {
     }
 
     // 3. Дзвін перед частуванням: після кількох разів корова йде на дзвін з 12 бл.
-    @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 1200)
+    // окрема партія: удари й ламання в сусідніх тестах лякали корову (і вона не йшла на дзвін)
+    @GameTest(template = ARENA, batch = "hearing_bell", timeoutTicks = 1200)
     public static void bellBeforeFoodCallsCow(GameTestHelper h) {
         HungryCow cow = still(h, new BlockPos(2, 2, 2));
         for (int i = 0; i < 4; i++) {
@@ -104,9 +105,11 @@ public class HungryCowHearingTests {
             play(h, bell, SoundEvents.BELL_BLOCK);
         });
         boolean[] cleared = { false };
-        h.runAfterDelay(1199, () -> { cleared[0] = true; cow.discard(); });
+        h.runAfterDelay(1199, () -> { cleared[0] = true; });
+        h.runAfterDelay(1199, cow::discard);
         h.succeedWhen(() -> {
-            h.assertTrue(!cleared[0], "час вийшов");
+            h.assertTrue(!cleared[0], "час вийшов; корова робить: " + cow.goalSelector.getRunningGoals()
+                    .map(g -> g.getGoal().getClass().getSimpleName()).collect(java.util.stream.Collectors.joining(",")) + ", страх " + cow.fear);
             h.assertTrue(h.getTick() > 200, "ще не дзвонили");
             h.assertTrue(cow.distanceToSqr(h.absoluteVec(Vec3.atCenterOf(bell))) < 4 * 4, "не прийшла на дзвін");
             LOG.info("[тест] bellBeforeFoodCallsCow: прийшла на дзвін за {} с", (h.getTick() - 200) / 20.0);

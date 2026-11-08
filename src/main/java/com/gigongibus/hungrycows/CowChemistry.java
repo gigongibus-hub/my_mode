@@ -40,6 +40,11 @@ public class CowChemistry {
     public static final double OXYTOCIN_PER_COW = 2;    // + на секунду за кожну корову поруч (до 3)
     public static final double DOPAMINE_DECAY = 1;
     public static final double PAIN_DECAY = 2;
+    public static final double ENDORPHIN_FROM = 40;      // ендорфіни ростуть, коли адреналін понад 40 ...
+    public static final double ENDORPHIN_RISE = 2.0;     // ... до рівня 2 × (адреналін − 40)
+    public static final double ENDORPHIN_UP = 15;        // ростуть до нього на 15 за секунду
+    public static final double ENDORPHIN_DECAY = 3;      // спадають на 3 за секунду
+    public static final double ENDORPHIN_DULL = 0.7;     // ендорфіни 100 — біль відчувається на 70% слабше
     public static final double HORMONE_FOLLOW = 0.05;   // естроген/прогестерон/пролактин повільно йдуть до цілі (5% різниці)
 
     // ================= ПОДІЇ (ген «чутливість до гормонів» ±30%) =================
@@ -91,6 +96,7 @@ public class CowChemistry {
     private double oxytocin;
     private double dopamine;
     private double pain = 0;
+    private double endorphin = 0;   // ендорфіни (етап 7): приглушують біль під час утечі/бою
     private double estrogen;
     private double progesterone;
     private double prolactin;
@@ -130,7 +136,7 @@ public class CowChemistry {
         double rise = Math.max(0, adrenaline - adrBase) / 100.0 * CORTISOL_FROM_FEAR * 100
                 + (isLonely() ? CORTISOL_FROM_LONELY * loneliness() / 100.0 : 0)
                 + (cow.hunger > HungryCow.STARVE_AT ? CORTISOL_FROM_STARVE : 0)
-                + pain / 100.0 * CORTISOL_FROM_PAIN * 100
+                + feltPain() / 100.0 * CORTISOL_FROM_PAIN * 100   // довгий біль → стрес → менше молока
                 + CowHeat.STROKE_CORTISOL * cow.heat.strokeLevel();   // тепловий удар
         cortisol = clamp(cortisol + rise * stressK);
         cortisol = toward(cortisol, CORTISOL_BASE * g(Gene.CORTISOL_BASE), CORTISOL_DECAY * g(Gene.CORTISOL_DECAY));
@@ -149,6 +155,10 @@ public class CowChemistry {
 
         dopamine = toward(dopamine, DOPAMINE_BASE * g(Gene.DOPAMINE_BASE), DOPAMINE_DECAY);
         pain = toward(pain, 0, PAIN_DECAY);
+        // ендорфіни: ростуть, поки адреналін високий (утеча, бій), потім повільно спадають
+        // ендорфіни йдуть слідом за адреналіном (понад 40): швидко ростуть, повільно спадають, коли корова заспокоїлась
+        double endoTarget = Math.min(100, Math.max(0, adrenaline - ENDORPHIN_FROM) * ENDORPHIN_RISE);
+        endorphin = endoTarget > endorphin ? Math.min(endoTarget, endorphin + ENDORPHIN_UP) : Math.max(endoTarget, endorphin - ENDORPHIN_DECAY);
 
         // статеві гормони й пролактин: повільно до цілі
         double progTarget = cow.repro.isPregnant() ? PROGESTERONE_PREGNANT : PROGESTERONE_BASE * g(Gene.PROGESTERONE_BASE);
@@ -184,6 +194,8 @@ public class CowChemistry {
         double k = g(Gene.HORMONE_SENSITIVITY);
         pain = clamp(pain + damage * PAIN_PER_DAMAGE * (0.5 + cow.character.fraction(Trait.PAIN_SENSITIVITY)) * k);
         adrenaline = clamp(adrenaline + ADRENALINE_ON_HIT * k);
+        cow.brain.onPain(damage);   // етап 7: сильний біль вчить з одного разу
+        cow.memory.onHarm();        // цікавість: нове виявилось небезпечним?
     }
 
     // інша корова поруч злякалась і тікає
@@ -210,6 +222,7 @@ public class CowChemistry {
 
     public void onTreat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_TREAT * g(Gene.HORMONE_SENSITIVITY));
+        cow.brain.onPleasure(1.0);   // етап 7: приємне — цю дію частіше
         cow.hearing.onGood();   // слух: звук перед частуванням стає приємним
     }
 
@@ -265,7 +278,7 @@ public class CowChemistry {
         if (cortisol > STRESS_APPETITE_FROM) {
             k *= 1.0 - STRESS_APPETITE_LOSS * (cortisol - STRESS_APPETITE_FROM) / (100 - STRESS_APPETITE_FROM);
         }
-        k *= 1.0 - PAIN_APPETITE_LOSS * pain / 100.0;
+        k *= 1.0 - PAIN_APPETITE_LOSS * feltPain() / 100.0;   // болить — менше їсть
         k *= 1.0 - UNWELL_APPETITE_LOSS * feelUnwell() / 100.0;
         if (cow.cycle.inEstrus()) k *= ESTRUS_APPETITE;
         return Math.max(0.3, k);
@@ -286,7 +299,7 @@ public class CowChemistry {
     public double tiredness() {
         double k = TIRED_LAZY - (TIRED_LAZY - TIRED_ACTIVE) * cow.character.fraction(Trait.ACTIVITY);
         k *= 1.0 - ADRENALINE_HIDES_TIRED * adrenaline / 100.0;
-        k *= 1.0 + PAIN_ADDS_TIRED * pain / 100.0;
+        k *= 1.0 + PAIN_ADDS_TIRED * feltPain() / 100.0;   // болить — більше лежить
         if (cow.repro.isPregnant()) k *= 1.0 + PREGNANT_TIRED;
         return Math.max(0.3, k);
     }
@@ -311,14 +324,22 @@ public class CowChemistry {
 
     public int feelFear() { return fearFelt(); }
     public int feelStress() { return (int) Math.round(cortisol); }
-    public int feelPain() { return (int) Math.round(pain); }
+    public int feelPain() { return (int) Math.round(feltPain()); }
+
+    // Біль, який корова відчуває: ендорфіни під час утечі/бою приглушують його (до −70%); заспокоїлась — «наздоганяє»
+    public double feltPain() {
+        return pain * (1.0 - ENDORPHIN_DULL * endorphin / 100.0);
+    }
+
+    public double rawPain() { return pain; }
+    public double endorphinLevel() { return endorphin; }
     public int feelMating() { return (int) Math.round(cow.repro.isFemale() ? clamp(estrogen * 1.5) : 0); }
     public int feelMotherhood() { return (int) Math.round(clamp((prolactin + oxytocin) / 2.0)); }
     public int feelUnwell() { return (int) Math.round(clamp((temperature - TEMP_NORMAL) * 40)); }
 
     public int feelComfort() {
         return (int) Math.round(clamp(50 + (dopamine - DOPAMINE_BASE) * 0.5 + (oxytocin - OXYTOCIN_BASE) * 0.5
-                - (cortisol - CORTISOL_BASE) * 0.6 - pain * 0.5 - loneliness() * 0.3));
+                - (cortisol - CORTISOL_BASE) * 0.6 - feltPain() * 0.5 - loneliness() * 0.3));
     }
 
     // ---------- вплив на корову ----------
