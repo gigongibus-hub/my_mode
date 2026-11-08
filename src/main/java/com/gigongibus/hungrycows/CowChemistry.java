@@ -163,7 +163,8 @@ public class CowChemistry {
         // температура: отрута й біль піднімають
         double t = TEMP_NORMAL + pain * 0.01;
         if (cow.hasEffect(MobEffects.POISON) || cow.toxinActive()) t += 1.0;
-        t += CowHeat.STROKE_FEVER * cow.heat.strokeLevel();   // перегрівання 50+ → жар → нездужання
+        t += CowHeat.STROKE_FEVER * cow.heat.strokeLevel();
+        t += cow.disease.fever();   // хвороба: жар   // перегрівання 50+ → жар → нездужання
         temperature += (t - temperature) * 0.1;
     }
 

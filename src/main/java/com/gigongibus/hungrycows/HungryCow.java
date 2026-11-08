@@ -266,7 +266,10 @@ public class HungryCow extends Cow {
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
-    public final CowAging aging = new CowAging(this);                 // вік і старість (~1000 діб)  // спорідненість батьків і вади (ідеї 14–15)                    // черга біля входу: по одній, ватажок перша
+    public final CowAging aging = new CowAging(this);                 // вік і старість (~1000 діб)
+    public final CowDisease disease = new CowDisease(this);           // хвороба «кашель» (ідея 14, для проби)
+    public com.gigongibus.hungrycows.ai.ConfrontGoal confront;         // протистояння з гравцем (бодає, бик попереджає)
+    public boolean headDown = false;                                    // бик опустив голову (гра не скидає нахил)  // спорідненість батьків і вади (ідеї 14–15)                    // черга біля входу: по одній, ватажок перша
     public BlockPos foodTarget = null;                                // куди зараз іде їсти (щоб поступатися сильнішим)
     public boolean sleeping = false;                                  // зараз спить (SleepGoal)
     public BlockPos sleepClaim = null;                                // місце для сну, яке вона зайняла цієї ночі
@@ -294,6 +297,13 @@ public class HungryCow extends Cow {
 
     public HungryCow(EntityType<? extends Cow> type, Level level) {
         super(type, level);
+        // погляд: коли бик опустив голову перед нападом, гра не повертає голову рівно щотіку
+        this.lookControl = new net.minecraft.world.entity.ai.control.LookControl(this) {
+            @Override
+            protected boolean resetXRotOnTick() {
+                return !headDown;
+            }
+        };
         repro.rollBirthLimit();
         onGenesChanged();
         this.setHealth(this.getMaxHealth());   // нова корова з повним здоров'ям (при завантаженні здоров'я потім читається з NBT)
@@ -684,7 +694,9 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(0, new UnconsciousGoal(this));           // без тями від спеки: лежить, не рухається
         this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
         this.goalSelector.addGoal(1, new LaborGoal(this));                 // пологи: стоїть на місці
-        this.goalSelector.addGoal(2, new DefendCalfGoal(this));            // б'є того, хто вдарив теля
+        this.goalSelector.addGoal(2, new DefendCalfGoal(this));
+        confront = new com.gigongibus.hungrycows.ai.ConfrontGoal(this);
+        this.goalSelector.addGoal(2, confront);                                // бодає гравця: біг, теля, кут, ватажок, подруга; бик попереджає            // б'є того, хто вдарив теля
         this.goalSelector.addGoal(3, new FearGoal(this));                  // страх і напади ворожої корови
         this.goalSelector.addGoal(4, new FirePanicGoal(this));             // паніка лише від вогню й морозу
         this.goalSelector.addGoal(5, new NurseGoal(this));                 // мати стоїть, поки теля п'є
@@ -816,6 +828,8 @@ public class HungryCow extends Cow {
             heat.secondTick();
             updateBullSpeed();
             aging.secondTick();
+            if (!this.isAlive()) return;
+            disease.secondTick();
             if (!this.isAlive()) return;
             updateBarnUnrest();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
@@ -1755,6 +1769,7 @@ public class HungryCow extends Cow {
         heat.save(tag);
         inbreeding.save(tag);
         aging.save(tag);
+        disease.save(tag);
     }
 
     @Override
@@ -1785,6 +1800,7 @@ public class HungryCow extends Cow {
         heat.load(tag);
         inbreeding.load(tag);
         aging.load(tag);
+        disease.load(tag);
         setUnconsciousVisual(heat.unconscious);
         onGenesChanged();
     }

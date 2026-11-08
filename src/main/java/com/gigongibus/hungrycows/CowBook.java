@@ -50,6 +50,7 @@ public final class CowBook {
         out.add("Втома: " + cow.fatigue + " (відпочиває за відчуттям з " + HungryCow.TIRED_AT + ")");
         out.add("Страх: " + cow.fear + " (тікає за відчуттям з " + cow.scaredAt() + ")");
         out.add(cow.heat.line());
+        out.add(cow.disease.line());
         if (cow.choking) out.add("ПОДАВИЛАСЯ! Вдар її, щоб урятувати");
         if (cow.isBaby()) out.add("Теля п'є лише молоко");
 
