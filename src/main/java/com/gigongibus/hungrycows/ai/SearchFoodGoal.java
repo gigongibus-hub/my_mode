@@ -34,12 +34,16 @@ public class SearchFoodGoal extends Goal {
     private static final double ARRIVED = 2.5;           // дійшла
     private static final int MAX_TICKS = 400;            // іде щонайдовше 20 с, потім вибирає інше місце
     private static final double SPEED = 1.0;
+    private static final int SMELL_IGNORE_TICKS = 1200;  // на запах їжі, до якої немає дороги (чи дійшла, а їжі не видно), — 1 хв не йде
+    private static final int SHORT_RUN = 20;             // ціль скінчилась швидше 1 с — пауза 1 с (щоб не смикатись і не спамити)
     private static final int RECENT_SPOTS = 6;           // пам'ятає 6 останніх місць, де вже шукала ...
     private static final double RECENT_NEAR = 6;         // ... і нове бере щонайменше за 6 бл. від них
     private static final int RECENT_TICKS = 2400;        // ... протягом 2 хв
 
     private final HungryCow cow;
     private BlockPos spot;
+    private BlockPos smellFood = null;   // їжа, на запах якої йде (spot — кінець дороги до неї)
+    private BlockPos toldFood = null;    // про цю їжу вже писала в чат
     private boolean fromMemory;
     private int ticks;
     private final Map<Long, Integer> skipped = new HashMap<>();
@@ -68,11 +72,23 @@ public class SearchFoodGoal extends Goal {
 
     private BlockPos choose() {
         skipped.values().removeIf(t -> t < cow.tickCount);
-        // нюх: чує запах їжі — іде на нього
-        if (cow.smelledFood != null && cow.tickCount - cow.smelledFoodTick <= NOT_SEEN_FRESH) {
-            fromMemory = false;
-            cow.tell(cow.family.name + " не бачить їжі, але чує її запах — іде туди");
-            return cow.smelledFood;
+        cow.smellIgnore.values().removeIf(t -> t < cow.tickCount);
+        smellFood = null;
+        // нюх: чує запах їжі — іде на нього, але дорогою (у лабіринті їжа буває за стінкою поруч, а йти довго)
+        BlockPos food = cow.smelledFood;
+        if (food != null && cow.tickCount - cow.smelledFoodTick <= NOT_SEEN_FRESH && !cow.smellIgnore.containsKey(food)) {
+            Path p = cow.getNavigation().createPath(food, 1);
+            if (p != null && p.canReach()) {
+                fromMemory = false;
+                smellFood = food;
+                if (!food.equals(toldFood)) {
+                    toldFood = food;
+                    cow.tell(cow.family.name + " не бачить їжі, але чує її запах — іде туди");
+                }
+                return p.getEndNode() != null ? p.getEndNode().asBlockPos() : p.getTarget();   // кінець дороги, а не сама ціль
+            }
+            cow.smellIgnore.put(food, cow.tickCount + SMELL_IGNORE_TICKS);
+            cow.tell(cow.family.name + " чує запах їжі, але дороги до неї не знаходить");
         }
         Set<Long> skip = new HashSet<>(skipped.keySet());
         BlockPos mem = cow.memory.bestPlace(cow.blockPosition(), MEMORY_RANGE, MEMORY_MIN, skip);
@@ -81,7 +97,7 @@ public class SearchFoodGoal extends Goal {
             if (p != null) {
                 fromMemory = true;
                 cow.tell(cow.family.name + " не бачить їжі — іде туди, де їла раніше");
-                return p.getTarget();
+                return p.getEndNode() != null ? p.getEndNode().asBlockPos() : p.getTarget();   // кінець дороги, а не сама ціль
             }
             skipped.put(CowMemory.cellKey(mem), cow.tickCount + MEMORY_SKIP_TICKS);
         }
@@ -142,6 +158,11 @@ public class SearchFoodGoal extends Goal {
 
     @Override
     public void stop() {
+        // дійшла дорогою до їжі, яку чула, а не бачить — 1 хв на цей запах не йде
+        if (smellFood != null && spot != null && cow.distanceToSqr(Vec3.atBottomCenterOf(spot)) <= (ARRIVED + 1) * (ARRIVED + 1)) {
+            cow.smellIgnore.put(smellFood, cow.tickCount + SMELL_IGNORE_TICKS);
+        }
+        if (ticks < SHORT_RUN) retryAt = cow.tickCount + RETRY_TICKS;
         // дійшла до пам'ятного місця, а їжі не видно — 2 хв туди не ходить
         if (spot != null && fromMemory && cow.distanceToSqr(Vec3.atBottomCenterOf(spot)) <= (ARRIVED + 1) * (ARRIVED + 1)) skipped.put(CowMemory.cellKey(spot), cow.tickCount + MEMORY_SKIP_TICKS);
         if (spot != null) {

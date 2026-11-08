@@ -265,6 +265,7 @@ public class HungryCow extends Cow {
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
     public BlockPos smelledFood = null;                                 // їжа, яку чує носом (не бачить)
     public int smelledFoodTick = -100000;
+    public final java.util.Map<BlockPos, Integer> smellIgnore = new java.util.HashMap<>();   // їжа на запах, до якої не дійти (до якого тіку не йти)
     public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
     public final CowVision vision = new CowVision(this);
     public final CowSmell smell = new CowSmell(this);                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)

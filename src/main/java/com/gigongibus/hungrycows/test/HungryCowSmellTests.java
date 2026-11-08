@@ -153,4 +153,42 @@ public class HungryCowSmellTests {
             clear.run();
         });
     }
+
+    // 5. Лабіринт (Fij, скріншот): сіно за дощаною стінкою за 2 бл., а дорога — довкола через прохід у кінці стінки.
+    //    Корова має обійти, а не стояти біля стінки й спамити «іде туди»
+    @GameTest(template = ARENA, batch = "smell", timeoutTicks = 1200)
+    public static void cowWalksAroundWallToSmelledFood(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        Wind.set(h.getLevel(), 0, true);   // штиль: чує на 16 бл.
+        BlockPos hay = new BlockPos(7, 2, 3);   // 2 бл. від корови, але за стінкою (було: «дійшла» по прямій і спам)
+        h.setBlock(hay, Blocks.HAY_BLOCK);
+        for (int z = 1; z <= 12; z++) for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(6, y, z), Blocks.OAK_PLANKS);   // прохід при z 13
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(5, 2, 3));
+        cow.setAge(0);
+        int[] starts = { 0 };
+        boolean[] cleared = { false };
+        Runnable clear = () -> {
+            cleared[0] = true;
+            cow.discard();
+            for (int z = 1; z <= 12; z++) for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(6, y, z), Blocks.AIR);
+            h.setBlock(hay, Blocks.AIR);
+        };
+        BlockPos[] lastTarget = { null };
+        h.onEachTick(() -> {
+            cow.hunger = Math.max(cow.hunger, 60);
+            boolean searching = cow.goalSelector.getRunningGoals().anyMatch(g -> g.getGoal() instanceof com.gigongibus.hungrycows.ai.SearchFoodGoal);
+            if (searching && lastTarget[0] == null) starts[0]++;
+            lastTarget[0] = searching ? hay : null;
+        });
+        h.runAfterDelay(1199, clear);
+        h.succeedWhen(() -> {
+            h.assertTrue(!cleared[0], "час вийшов (почала шукати " + starts[0] + " разів)");
+            boolean sameSide = Math.signum(cow.getX() - h.absoluteVec(new Vec3(6.5, 0, 0)).x) == Math.signum(h.absoluteVec(new Vec3(7.5, 0, 0)).x - h.absoluteVec(new Vec3(6.5, 0, 0)).x);
+            h.assertTrue(sameSide && cow.distanceToSqr(Vec3.atCenterOf(h.absolutePos(hay))) < 3 * 3, "не обійшла стінку до сіна");
+            h.assertTrue(starts[0] <= 10, "смикається: пошук починався " + starts[0] + " разів");
+            LOG.info("[тест] cowWalksAroundWallToSmelledFood: біля сіна на {} с, пошук починався {} разів", h.getTick() / 20.0, starts[0]);
+            clear.run();
+        });
+    }
 }

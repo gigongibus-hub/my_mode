@@ -384,6 +384,8 @@ public class SeekGrassGoal extends Goal {
         for (Candidate c : all) {
             if (left-- <= 0) break;
             if (unreachable.contains(c.pos)) continue;
+            Integer until = cow.smellIgnore.get(c.pos);
+            if (until != null && until > cow.tickCount) continue;   // уже ходила на цей запах — не дійти або не видно
             if (cow.smell.smellsBlock(c.pos)) {
                 cow.smelledFood = c.pos;
                 cow.smelledFoodTick = cow.tickCount;
