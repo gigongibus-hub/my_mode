@@ -450,6 +450,11 @@ public class SleepGoal extends Goal {
         return !any;
     }
 
+    private boolean claimedExactly(BlockPos p) {
+        return !cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
+                c -> c != cow && c.isAlive() && p.equals(c.sleepClaim)).isEmpty();
+    }
+
     private boolean claimedByOther(BlockPos p) {
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
                 c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
@@ -468,6 +473,9 @@ public class SleepGoal extends Goal {
             p = chooseSpotOnce(base);
             tight = false;
         }
+        // тісно (малий хлів, багато корів) і жодного вільного досяжного місця — іде на саме спільне місце, якщо там ніхто
+        // не лежить (раніше: «не знайшла» і по колу «не дійшла, пробує знову»)
+        if (p == null && CowHome.standable(cow.level(), base) && !claimedExactly(base)) p = base.immutable();
         if (p == null) cow.tell(cow.family.name + " не знайшла вільного місця в домі, до якого можна дійти");
         return p;
     }

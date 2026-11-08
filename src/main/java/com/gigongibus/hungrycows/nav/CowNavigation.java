@@ -1,7 +1,6 @@
 package com.gigongibus.hungrycows.nav;
 
 import com.gigongibus.hungrycows.HungryCow;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.entity.Mob;
@@ -17,9 +16,9 @@ import net.minecraft.world.phys.Vec3;
  *  - пошук шляху свій (CowNodeEvaluator: тримається далі від стін);
  *  - ходіння за шляхом без зрізання кутів (followThePath): точка пройдена, лише коли корова в ній; раніше — лише на прямій;
  *  - не врізається в інших корів (Fij): пошук шляху гри інших тварин не бачить, тому корова сама дивиться вперед.
- *    Інша корова попереду на шляху йде в той самий бік — іде слідом повільніше; стоїть або йде назустріч — шлях
- *    будується заново в обхід її клітинок (2 с ці клітинки «дорогі»). Немає де обійти (вузький прохід) — шлях однаково
- *    через неї (черга біля входу — у CowGate).
+ *    Інша корова попереду на шляху йде в той самий бік — іде слідом повільніше; стоїть або йде назустріч — чекає 1 с,
+ *    потім до 1 с крок убік, лише туди, де вільно (праворуч, ліворуч; обидва зайняті — чекає повільно). Шлях не
+ *    перебудовує (перша версія з перебудовою смикала корову). Черга біля входу — у CowGate.
  * Усі числа зібрані на початку файлу.
  */
 public class CowNavigation extends GroundPathNavigation {
@@ -36,8 +35,6 @@ public class CowNavigation extends GroundPathNavigation {
     public static final int SIDESTEP_TICKS = 20;      // ... потім до 1 с відступає вбік (праворуч), обходячи її
     public static final double SIDESTEP_PUSH = 0.03;  // сила кроку вбік (раз на 4 тіки)
     public static final double NEAR_GOAL = 2.5;       // ціль ближче 2,5 бл. (підходить їсти поруч з іншою) — не обходить
-    public static final int AVOID_TICKS = 40;         // (не вживається, поки обхід без перебудови шляху)
-    public static final float AVOID_MALUS = 6.0F;     // «ціна» клітинки, де стоїть інша корова
     // Ходіння за шляхом (followThePath): не зрізати кути
     public static final double WAYPOINT_REACH = 0.35; // точку пройдено, коли центр корови ближче 0,35 бл. до центру точки (по X і по Z)
     public static final double WAYPOINT_DY = 1.0;     // ... і різниця висоти менша за 1 блок
@@ -48,8 +45,6 @@ public class CowNavigation extends GroundPathNavigation {
     // Крок убік лише туди, де вільно
     public static final double SIDESTEP_CHECK = 0.6;  // рамку корови зсуває на 0,6 бл. у бік кроку й дивиться, чи там вільно
 
-    // клітинка (x, z) → до якого тіку її обходити
-    final Long2IntOpenHashMap avoid = new Long2IntOpenHashMap();
     private int nextCheck = 0;
     private int waitStart = -1;
     private int stuckNode = -1;        // до якої точки шляху корова зараз іде (для запасного виходу)
@@ -64,7 +59,7 @@ public class CowNavigation extends GroundPathNavigation {
 
     @Override
     protected PathFinder createPathFinder(int maxVisitedNodes) {
-        this.nodeEvaluator = new CowNodeEvaluator(this);
+        this.nodeEvaluator = new CowNodeEvaluator();
         this.nodeEvaluator.setCanPassDoors(true);
         return new PathFinder(this.nodeEvaluator, maxVisitedNodes);
     }
@@ -73,9 +68,6 @@ public class CowNavigation extends GroundPathNavigation {
         return this.mob.tickCount;
     }
 
-    static long key(int x, int z) {
-        return BlockPos.asLong(x, 0, z);
-    }
 
     @Override
     public boolean moveTo(Path path, double speed) {
@@ -160,7 +152,6 @@ public class CowNavigation extends GroundPathNavigation {
         int t = now();
         if (t < nextCheck) return;
         nextCheck = t + CHECK_EVERY;
-        if (!avoid.isEmpty() && t % 100 == 0) avoid.long2IntEntrySet().removeIf(e -> e.getIntValue() < t);
 
         Vec3 pos = this.mob.position();
         BlockPos goal = this.path.getTarget();

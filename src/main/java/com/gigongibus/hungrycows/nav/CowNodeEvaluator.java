@@ -14,7 +14,6 @@ import net.minecraft.core.Direction;
  * Пошук шляху корови: те саме, що ванільний WalkNodeEvaluator, але клітинка біля стіни (стіна поруч чи навскіс,
  * на рівні ніг або голови) «дорожча». Тоді шлях іде серединою входу й на блок від стін, а не впритул — корова
  * завширшки майже з блок, і впритул до стіни найменше відхилення = удар об стіну (Fij: «б'ються в стіни»).
- * Клітинки, де стоїть інша корова, яку зараз обходить (CowNavigation), теж «дорожчі».
  * Де інакше не пройти (вхід завширшки 1 блок), шлях однаково знаходиться — просто трохи «дорожчий».
  */
 public class CowNodeEvaluator extends WalkNodeEvaluator {
@@ -22,11 +21,6 @@ public class CowNodeEvaluator extends WalkNodeEvaluator {
     public static final float WALL_MALUS = 2.0F;   // «ціна» клітинки біля стіни (як 2 зайві блоки дороги)
 
     private final Long2BooleanOpenHashMap nearWall = new Long2BooleanOpenHashMap();
-    private final CowNavigation nav;   // звідси — клітинки інших корів, які зараз обходить
-
-    public CowNodeEvaluator(CowNavigation nav) {
-        this.nav = nav;
-    }
 
     @Override
     public void prepare(PathNavigationRegion region, Mob mob) {
@@ -46,10 +40,6 @@ public class CowNodeEvaluator extends WalkNodeEvaluator {
         Node node = super.findAcceptedNode(x, y, z, verticalDeltaLimit, nodeFloorLevel, direction, pathType);
         if (node != null && node.costMalus >= 0 && node.type == BlockPathTypes.WALKABLE && isNearWall(node.x, node.y, node.z)) {
             node.costMalus = Math.max(node.costMalus, WALL_MALUS);
-        }
-        if (node != null && node.costMalus >= 0 && nav != null && !nav.avoid.isEmpty()
-                && nav.avoid.getOrDefault(CowNavigation.key(node.x, node.z), -1) >= nav.now()) {
-            node.costMalus = Math.max(node.costMalus, CowNavigation.AVOID_MALUS);   // тут стоїть інша корова — обійти
         }
         return node;
     }
