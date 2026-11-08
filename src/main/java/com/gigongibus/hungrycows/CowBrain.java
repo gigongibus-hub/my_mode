@@ -15,9 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Мозок корови (крок 7). Раз на пів секунди дивиться на відчуття й на те, що навколо,
- * дає кожній із 10 дій бал і вибирає дію з відповідним шансом.
- * Бал = інстинкт (як старі правила) + ген схильності + маленька нейромережа (у 7а майже нульова, вчиться у 7б).
+ * Мозок корови (крок 7; етап 8 плану — мозок із часток). Раз на пів секунди дивиться на відчуття й на те, що навколо,
+ * дає кожній із 21 дії бал і вибирає дію з відповідним шансом.
+ * Бал = інстинкт (як старі правила) + ген схильності + мозок із часток (LobeNet, ~500 нейронів; спершу майже нульовий, вчиться за життя).
  * Рефлекси (голодування, виснаження, паніка, пологи, подавлення, захист теляти, ворожа корова) — поза мозком.
  * Коли мозок вимкнено (BRAIN_ENABLED / команда), корова діє за старими правилами.
  * Усі числа зібрані на початку файлу.
@@ -48,8 +48,7 @@ public class CowBrain {
     public static final double GENE_BIAS = 1.0;          // ген 0 або 100 додає до балу дії −1 або +1
 
     // ================= НЕЙРОМЕРЕЖА =================
-    public static final int HIDDEN = 12;
-    public static final double INIT_WEIGHT = 0.05;       // початкові ваги малі: мозок поводиться майже як інстинкт
+    // (етап 8: стара мережа 29→12→10 замінена на мозок із часток — LobeNet)
 
     // ================= НАВЧАННЯ (7б) =================
     // Спроба = одна дія від початку до кінця. Нагорода = наскільки корові стало краще (самопочуття після − до).
@@ -101,7 +100,18 @@ public class CowBrain {
         FAMILY("до теляти/матері", Gene.BRAIN_FAMILY),
         RUMINATE("ремигати", Gene.BRAIN_RUMINATE),
         CURIOUS("цікавитися", Gene.BRAIN_CURIOUS),
-        DRINK("пити", Gene.BRAIN_DRINK);
+        DRINK("пити", Gene.BRAIN_DRINK),
+        // етап 8: нові дії
+        SNIFF("нюхати", Gene.BRAIN_SNIFF),
+        LISTEN("прислухатися", Gene.BRAIN_LISTEN),
+        SCRATCH("чесатися", Gene.BRAIN_SCRATCH),
+        GROOM("вилизувати подругу", Gene.BRAIN_GROOM),
+        LICK_SALT("лизати сіль", Gene.BRAIN_SALT),
+        MOO("мукати", Gene.BRAIN_MOO),
+        CALL_CALF("кликати теля", Gene.BRAIN_CALL_CALF),
+        SEEK_PETTING("підійти погладитися", Gene.BRAIN_PETTING),
+        EXPLORE("дослідити нове", Gene.BRAIN_EXPLORE),
+        GO_HOME("повернутися додому", Gene.BRAIN_HOME);
 
         public final String title;
         public final Gene gene;
@@ -113,12 +123,34 @@ public class CowBrain {
     }
 
     private static final Action[] ACTIONS = Action.values();
+    // Відчуття (входи мозку), згруповані за частками (етап 8)
     private static final String[] INPUT_NAMES = {
-            "голод", "втома", "страх", "стрес", "самотність", "біль", "нездужання", "комфорт", "бажання пари",
-            "материнство", "адреналін", "окситоцин", "дофамін", "їжа поруч", "корова поруч", "страшне поруч",
-            "друг поруч", "рідні поруч", "здоров'я", "вагітна", "тічка/самка в тічці", "ніч", "дощ",
-            "допитливість", "товариськість", "активність", "нещодавно їла", "теля", "незнайомець поруч", "спрага"
+            // зір 0–9
+            "бачить корів", "бачить гравців", "бачить друга", "бачить незнайомця", "страшне поруч", "бачить нове",
+            "їжа поруч", "бачить рідних", "щось краєм ока", "дальність зору",
+            // нюх 10–17
+            "страшний запах", "приємні запахи", "чує їжу", "чує матір", "чує кров", "чує дим", "чує самку в тічці", "штиль",
+            // слух 18–23
+            "злякалась звуку", "приємний звук кличе", "чула клич теляти", "приємні звуки", "чула щось", "звикла до звуків",
+            // смак і дотик 24–30
+            "хоче солі", "трава набридла", "мокра", "холодно", "свербить", "гладили/вилизували", "смак трави",
+            // тіло 31–50
+            "голод", "спрага", "втома", "біль", "нездужання", "стрес", "адреналін", "окситоцин", "дофамін", "ендорфіни",
+            "здоров'я", "вагітна", "тічка", "материнство", "бажання пари", "спека", "сонна", "теля", "комфорт", "страх",
+            // пам'ять 51–66
+            "добре місце тут", "нещодавно їла", "ніч", "дощ", "допитливість", "товариськість", "активність", "полохливість",
+            "здатність вчитися", "самотність", "подруга поруч", "ворогиня поруч", "знає воду", "знає лизунець", "дім далеко",
+            "свіжий поганий спогад"
     };
+    private static final LobeNet.Groups GROUPS = new LobeNet.Groups(range(0, 10), range(10, 18), range(18, 24), range(24, 31),
+            range(31, 51), range(51, 67));
+
+    private static int[] range(int from, int to) {
+        int[] r = new int[to - from];
+        for (int i = 0; i < r.length; i++) r[i] = from + i;
+        return r;
+    }
+
     public static final int INPUTS = INPUT_NAMES.length;
 
     private final HungryCow cow;
@@ -141,10 +173,15 @@ public class CowBrain {
     private boolean foodNear = false;
     private boolean estrusFemaleNear = false;
 
-    // нейромережа: вхід → 12 прихованих → 10 дій
-    private float[] w1 = new float[HIDDEN * (INPUTS + 1)];
-    private float[] w2 = new float[ACTIONS.length * (HIDDEN + 1)];
-    private final double[] hidden = new double[HIDDEN];
+    // етап 8: мозок із часток (~500 нейронів) — будується, коли вже відомі гени (після завантаження)
+    private LobeNet lobes = null;
+    private long netSeed;
+    private CompoundTag pendingNet = null;
+    private double[] netOut = new double[ACTIONS.length];
+    // що ще бачить / відчуває (етап 8)
+    private int cowsSeen = 0, playersSeen = 0;
+    private boolean friendSeen = false, novelSeen = false, familySeen = false, calmPartner = false, scratchPost = false;
+    private double friendBond = 0, enemyBond = 0;
     private final double[] lastNet = new double[ACTIONS.length];   // що «підказує досвід» зараз (для книги)
 
     // поточна спроба
@@ -181,8 +218,7 @@ public class CowBrain {
 
     public CowBrain(HungryCow cow) {
         this.cow = cow;
-        for (int i = 0; i < w1.length; i++) w1[i] = (float) (cow.getRandom().nextGaussian() * INIT_WEIGHT);
-        for (int i = 0; i < w2.length; i++) w2[i] = (float) (cow.getRandom().nextGaussian() * INIT_WEIGHT);
+        netSeed = cow.getRandom().nextLong();
     }
 
     // ---------- для цілей ----------
@@ -274,6 +310,32 @@ public class CowBrain {
         }
         if (family != null) familyDist = Math.sqrt(cow.distanceToSqr(family));
 
+        // етап 8: що бачить, з ким дружить, що пам'ятає
+        cowsSeen = cow.vision.count(e -> e instanceof HungryCow);
+        playersSeen = cow.vision.count(e -> e instanceof Player);
+        friendSeen = cow.vision.count(e -> e instanceof Player p && cow.trustOf(p) >= CowTrust.FRIEND_FROM) > 0;
+        novelSeen = cow.vision.count(e -> !(e instanceof HungryCow) && !(e instanceof Player) && !cow.isScary(e) && cow.memory.isNovel(e)) > 0;
+        familySeen = family != null && cow.vision.canSee(family);
+        friendBond = 0;
+        enemyBond = 0;
+        calmPartner = false;
+        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(8), c -> c != cow && c.isAlive())) {
+            double b = cow.touch.bond(c);
+            friendBond = Math.max(friendBond, b);
+            enemyBond = Math.min(enemyBond, b);
+            if (c.fear < 10 && !c.sleeping && cow.vision.canSee(c)) calmPartner = true;
+        }
+        knowsWater = cow.episodes.nearest(CowEpisodes.Place.WATER, p -> true) != null;
+        knowsSalt = cow.episodes.nearest(CowEpisodes.Place.SALT, p -> true) != null;
+        BlockPos home = cow.home.home();
+        homeFar = home == null ? 0 : Math.min(1, Math.sqrt(home.distSqr(cow.blockPosition())) / 32.0);
+        recentBad = 0;
+        double today = cow.level().getDayTime() / 24000.0;
+        for (CowEpisodes.Episode e : cow.episodes.episodes()) {
+            if ((e.kind == CowEpisodes.Kind.HIT || e.kind == CowEpisodes.Kind.ATTACK) && today - e.day < 1) recentBad = Math.max(recentBad, e.strength);
+        }
+        scratchPost = cow.touch.itch > SCRATCH_ITCH && cow.touch.findScratchPost() != null;
+
         // їжа поруч: трава під ногами й навколо (дешева перевірка 5×5)
         foodNear = false;
         BlockPos o = cow.blockPosition();
@@ -289,37 +351,84 @@ public class CowBrain {
 
     private void fillInputs() {
         CowChemistry ch = cow.chem;
-        input[0] = ch.hungerFelt() / 100.0;
-        input[1] = ch.fatigueFelt() / 100.0;
-        input[2] = ch.fearFelt() / 100.0;
-        input[3] = ch.feelStress() / 100.0;
-        input[4] = ch.loneliness() / 100.0;
-        input[5] = ch.feelPain() / 100.0;
-        input[6] = ch.feelUnwell() / 100.0;
-        input[7] = ch.feelComfort() / 100.0;
-        input[8] = ch.feelMating() / 100.0;
-        input[9] = ch.feelMotherhood() / 100.0;
-        input[10] = ch.adrenalineLevel() / 100.0;
-        input[11] = ch.oxytocinLevel() / 100.0;
-        input[12] = ch.dopamineLevel() / 100.0;
-        input[13] = foodNear ? 1 : 0;
-        input[14] = nearestCow;
-        input[15] = scary;
-        input[16] = friendNear ? 1 : 0;
-        input[17] = family != null ? 1.0 - familyDist / CowFamily.MOTHER_RANGE : 0;
-        input[18] = cow.getHealth() / cow.getMaxHealth();
-        input[19] = cow.repro.isPregnant() ? 1 : 0;
-        input[20] = cow.repro.isFemale() ? (cow.cycle.inEstrus() ? 1 : 0) : (estrusFemaleNear ? 1 : 0);
-        input[21] = cow.isNightTime() ? 1 : 0;   // «ніч» корови (у жаркому біомі зсунута)
-        input[22] = cow.level().isRainingAt(cow.blockPosition()) ? 1 : 0;
-        input[23] = cow.character.fraction(Trait.CURIOSITY);
-        input[24] = cow.character.fraction(Trait.SOCIABILITY);
-        input[25] = cow.character.fraction(Trait.ACTIVITY);
-        input[26] = cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) ? 1 : 0;
-        input[27] = cow.isBaby() ? 1 : 0;
-        input[28] = stranger != null ? 1 : 0;
-        input[29] = cow.thirst / 100.0;
+        double[] x = input;
+        // зір
+        x[0] = Math.min(1, cowsSeen / 5.0);
+        x[1] = Math.min(1, playersSeen / 3.0);
+        x[2] = friendSeen ? 1 : 0;
+        x[3] = stranger != null ? 1 : 0;
+        x[4] = scary;
+        x[5] = novelSeen ? 1 : 0;
+        x[6] = foodNear ? 1 : 0;
+        x[7] = familySeen ? 1 : 0;
+        x[8] = cow.vision.glance() != null ? 1 : 0;
+        x[9] = cow.vision.range() / CowVision.RANGE_DAY;
+        // нюх
+        x[10] = cow.smell.scariest();
+        x[11] = Math.min(1, cow.smell.pleasant() / 3.0);
+        x[12] = cow.tickCount - cow.smelledFoodTick < 100 ? 1 : 0;
+        x[13] = family != null && cow.isBaby() && cow.smell.smellsMother(family) ? 1 : 0;
+        x[14] = cow.smell.smellsKey("blood") ? 1 : 0;
+        x[15] = cow.smell.smellsKey("smoke") ? 1 : 0;
+        x[16] = estrusFemaleNear ? 1 : 0;
+        x[17] = Wind.of(cow.level()).calm() ? 1 : 0;
+        // слух
+        x[18] = cow.tickCount < cow.hearing.startleUntil ? 1 : 0;
+        x[19] = cow.hearing.comeTo != null && cow.tickCount < cow.hearing.comeUntil ? 1 : 0;
+        x[20] = x[19] > 0 && cow.hearing.comeWhy.startsWith("клич") ? 1 : 0;
+        x[21] = Math.min(1, cow.hearing.pleasantNow() / 3.0);
+        x[22] = cow.tickCount - cow.hearing.lastHeardTick() < 100 ? 1 : 0;
+        x[23] = cow.hearing.maxHabit();
+        // смак і дотик
+        x[24] = cow.taste.salt / 100.0;
+        x[25] = cow.taste.boredom(net.minecraft.world.item.Items.GRASS) * 2;
+        x[26] = cow.touch.wet ? 1 : 0;
+        x[27] = cow.touch.cold ? 1 : 0;
+        x[28] = cow.touch.itch / 100.0;
+        x[29] = cow.tickCount - cow.touch.lastTouchedTick < 600 ? 1 : 0;
+        x[30] = (cow.taste.tastiness(net.minecraft.world.item.Items.GRASS) + 1) / 2;
+        // тіло
+        x[31] = ch.hungerFelt() / 100.0;
+        x[32] = cow.thirst / 100.0;
+        x[33] = ch.fatigueFelt() / 100.0;
+        x[34] = ch.feelPain() / 100.0;
+        x[35] = ch.feelUnwell() / 100.0;
+        x[36] = ch.feelStress() / 100.0;
+        x[37] = ch.adrenalineLevel() / 100.0;
+        x[38] = ch.oxytocinLevel() / 100.0;
+        x[39] = ch.dopamineLevel() / 100.0;
+        x[40] = ch.endorphinLevel() / 100.0;
+        x[41] = cow.getHealth() / cow.getMaxHealth();
+        x[42] = cow.repro.isPregnant() ? 1 : 0;
+        x[43] = cow.repro.isFemale() && cow.cycle.inEstrus() ? 1 : 0;
+        x[44] = ch.feelMotherhood() / 100.0;
+        x[45] = ch.feelMating() / 100.0;
+        x[46] = cow.heat.heat / 100.0;
+        x[47] = cow.sleep.sleepiness / 100.0;
+        x[48] = cow.isBaby() ? 1 : 0;
+        x[49] = ch.feelComfort() / 100.0;
+        x[50] = ch.fearFelt() / 100.0;
+        // пам'ять
+        x[51] = (cow.memory.placeValue(cow.blockPosition()) + 1) / 2;
+        x[52] = cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) ? 1 : 0;
+        x[53] = cow.isNightTime() ? 1 : 0;   // «ніч» корови (у жаркому біомі зсунута)
+        x[54] = cow.level().isRainingAt(cow.blockPosition()) ? 1 : 0;
+        x[55] = cow.character.fraction(Trait.CURIOSITY);
+        x[56] = cow.character.fraction(Trait.SOCIABILITY);
+        x[57] = cow.character.fraction(Trait.ACTIVITY);
+        x[58] = cow.character.fraction(Trait.FEARFULNESS);
+        x[59] = cow.character.fraction(Trait.LEARNING);
+        x[60] = ch.loneliness() / 100.0;
+        x[61] = Math.max(0, friendBond) / 100.0;
+        x[62] = Math.max(0, -enemyBond) / 100.0;
+        x[63] = knowsWater ? 1 : 0;
+        x[64] = knowsSalt ? 1 : 0;
+        x[65] = homeFar;
+        x[66] = recentBad;
     }
+
+    private boolean knowsWater, knowsSalt;
+    private double homeFar = 0, recentBad = 0;
 
     // Що взагалі можливо зараз
     private void fillPossible() {
@@ -337,11 +446,25 @@ public class CowBrain {
         possible[Action.RUMINATE.ordinal()] = adult && cow.recentlyAte(RUMINATE_AFTER_MEAL_TICKS) && !cow.wantsFood();
         possible[Action.CURIOUS.ordinal()] = stranger != null;
         possible[Action.DRINK.ordinal()] = !cow.isBaby() && cow.thirst >= EAT_MIN_HUNGER;
+        // етап 8
+        possible[Action.SNIFF.ordinal()] = true;
+        possible[Action.LISTEN.ordinal()] = cow.tickCount - cow.hearing.lastHeardTick() < 200;
+        possible[Action.SCRATCH.ordinal()] = cow.touch.itch > SCRATCH_ITCH && scratchPost;
+        possible[Action.GROOM.ordinal()] = calmPartner;
+        possible[Action.LICK_SALT.ordinal()] = adult && cow.taste.wantsSalt();
+        possible[Action.MOO.ordinal()] = true;
+        possible[Action.CALL_CALF.ordinal()] = adult && family != null && familyDist > CALL_CALF_FROM;
+        possible[Action.SEEK_PETTING.ordinal()] = friendSeen;
+        possible[Action.EXPLORE.ordinal()] = novelSeen;
+        possible[Action.GO_HOME.ordinal()] = adult && cow.home.home() != null && homeFar > 0.25 && !cow.isNightTime();
         // відкладені дії (не виходили) поки неможливі; прогулянка можлива завжди
         for (Action a : ACTIONS) {
             if (a != Action.WANDER && cow.tickCount < blockedUntil[a.ordinal()]) possible[a.ordinal()] = false;
         }
     }
+
+    public static final double SCRATCH_ITCH = 25;        // чесатися хочеться від свербежу 25
+    public static final double CALL_CALF_FROM = 10;      // кличе теля, коли воно далі 10 бл.
 
     // Інстинкт: бал дії за старими правилами (0 — «на межі», більше — хочеться)
     private double instinct(Action a) {
@@ -350,38 +473,51 @@ public class CowBrain {
         double fear = cow.chem.fearFelt() / 100.0;
         double scaredAt = cow.scaredAt() / 100.0;
         double hungryAt = cow.hungryAt() / 100.0;
+        double lonely = cow.chem.loneliness() / 100.0, social = input[56], active = input[57], curious = input[55];
+        double motherhood = input[44], comfort = input[49];
         return switch (a) {
             case EAT -> 10 * (hunger - hungryAt) + (foodNear ? 0.5 : 0);
             case REST -> 10 * (tired - HungryCow.TIRED_AT / 100.0) - 3 * fear;
             case WARY -> 12 * (fear - scaredAt / 2);
-            case HERD -> 3 * input[4] + 2 * input[24] * (1 - nearestCow)
+            case HERD -> 3 * lonely + 2 * social * (1 - nearestCow)
                     + (cow.cycle.inProestrus() || cow.cycle.inEstrus() ? 2 : cow.cycle.inMetestrus() ? 0.5 : 0) - 1.5;
-            case FRIEND -> 1 + 2 * input[24] - 3 * hunger;
-            case WANDER -> 0.5 + input[25] - 2 * tired - 2 * hunger;
+            case FRIEND -> 1 + 2 * social - 3 * hunger;
+            case WANDER -> 0.5 + active - 2 * tired - 2 * hunger;
             case MATE -> 4;
-            case FAMILY -> (cow.isBaby() ? 3 : 2 * input[9]) * Math.min(1, familyDist / 10.0) + 0.5;
-            case RUMINATE -> 1.5 + input[7] - 3 * fear;
-            case CURIOUS -> 3 * input[23] - 5 * fear - 1;
+            case FAMILY -> (cow.isBaby() ? 3 : 2 * motherhood) * Math.min(1, familyDist / 10.0) + 0.5;
+            case RUMINATE -> 1.5 + comfort - 3 * fear;
+            case CURIOUS -> 3 * curious - 5 * fear - 1;
             case DRINK -> 10 * (cow.chem.thirstFelt() / 100.0 - HungryCow.THIRSTY_AT / 100.0);
+            case SNIFF -> 2 * input[10] + (input[12] > 0 && foodNear ? 0 : input[12] * hunger * 2) + 0.5 * curious - 1.8;
+            case LISTEN -> 1.5 * input[22] * (1 - input[23]) + input[18] - 2.5;   // не частіше за їжу: голодна не стоїть і не слухає
+            case SCRATCH -> 4 * (cow.touch.itch / 100.0) - 1;
+            case GROOM -> 1 + 2 * social - 3 * hunger - 3 * fear - (cow.isNightTime() ? 2 : 0) - 0.5;
+            case LICK_SALT -> 6 * (cow.taste.salt / 100.0 - 0.4) + 0.5;
+            case MOO -> 2.5 * lonely + (cow.repro.isFemale() && cow.cycle.inEstrus() ? 1.5 : 0) - 2;
+            case CALL_CALF -> 2 * motherhood + familyDist / 10.0 - 0.5;
+            case SEEK_PETTING -> 2 * (1 - input[38]) + 1.5 * cow.character.fraction(Trait.HUMAN_ATTACHMENT) - 2 - 3 * hunger;
+            case EXPLORE -> 3 * curious - 5 * fear - 0.5;
+            case GO_HOME -> 2 * input[36] + (cow.hatesRain() ? 2 * input[54] : 0) + tired + 0.5 * input[47] - 2;
         };
     }
 
-    // Прихований шар для входу x (результат у hidden[])
-    private void computeHidden(double[] x) {
-        int stride = INPUTS + 1;
-        for (int h = 0; h < HIDDEN; h++) {
-            double s = w1[h * stride + INPUTS];   // зсув
-            for (int i = 0; i < INPUTS; i++) s += w1[h * stride + i] * x[i];
-            hidden[h] = Math.tanh(s);
+    // Мозок із часток (будується вперше, коли треба: гени вже завантажені)
+    public LobeNet net() {
+        if (lobes == null) {
+            lobes = new LobeNet(netSeed, cow.genes.value(Gene.VISION_ACUITY), cow.genes.value(Gene.SMELL_ACUITY),
+                    cow.genes.value(Gene.HEARING_ACUITY), GROUPS, ACTIONS.length);
+            if (pendingNet != null) lobes.load(pendingNet);   // інший устрій (старе збереження) — лишаються нові ваги
+            pendingNet = null;
         }
+        return lobes;
     }
 
-    // Вихід мережі для дії (після computeHidden)
+    private void computeOutputs(double[] x) {
+        netOut = net().forward(x);
+    }
+
     private double outputOf(int action) {
-        int stride2 = HIDDEN + 1;
-        double out = w2[action * stride2 + HIDDEN];
-        for (int h = 0; h < HIDDEN; h++) out += w2[action * stride2 + h] * hidden[h];
-        return out;
+        return netOut[action];
     }
 
     // ---------- навчання ----------
@@ -398,26 +534,9 @@ public class CowBrain {
         return LEARN_RATE * k * (cow.isBaby() ? CALF_LEARN : 1.0);
     }
 
-    // Зміна ваг: g[k] — у який бік штовхнути вихід дії k (зворотне поширення через прихований шар)
+    // Зміна ваг: g[k] — у який бік штовхнути вихід дії k (ваги дій і нейронів рішення)
     private void train(double[] x, double[] g) {
-        computeHidden(x);
-        int stride = INPUTS + 1;
-        int stride2 = HIDDEN + 1;
-        double[] dh = new double[HIDDEN];
-        for (int k = 0; k < ACTIONS.length; k++) {
-            if (g[k] == 0) continue;
-            for (int h = 0; h < HIDDEN; h++) {
-                dh[h] += g[k] * w2[k * stride2 + h];
-                w2[k * stride2 + h] = clampW(w2[k * stride2 + h] + g[k] * hidden[h]);
-            }
-            w2[k * stride2 + HIDDEN] = clampW(w2[k * stride2 + HIDDEN] + g[k]);
-        }
-        for (int h = 0; h < HIDDEN; h++) {
-            double dz = dh[h] * (1 - hidden[h] * hidden[h]);
-            if (dz == 0) continue;
-            for (int i = 0; i < INPUTS; i++) w1[h * stride + i] = clampW(w1[h * stride + i] + dz * x[i]);
-            w1[h * stride + INPUTS] = clampW(w1[h * stride + INPUTS] + dz);
-        }
+        net().train(x, g);
     }
 
     private static float clampW(double v) {
@@ -458,8 +577,7 @@ public class CowBrain {
         if (reward > PLACE_GOOD_REWARD) cow.memory.addPlace(cow.blockPosition(), CowMemory.PLACE_GOOD);
         else if (reward < PLACE_BAD_REWARD) cow.memory.addPlace(cow.blockPosition(), PLACE_BAD_EPISODE);
         // 6. забування: непідтверджене поступово слабшає
-        for (int i = 0; i < w1.length; i++) w1[i] *= (float) (1.0 - WEIGHT_DECAY);
-        for (int i = 0; i < w2.length; i++) w2[i] *= (float) (1.0 - WEIGHT_DECAY);
+        net().decay(WEIGHT_DECAY);
     }
 
     // ---------- етап 7: біль і приємне ----------
@@ -532,7 +650,7 @@ public class CowBrain {
         }
         fillInputs();
         fillPossible();
-        computeHidden(input);
+        computeOutputs(input);
         // теля дивиться на матір (корову) поруч і частіше робить те саме
         imitated = null;
         imitatingMother = false;
@@ -644,6 +762,13 @@ public class CowBrain {
             return out;
         }
         out.add("Зараз: " + current.title + " (" + heldTicks / 20 + " с)");
+        LobeNet n = net();
+        out.add("Мозок із часток: " + LobeNet.TOTAL + " нейронів, " + n.connections() + " зв'язків");
+        StringBuilder lb = new StringBuilder();
+        for (LobeNet.Lobe l : LobeNet.Lobe.values()) {
+            lb.append(l.title).append(' ').append(n.size(l)).append(" (").append(Math.round(n.activity(l) * 100)).append("%), ");
+        }
+        out.add("Частки (збудження): " + lb.substring(0, lb.length() - 2));
         out.add("Шанси дій:");
         for (Action a : ACTIONS) {
             int i = a.ordinal();
@@ -668,24 +793,27 @@ public class CowBrain {
 
     public void save(CompoundTag tag) {
         CompoundTag c = new CompoundTag();
-        c.putIntArray("W1", toBits(w1));
-        c.putIntArray("W2", toBits(w2));
+        c.putLong("NetSeed", netSeed);
+        c.put("Net", net().save());
         c.putInt("Inputs", INPUTS);
         c.putDouble("AvgReward", avgReward);
         c.putInt("Episodes", episodes);
+        c.putInt("OneShot", oneShotLessons);
         tag.put("Brain", c);
     }
 
+    // Старе збереження (мозок 29→12→10, без «Net») — мозок створюється новий: інстинкти ті самі, досвід з нуля
     public void load(CompoundTag tag) {
         if (!tag.contains("Brain")) return;
         CompoundTag c = tag.getCompound("Brain");
-        if (c.getInt("Inputs") != INPUTS) return;   // змінився набір входів: лишаємо нові ваги
-        int[] a = c.getIntArray("W1");
-        int[] b = c.getIntArray("W2");
-        if (a.length == w1.length) w1 = fromBits(a);
-        if (b.length == w2.length) w2 = fromBits(b);
         avgReward = c.getDouble("AvgReward");
         episodes = c.getInt("Episodes");
+        oneShotLessons = c.getInt("OneShot");
+        if (c.contains("Net") && c.getInt("Inputs") == INPUTS) {
+            netSeed = c.getLong("NetSeed");
+            pendingNet = c.getCompound("Net");
+            lobes = null;
+        }
     }
 
     private static int[] toBits(float[] f) {

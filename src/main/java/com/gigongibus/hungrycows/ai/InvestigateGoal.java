@@ -31,10 +31,11 @@ public class InvestigateGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!cow.brain.is(CowBrain.Action.CURIOUS)) return false;
-        target = cow.brain.stranger();
+        boolean curious = cow.brain.is(CowBrain.Action.CURIOUS), explore = cow.brain.is(CowBrain.Action.EXPLORE);
+        if (!curious && !explore) return false;
+        target = curious ? cow.brain.stranger() : null;
         novel = false;
-        if (target == null) {
+        if (target == null && explore) {   // етап 8: «дослідити нове» — окрема дія мозку
             // етап 7: нове (такого ще не бачила) трохи приємне — підходить роздивитись; схоже на небезпечне — ні
             for (net.minecraft.world.entity.LivingEntity e : cow.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
                     cow.getBoundingBox().inflate(NOVEL_RANGE), e -> !(e instanceof HungryCow) && !(e instanceof Player) && e.isAlive()
@@ -49,7 +50,7 @@ public class InvestigateGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return cow.brain.is(CowBrain.Action.CURIOUS) && target != null && target.isAlive()
+        return (cow.brain.is(CowBrain.Action.CURIOUS) || cow.brain.is(CowBrain.Action.EXPLORE)) && target != null && target.isAlive()
                 && !target.isSpectator() && ticks < MAX_TICKS && (!novel || ticks < NOVEL_TICKS);
     }
 

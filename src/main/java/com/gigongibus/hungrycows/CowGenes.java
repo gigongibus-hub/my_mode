@@ -143,7 +143,20 @@ public class CowGenes {
         TASTE_SALTY(Group.METABOLISM, "смак: солоне"),
         TASTE_BITTER(Group.METABOLISM, "смак: гірке"),
         TASTE_SOUR(Group.METABOLISM, "смак: кисле"),
-        TASTE_SAVORY(Group.METABOLISM, "смак: ситне");
+        TASTE_SAVORY(Group.METABOLISM, "смак: ситне"),
+        VISION_ACUITY(Group.BODY, "гострота зору (частка мозку «зір»)"),
+        SMELL_ACUITY(Group.BODY, "гострота нюху (частка мозку «нюх»)"),
+        HEARING_ACUITY(Group.BODY, "гострота слуху (частка мозку «слух»)"),
+        BRAIN_SNIFF(Group.BRAIN, "схильність нюхати"),
+        BRAIN_LISTEN(Group.BRAIN, "схильність прислухатися"),
+        BRAIN_SCRATCH(Group.BRAIN, "схильність чесатися"),
+        BRAIN_GROOM(Group.BRAIN, "схильність вилизувати подругу"),
+        BRAIN_SALT(Group.BRAIN, "схильність лизати сіль"),
+        BRAIN_MOO(Group.BRAIN, "схильність мукати"),
+        BRAIN_CALL_CALF(Group.BRAIN, "схильність кликати теля"),
+        BRAIN_PETTING(Group.BRAIN, "схильність підходити погладитися"),
+        BRAIN_EXPLORE(Group.BRAIN, "схильність досліджувати нове"),
+        BRAIN_HOME(Group.BRAIN, "схильність повертатися додому");
 
         public final Group group;
         public final String title;

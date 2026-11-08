@@ -14,6 +14,7 @@ import java.util.EnumSet;
 public class ApproachPlayerGoal extends Goal {
     private static final double SEE_RANGE = 12.0;     // з якої відстані помічає друга
     private static final double STOP_DISTANCE = 3.0;  // на скільки блоків підходить
+    private static final double PETTING_DISTANCE = 1.6; // «підійти погладитися» — впритул (етап 8)
     private static final int STAY_TICKS = 200;        // скільки стоїть поруч (10 сек)
     private static final int PAUSE_TICKS = 400;       // пауза перед наступним підходом (20 сек)
     private static final int BOND_PAUSE_TICKS = 40;   // для корови з довірою 200 (2 сек)
@@ -38,7 +39,7 @@ public class ApproachPlayerGoal extends Goal {
 
     // корова спокійна: не голодна, не втомлена, не подавилась
     private boolean calm() {
-        if (CowBrain.enabled) return cow.brain.is(CowBrain.Action.FRIEND) && !cow.choking;   // вирішує мозок
+        if (CowBrain.enabled) return (cow.brain.is(CowBrain.Action.FRIEND) || cow.brain.is(CowBrain.Action.SEEK_PETTING)) && !cow.choking;   // вирішує мозок
         return !cow.wantsFood() && !cow.wantsRest() && !cow.choking;
     }
 
@@ -68,7 +69,8 @@ public class ApproachPlayerGoal extends Goal {
     public void tick() {
         if (player == null) return;
         cow.getLookControl().setLookAt(player, 30.0F, 30.0F);
-        if (cow.distanceToSqr(player) > STOP_DISTANCE * STOP_DISTANCE) {
+        double stop = cow.brain.is(CowBrain.Action.SEEK_PETTING) ? PETTING_DISTANCE : STOP_DISTANCE;   // підставляє шию
+        if (cow.distanceToSqr(player) > stop * stop) {
             if (cow.tickCount % 10 == 0) {
                 cow.getNavigation().moveTo(player, 1.0);
             }

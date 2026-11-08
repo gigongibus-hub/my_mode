@@ -17,6 +17,7 @@ import java.util.EnumSet;
 public class LickSaltGoal extends Goal {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     private static final int SEARCH_RADIUS = 16, SEARCH_HEIGHT = 3;   // шукає лизунець до 16 блоків
+    private static final double SALT_URGENT = 80;                     // так хоче солі, що йде й без рішення мозку
     private static final int SEARCH_EVERY = 100;                       // раз на 5 с
     private static final int LICK_TICKS = 80;                          // лиже 4 с
     private static final int MAX_WALK = 600;                           // іде щонайдовше 30 с
@@ -45,6 +46,8 @@ public class LickSaltGoal extends Goal {
     @Override
     public boolean canUse() {
         if (cow.isBaby() || cow.sleeping || !cow.taste.wantsSalt() || !cow.onGround()) return false;
+        // з мозком — коли мозок вибрав «лизати сіль» або дуже хоче (80+, як рефлекс)
+        if (com.gigongibus.hungrycows.CowBrain.enabled && !cow.brain.is(com.gigongibus.hungrycows.CowBrain.Action.LICK_SALT) && cow.taste.salt < SALT_URGENT) return false;
         if (cow.tickCount < nextSearch) return false;
         nextSearch = cow.tickCount + SEARCH_EVERY;
         lick = isLick(remembered) ? remembered : find();

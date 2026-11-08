@@ -378,6 +378,22 @@ public class CowSmell {
         return motherScent != null;
     }
 
+    // Чи чує зараз запах із таким ключем (кров, дим, ...)
+    public boolean smellsKey(String key) {
+        Scent s = smelled.get(key);
+        return s != null && cow.tickCount - s.tick <= FRESH_TICKS;
+    }
+
+    // Найстрашніший запах зараз (0…1)
+    public double scariest() {
+        double m = 0;
+        for (Scent s : smelled.values()) {
+            if (cow.tickCount - s.tick > FRESH_TICKS) continue;
+            m = Math.max(m, -value(s.key) * s.strength);
+        }
+        return m;
+    }
+
     public int pleasant() {
         return pleasantNow;
     }

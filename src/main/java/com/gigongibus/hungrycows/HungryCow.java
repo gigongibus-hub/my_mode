@@ -267,6 +267,17 @@ public class HungryCow extends Cow {
     public int smelledFoodTick = -100000;
     public final java.util.Map<BlockPos, Integer> smellIgnore = new java.util.HashMap<>();   // їжа на запах, до якої не дійти (до якого тіку не йти)
     public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
+    // Напис над головою (етап 11): що зараз робить чи відчуває — показується 5 с
+    public String statusText = "";
+    public int statusUntil = 0;
+
+    public void status(String text) {
+        statusText = text;
+        statusUntil = this.tickCount + STATUS_TICKS;
+    }
+
+    public static final int STATUS_TICKS = 100;
+
     public final CowVision vision = new CowVision(this);
     public final CowSmell smell = new CowSmell(this);
     public final CowHearing hearing = new CowHearing(this);
@@ -547,6 +558,11 @@ public class HungryCow extends Cow {
                 case FAMILY -> g instanceof MotherCalfGoal || g instanceof FollowMotherGoal;
                 case RUMINATE -> g instanceof RuminateGoal || g instanceof SeekShadeGoal;
                 case CURIOUS -> g instanceof InvestigateGoal || g instanceof BrainTemptGoal;
+                case EXPLORE -> g instanceof InvestigateGoal;
+                case GROOM -> g instanceof com.gigongibus.hungrycows.ai.GroomGoal;
+                case LICK_SALT -> g instanceof com.gigongibus.hungrycows.ai.LickSaltGoal;
+                case SEEK_PETTING -> g instanceof ApproachPlayerGoal;
+                case SNIFF, LISTEN, MOO, CALL_CALF, SCRATCH, GO_HOME -> g instanceof com.gigongibus.hungrycows.ai.BrainActionGoal;
             };
         });
     }
@@ -788,6 +804,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(7, new com.gigongibus.hungrycows.ai.ComeToSoundGoal(this));    // приємний звук (дзвін = їжа) / клич теляти — іде туди
         this.goalSelector.addGoal(13, new com.gigongibus.hungrycows.ai.LickSaltGoal(this));   // хоче солі — лиже лизунець (смак)
         this.goalSelector.addGoal(19, new com.gigongibus.hungrycows.ai.GroomGoal(this));        // вилизує подругу / теля / матір (дотик)
+        this.goalSelector.addGoal(17, new com.gigongibus.hungrycows.ai.BrainActionGoal(this));  // нюхати, слухати, мукати, чесатися, додому (етап 8)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок

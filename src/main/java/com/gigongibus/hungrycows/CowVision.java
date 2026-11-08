@@ -218,6 +218,13 @@ public class CowVision {
         return SOLID;
     }
 
+    // Скільки бачить (за 10 с) тих, хто підходить
+    public int count(java.util.function.Predicate<LivingEntity> which) {
+        int n = 0;
+        for (Seen s : seen.values()) if (cow.tickCount - s.tick <= MEMORY_TICKS && s.entity.isAlive() && which.test(s.entity)) n++;
+        return n;
+    }
+
     // ---------- для книги й налагодження ----------
 
     public int seenCount() {

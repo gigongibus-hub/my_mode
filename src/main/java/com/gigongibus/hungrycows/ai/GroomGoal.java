@@ -44,7 +44,9 @@ public class GroomGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (cow.tickCount < nextCheck) return false;
+        boolean brainSays = com.gigongibus.hungrycows.CowBrain.enabled && cow.brain.is(com.gigongibus.hungrycows.CowBrain.Action.GROOM);
+        if (com.gigongibus.hungrycows.CowBrain.enabled && !brainSays) return false;   // з мозком — вирішує мозок (етап 8)
+        if (!brainSays && cow.tickCount < nextCheck) return false;
         nextCheck = cow.tickCount + CHECK_EVERY + cow.getRandom().nextInt(100);
         if (!calm(cow) || cow.hunger >= CALM_HUNGER || cow.isNightTime()) return false;
         HungryCow best = null;
@@ -57,7 +59,7 @@ public class GroomGoal extends Goal {
         }
         if (best == null) return false;
         double chance = family ? MOTHER_CHANCE : CHANCE * (0.5 + cow.character.fraction(Trait.SOCIABILITY));
-        if (cow.getRandom().nextDouble() >= chance) return false;
+        if (!brainSays && cow.getRandom().nextDouble() >= chance) return false;
         partner = best;
         return true;
     }

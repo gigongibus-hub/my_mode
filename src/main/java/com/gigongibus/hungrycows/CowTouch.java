@@ -54,6 +54,10 @@ public class CowTouch {
     private final Map<UUID, String> bondNames = new HashMap<>();
     private int nextPet = 0, nextPetTrust = 0;
     public boolean wet, cold, cosy;
+    public double itch = 0;                               // свербіж 0…100 (етап 8: дія «чесатися»)
+    public int lastTouchedTick = -100000;                 // коли востаннє гладили чи вилизували
+    public static final double ITCH_PER_SECOND = 0.05;    // свербить потроху (+1 за 20 с) ...
+    public static final double ITCH_WET_HOT = 0.05;       // ... мокра чи спекотно — удвічі швидше
 
     public CowTouch(HungryCow cow) {
         this.cow = cow;
@@ -100,6 +104,7 @@ public class CowTouch {
             cow.addTrust(player, front ? TRUST_FRONT : TRUST_SIDE, front ? "гладили шию" : "гладили бік", false);
         }
         hearts(front ? 2 : 1);
+        lastTouchedTick = cow.tickCount;
         if (front && cow.getRandom().nextDouble() < PET_MEMORY) cow.episodes.remember(CowEpisodes.Kind.PETTED, player.getName().getString());
         cow.getNavigation().stop();
         cow.getLookControl().setLookAt(player, 10F, 10F);
@@ -146,6 +151,7 @@ public class CowTouch {
     // Вилизала (або її вилизали): обом приємно, дружба росте
     public void groomed(HungryCow other) {
         addBond(other, BOND_GROOM);
+        lastTouchedTick = cow.tickCount;
         cow.chem.onPetted(OXY_GROOM, CALM_SIDE);
         hearts(1);
     }
@@ -168,8 +174,34 @@ public class CowTouch {
         boolean roof = CowHome.hasRoof(cow.level(), p);
         cold = !roof && cow.level().getBiome(p).value().getBaseTemperature() < COLD_BELOW;
         cosy = roof && !wet && cow.isNightTime() && cow.heat.heat < 30;
+        itch = Math.min(100, itch + ITCH_PER_SECOND + (wet || cow.heat.heat >= 30 ? ITCH_WET_HOT : 0));
         if (cold && wet) cow.chem.addStress(COLD_WET_STRESS);
         if (cosy) cow.chem.onPetted(0, COSY_CALM);
+    }
+
+    // Об що почухатись: паркан, стіна, огорожа, стовбур дерева до 5 бл. (найближче), раз на секунду
+    public static final int SCRATCH_RADIUS = 5;
+    private net.minecraft.core.BlockPos postCache = null;
+    private int postTick = -100;
+
+    public net.minecraft.core.BlockPos findScratchPost() {
+        if (cow.tickCount - postTick < 20) return postCache;
+        postTick = cow.tickCount;
+        postCache = null;
+        net.minecraft.core.BlockPos o = cow.blockPosition();
+        double best = Double.MAX_VALUE;
+        for (net.minecraft.core.BlockPos p : net.minecraft.core.BlockPos.betweenClosed(o.offset(-SCRATCH_RADIUS, 0, -SCRATCH_RADIUS), o.offset(SCRATCH_RADIUS, 1, SCRATCH_RADIUS))) {
+            var st = cow.level().getBlockState(p);
+            if (!(st.is(net.minecraft.tags.BlockTags.FENCES) || st.is(net.minecraft.tags.BlockTags.WALLS) || st.is(net.minecraft.tags.BlockTags.LOGS))) continue;
+            double d = p.distSqr(o);
+            if (d < best) { best = d; postCache = p.immutable(); }
+        }
+        return postCache;
+    }
+
+    public void scratched() {
+        itch = 0;
+        cow.chem.onPetted(2, 3);
     }
 
     // Поранилась колючками (троянда, ягідний кущ, кактус): це місце погане — обходитиме

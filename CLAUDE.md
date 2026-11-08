@@ -29,7 +29,7 @@
 - `CowMilk`: шкала молока, лактація, раціон → якість. `MilkQuality`: що робить молоко кожної якості.
 - `QualityMilkBucketItem`: предмет «Відро молока (якість X)».
 - `CowFamily`: ім'я, мати (корова або гравець), забування матері, родинне дерево, діти. `CowNames`: імена.
-- `CowGenes`: 80 генів (71 + `HEAT_TOLERANCE`, `COAT_COLOR`, `COAT_PATTERN`, `RAIN_LIKING`, 5 × `TASTE_*` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
+- `CowGenes`: 93 гени (71 + `HEAT_TOLERANCE`, `COAT_COLOR`, `COAT_PATTERN`, `RAIN_LIKING`, 5 × `TASTE_*`, 3 × `*_ACUITY`, 10 нових `BRAIN_*` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
   Теля бере по одній випадковій копії від кожного з батьків + мутація. Гормони й імунітет поки лише успадковуються.
 - `CowCharacter`: 14 рис (ген темпераменту з `CowGenes` 35% + досвід 65%), таблиця подій досвіду.
 - `client/HungryCowRenderer`: модель корови з масштабом за геном «розмір» (синхронізується `DATA_SIZE`).
@@ -208,7 +208,21 @@
   (мозок «цікавитися») — і нові істоти (такого типу ще не роздивлялась, бачить, не страшна, до 10 бл.): 8 с, дофамін +3;
   за 10 с після цього погано (`memory.onHarm` з `chem.onHurt`) — тип небезпечний, а весь рід (моби / тварини) 0,6 → не цікавий.
   Книга «Пам'ять»: біль (відчуває з усього, ендорфіни, кульгає), уроки з одного разу, обережна з…
-- `ShelterFromRainGoal`: до дому мусить бути шлях (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
+- `LobeNet`: МОЗОК ІЗ ЧАСТОК (план Fij, етап 8) замість мережі 29→12→10. Частки: зір 60, нюх 40, слух 30, смак і дотик 30,
+  тіло 40, пам'ять 60, увага 40, емоції 30, рішення 149, дії 21 = 500. Нові гени `VISION/SMELL/HEARING_ACUITY` (кінець переліку):
+  частка ±20%, різницю бере «рішення». Зв'язки розріджені (≈4,5 тис.): чуття/тіло/пам'ять — по 6 входів зі своєї групи (пам'ять ще
+  2 з тіла), увага ← 8 нейронів чуттів, емоції ← 8 (тіло, увага, пам'ять), рішення ← 12 (увага, емоції, пам'ять, тіло), дія ← 24
+  рішення. Хто з ким з'єднаний — від зерна корови (`NetSeed`, зберігається), зберігаються лише ваги (~20 КБ). Вихід дій лінійний,
+  решта tanh; навчання (як було, з підкріпленням) міняє ваги дій і нейронів рішення. Мережа будується ліниво (`net()`), коли гени
+  вже завантажені. Старе збереження (без «Net» або інший набір входів) — мозок новий: інстинкти ті самі, досвід з нуля.
+  67 входів (`INPUT_NAMES`, групи `GROUPS`): зір 10, нюх 8, слух 6, смак/дотик 7, тіло 20, пам'ять 16. 21 дія: старі 11 + нюхати,
+  прислухатися, чесатися, вилизувати подругу, лизати сіль, мукати, кликати теля, підійти погладитися, дослідити нове, повернутися
+  додому (10 нових генів `BRAIN_*`). Виконують: `BrainActionGoal` (17: нюхати 3 с, слухати 3 с, мукати, кликати теля — низьке
+  гучне мукання, теля чує й іде (`CowHearing`: MOO своєї матері → `comeTo`), чесатися об паркан/стіну/стовбур до 5 бл. — свербіж
+  `CowTouch.itch` +1/20 с (мокра/спека ×2), треться −1/тік, почавши — дочухується; додому — до дому вдень); `GroomGoal` (з мозком
+  — лише коли мозок вибрав), `LickSaltGoal` (мозок або сіль 80+), `InvestigateGoal` (CURIOUS — незнайомець, EXPLORE — нове),
+  `ApproachPlayerGoal` (SEEK_PETTING — впритул 1,6 бл.). Книга «Мозок»: частки, розміри, збудження. `cow.status(текст)` — напис.
+ (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
@@ -217,7 +231,7 @@
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
 9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster, FollowMother · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
-14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve, Groom ·
+14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate, BrainAction · 18 MotherCalf · 19 Grieve, Groom ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
 Пошук шляху — ванільний A* зі своєю «ціною» клітинок (`nav/CowNodeEvaluator`, далі від стін); ходіння за шляхом — ще ванільне.
@@ -388,6 +402,8 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - `test/HungryCowPainTests` (партія "pain"): endorphinsAndLimp, strongPainOneShot (урон 6 → урок 1), dangerousNovelty.
   bellBeforeFoodCallsCow — окрема партія "hearing_bell" (удари й ламання в сусідніх тестах лякали корову); раз упав і там —
   у повідомленні тепер видно, чим корова зайнята.
+- `test/HungryCowBrainTests` (партія "brain"): lobesSizesAndSave (500 нейронів, 4478 зв'язків, нюх ген 100 → 48 / ген 0 → 32,
+  ваги відновлюються), itchyCowScratches (свербіж 90 + паркан → почухалась за ~7 с; 1 з 3 мозок за 60 с не вибрав «чесатися»).
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

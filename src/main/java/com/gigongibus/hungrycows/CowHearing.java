@@ -239,7 +239,10 @@ public class CowHearing {
     }
 
     // Почула звук: far — 0 поруч … 1 на межі чутності
+    private int lastHeardTick = -100000;
+
     private void hear(String id, Kind kind, Vec3 pos, Entity source, double far) {
+        lastHeardTick = cow.tickCount;
         note(kind.title);
         if (kind != Kind.MOO && kind != Kind.CALF) pending.put(id, cow.level().getGameTime());   // мукання й клич — вроджене значення, не вчиться
         // повертає голову на звук (на звичні тихі звуки — ні, інакше смикалась би від кожного)
@@ -268,6 +271,12 @@ public class CowHearing {
             comeTo = pos;
             comeUntil = cow.tickCount + COME_TICKS;
             comeWhy = kind.title;
+        }
+        // теля чує мукання матері (вона кличе) — іде до неї (етап 8: «кликати теля»)
+        if (kind == Kind.MOO && cow.isBaby() && source instanceof HungryCow m && m.isMotherOf(cow)) {
+            comeTo = m.position();
+            comeUntil = cow.tickCount + COME_TICKS;
+            comeWhy = "кличе мати " + m.family.name;
         }
         // клич свого теляти (Fij: «мама частіше ходить за телям, ніж теля за нею») — мати відгукується муканням, а теля йде на
         // голос; сама йде до нього, лише коли воно кличе 3 рази за 30 с (не може прийти: застрягло, на повідку)
@@ -326,6 +335,20 @@ public class CowHearing {
         if (!recentHeard.isEmpty() && recentHeard.peekLast().equals(what)) return;
         recentHeard.addLast(what);
         while (recentHeard.size() > 6) recentHeard.pollFirst();
+    }
+
+    public int pleasantNow() {
+        return pleasantNow;
+    }
+
+    public int lastHeardTick() {
+        return lastHeardTick;
+    }
+
+    public double maxHabit() {
+        double m = 0;
+        for (double v : habit.values()) m = Math.max(m, v);
+        return m;
     }
 
     public double habituation(String id) {
