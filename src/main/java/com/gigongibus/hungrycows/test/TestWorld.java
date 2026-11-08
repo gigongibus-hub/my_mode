@@ -16,7 +16,7 @@ import net.minecraft.world.level.GameRules;
 final class TestWorld {
     private static final int CLEAR_TICKS = 1_000_000;   // ясно надовго
     private static final int LAVA_MARGIN = 20;           // прибрати лаву на 20 блоків довкола майданчика
-    private static final int LAVA_BELOW = 3, LAVA_ABOVE = 10;
+    private static final int LAVA_BELOW = 3, LAVA_ABOVE = 30;   // корови тонули у воді на 23 блоки вище підлоги
     private static final int PLOT_SIZE = 81;
     private static final int TICK_MARGIN = 32;           // ділянки світу (чанки) на 32 бл. довкола майданчика роблять активними             // найбільший майданчик (bigbarn); менші — те саме, із запасом
 
@@ -24,6 +24,11 @@ final class TestWorld {
     }
 
     static void calm(GameTestHelper h) {
+        calm(h, true);
+    }
+
+    // clearWater = false — для тестів, що самі будують ставок до виклику (плавання, спека)
+    static void calm(GameTestHelper h, boolean clearWater) {
         ServerLevel level = h.getLevel();
         level.getGameRules().getRule(GameRules.RULE_WEATHER_CYCLE).set(false, level.getServer());
         level.getGameRules().getRule(GameRules.RULE_DOFIRETICK).set(false, level.getServer());   // вогонь від лави не поширюється
@@ -43,7 +48,8 @@ final class TestWorld {
                 for (int y = floor - LAVA_BELOW; y <= floor + LAVA_ABOVE; y++) {
                     p.set(x, y, z);
                     BlockState st = level.getBlockState(p);
-                    if (st.is(Blocks.LAVA) || st.is(Blocks.FIRE) || st.is(Blocks.MAGMA_BLOCK)) {
+                    // лава, вогонь, а над підлогою й вода (тести, яким вода потрібна, будують її вже після calm)
+                    if (st.is(Blocks.LAVA) || st.is(Blocks.FIRE) || st.is(Blocks.MAGMA_BLOCK) || (clearWater && y > floor && st.is(Blocks.WATER))) {
                         level.setBlock(p, y <= floor ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(), 2);
                     }
                 }

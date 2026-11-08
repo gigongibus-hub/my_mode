@@ -49,28 +49,35 @@ public class CowInbreeding {
 
     // ---------- формула ----------
 
-    private record Ancestor(UUID id, int depth) {
-    }
-
-    // Сама корова (глибина 0) і її предки з вузла родоводу
-    private static void collect(CompoundTag node, int depth, List<Ancestor> out) {
-        if (node == null || node.isEmpty()) return;
-        if (node.hasUUID("Id")) out.add(new Ancestor(node.getUUID("Id"), depth));
+    // Шляхи від батька чи матері до кожного предка (список Id від неї самої до предка включно)
+    private static void collect(CompoundTag node, List<UUID> path, List<List<UUID>> out) {
+        if (node == null || node.isEmpty() || !node.hasUUID("Id")) return;
+        List<UUID> here = new ArrayList<>(path);
+        here.add(node.getUUID("Id"));
+        out.add(here);
         for (String key : new String[]{"M", "F"}) {
-            if (node.contains(key)) collect(node.getCompound(key), depth + 1, out);
+            if (node.contains(key)) collect(node.getCompound(key), here, out);
         }
     }
 
-    // Коефіцієнт спорідненості теляти від матері й батька (їхні вузли родоводу: CowFamily.asNode)
+    // Коефіцієнт спорідненості теляти від матері й батька (їхні вузли родоводу: CowFamily.asNode).
+    // Формула Райта: сума ½^(n1+n2+1) за кожну пару шляхів (від матері й від батька) до того самого предка,
+    // які не мають спільних корів, крім самого предка (інакше рахувався б і предок «через» ближчого спільного родича)
     public static double coefficient(CompoundTag motherNode, CompoundTag fatherNode) {
         if (motherNode == null || fatherNode == null) return 0;
-        List<Ancestor> m = new ArrayList<>(), f = new ArrayList<>();
-        collect(motherNode, 0, m);
-        collect(fatherNode, 0, f);
+        List<List<UUID>> m = new ArrayList<>(), f = new ArrayList<>();
+        collect(motherNode, new ArrayList<>(), m);
+        collect(fatherNode, new ArrayList<>(), f);
         double sum = 0;
-        for (Ancestor a : m) {
-            for (Ancestor b : f) {
-                if (a.id.equals(b.id)) sum += Math.pow(0.5, a.depth + b.depth + 1);
+        for (List<UUID> a : m) {
+            UUID end = a.get(a.size() - 1);
+            for (List<UUID> b : f) {
+                if (!b.get(b.size() - 1).equals(end)) continue;
+                boolean disjoint = true;
+                for (int i = 0; i < a.size() - 1 && disjoint; i++) {
+                    if (b.subList(0, b.size() - 1).contains(a.get(i))) disjoint = false;
+                }
+                if (disjoint) sum += Math.pow(0.5, (a.size() - 1) + (b.size() - 1) + 1);
             }
         }
         return Math.min(F_MAX, sum);
