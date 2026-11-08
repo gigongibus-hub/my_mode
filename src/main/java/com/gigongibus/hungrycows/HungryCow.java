@@ -798,7 +798,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(17, new InvestigateGoal(this));          // цікавиться незнайомцем (лише з мозком)
         this.goalSelector.addGoal(18, new MotherCalfGoal(this));           // мати йде до теляти (лише з мозком)
         this.goalSelector.addGoal(19, new GrieveGoal(this));               // теля ходить біля місця смерті матері
-        this.goalSelector.addGoal(20, new FollowMotherGoal(this));         // теля тримається біля матері
+        this.goalSelector.addGoal(12, new FollowMotherGoal(this));         // теля тримається біля матері (важливіше за стадо; Fij)
         this.goalSelector.addGoal(21, new BrainStrollGoal(this));          // гуляти
         this.goalSelector.addGoal(21, new PersonalSpaceGoal(this));        // затісно — слабша трохи відходить
         this.goalSelector.addGoal(22, new WatchGoal(this));                // дивиться на важливих: небезпеку, теля, друга, чужого (замість LookAtPlayerGoal)

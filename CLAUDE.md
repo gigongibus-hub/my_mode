@@ -152,7 +152,11 @@
   джерела). Звикання: звук, після якого 10 с не було лиха, +0,08 (до 0,9; ≈5 діб забуває); удар — скидає й робить звук
   неприємним. Навчання: звук за 10 с до доброго (`chem.onTreat`/`onEat` → `hearing.onGood`) +0,12; з 0,3 — `ComeToSoundGoal` (7)
   іде на нього 20 с (дзвін перед годуванням). Мукання й клич не вчаться (інакше корови «полюбили» мукання й ходили на нього).
-  Теля далі 10 бл. від матері кличе раз на 10 с (високе мукання); мати чує — іде (той самий `ComeToSoundGoal`).
+  Теля далі 10 бл. від матері кличе (високе мукання). Fij: «мама частіше ходить за телям, ніж теля за нею» — тепер мати
+  відгукується низьким муканням (раз на 5 с), а теля йде само; мати йде до теляти (`ComeToSoundGoal`), лише коли воно кличе
+  3 рази за 30 с (застрягло, на повідку). `FollowMotherGoal` — пріоритет 12 (було 20: стадо й прогулянки перебивали), з 6 бл.
+  будь-що (було 10). `MotherCalfGoal` (мозок) — мати сама йде до теляти лише далі 16 бл. (було 3). Тест calfGoesToMother:
+  теля за 12 бл. — разом за ~3 с, теля пройшло 4,6–5,6 бл., мати 2,7–3,9.
   Приємне: музика, спокійне мукання (страх джерела < 20), вода 3+ і листя 6+ у 6 бл. — кортизол ↓, місце добре.
   Не зроблено: «голос знайомого гравця» (у грі гравці не мають голосу). Книга: «Слух».
   Виправлено (Fij перевірив у грі: TNT і ламання блоків не працювали): звуки вибуху й ламання блока гра грає ЛИШЕ на клієнті
@@ -182,8 +186,8 @@
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
-9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
-14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
+9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster, FollowMother · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
+14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
 Пошук шляху — ванільний A* зі своєю «ціною» клітинок (`nav/CowNodeEvaluator`, далі від стін); ходіння за шляхом — ще ванільне.

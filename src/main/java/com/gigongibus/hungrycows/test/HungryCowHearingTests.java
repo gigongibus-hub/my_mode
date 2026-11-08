@@ -185,4 +185,34 @@ public class HungryCowHearingTests {
             clear.run();
         });
     }
+
+    // 7. Fij: «мама частіше ходить за телям, ніж теля за нею» — теля (звичайне, з усіма цілями) за 12 бл. саме йде до матері;
+    //    мати проходить менше за теля
+    @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 600)
+    public static void calfGoesToMother(GameTestHelper h) {
+        HungryCow mother = still(h, new BlockPos(2, 2, 2));
+        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(11, 2, 11));
+        calf.setAge(-24000);
+        calf.family.setupNewborn(mother, null);
+        Vec3 m0 = mother.position(), c0 = calf.position();
+        double[] mWalk = { 0 }, cWalk = { 0 };
+        Vec3[] mLast = { m0 }, cLast = { c0 };
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; mother.discard(); calf.discard(); };
+        h.onEachTick(() -> {
+            mWalk[0] += mother.position().distanceTo(mLast[0]);
+            cWalk[0] += calf.position().distanceTo(cLast[0]);
+            mLast[0] = mother.position();
+            cLast[0] = calf.position();
+        });
+        h.runAfterDelay(599, clear);
+        h.succeedWhen(() -> {
+            h.assertTrue(!cleared[0], "час вийшов: теля не прийшло до матері (відстань " + Math.round(mother.distanceTo(calf)) + ")");
+            h.assertTrue(mother.distanceTo(calf) < 5, "ще не разом");
+            LOG.info("[тест] calfGoesToMother: разом на {} с; теля пройшло {} бл., мати {} бл.", h.getTick() / 20.0,
+                    String.format("%.1f", cWalk[0]), String.format("%.1f", mWalk[0]));
+            h.assertTrue(cWalk[0] > mWalk[0], "мати пройшла більше за теля: мати " + Math.round(mWalk[0]) + ", теля " + Math.round(cWalk[0]));
+            clear.run();
+        });
+    }
 }

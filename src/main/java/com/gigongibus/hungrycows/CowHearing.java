@@ -61,6 +61,9 @@ public class CowHearing {
     public static final int STARTLE_MIN = 8;                 // від такого переляку відбігає від звуку (StartleGoal)
     public static final int STARTLE_TICKS = 60;              // ... 3 с
     public static final int CALF_CALL_FROM = 10;             // теля кличе матір, коли воно далі 10 бл. від неї ...
+    public static final int CALLS_TO_GO = 3;                 // мати йде до теляти, лише коли воно кличе 3 рази ...
+    public static final int CALLS_WINDOW = 600;              // ... за 30 с (інакше відгукується, а теля йде само)
+    public static final int ANSWER_EVERY = 100;              // відгукується не частіше раз на 5 с
     public static final int CALF_CALL_EVERY = 5;             // ... раз на 5 с (Fij: було 10 с, не помітно)
     public static final float CALF_CALL_VOLUME = 2.0F;       // гучно (гравцю чути здалеку)
     public static final double OTHER_PER_VOLUME = 16, OTHER_MIN = 4;   // інші звуки: 16 бл. × гучність, щонайменше 4
@@ -143,6 +146,8 @@ public class CowHearing {
     private long lastHeard = -1;                                 // номер останнього обробленого звуку
     private final Map<Integer, Vec3> lastPos = new HashMap<>();
     private int calfCallIn = 0;
+    private final Deque<Integer> calfCalls = new ArrayDeque<>();   // коли мати чула клич свого теляти
+    private int answerAt = 0;
     private int ambientIn = 0;
     private int pleasantAmbient = 0;
     private int pleasantNow = 0;
@@ -264,11 +269,20 @@ public class CowHearing {
             comeUntil = cow.tickCount + COME_TICKS;
             comeWhy = kind.title;
         }
-        // клич свого теляти — мати йде до нього
+        // клич свого теляти (Fij: «мама частіше ходить за телям, ніж теля за нею») — мати відгукується муканням, а теля йде на
+        // голос; сама йде до нього, лише коли воно кличе 3 рази за 30 с (не може прийти: застрягло, на повідку)
         if (kind == Kind.CALF && source instanceof HungryCow calf && cow.isMotherOf(calf)) {
-            comeTo = calf.position();
-            comeUntil = cow.tickCount + COME_TICKS;
-            comeWhy = "клич теляти " + calf.family.name;
+            calfCalls.addLast(cow.tickCount);
+            while (!calfCalls.isEmpty() && cow.tickCount - calfCalls.peekFirst() > CALLS_WINDOW) calfCalls.pollFirst();
+            if (calfCalls.size() >= CALLS_TO_GO) {
+                comeTo = calf.position();
+                comeUntil = cow.tickCount + COME_TICKS;
+                comeWhy = "клич теляти " + calf.family.name + " (не може прийти)";
+            } else if (cow.tickCount >= answerAt) {
+                answerAt = cow.tickCount + ANSWER_EVERY;
+                cow.playSound(SoundEvents.COW_AMBIENT, 1.5F, 0.8F);   // відгук матері (низький голос)
+                cow.tell(cow.family.name + " відгукується на клич теляти " + calf.family.name);
+            }
         }
     }
 

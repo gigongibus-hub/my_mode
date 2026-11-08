@@ -13,7 +13,7 @@ import java.util.EnumSet;
 public class FollowMotherGoal extends Goal {
     private static final double START_DISTANCE = 5.0;   // далі цього теля йде до матері
     private static final double STOP_DISTANCE = 3.0;    // ближче цього зупиняється
-    private static final double ALWAYS_DISTANCE = 10.0; // далі цього теля йде до матері за будь-якого рішення мозку
+    private static final double ALWAYS_DISTANCE = 6.0;  // (Fij: теля має ходити за матір'ю, а не навпаки; було 10) // далі цього теля йде до матері за будь-якого рішення мозку
     private final HungryCow cow;
     private LivingEntity mother;
 

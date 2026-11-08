@@ -10,6 +10,7 @@ import java.util.EnumSet;
 // Мати йде до свого теляти, коли мозок вибрав «до рідних» (для теляти це робить FollowMotherGoal)
 public class MotherCalfGoal extends Goal {
     private static final double STOP_DISTANCE = 3.0;
+    private static final double START_DISTANCE = 16.0;   // мати йде до теляти, лише коли воно далі 16 бл. (було з 3)
     private final HungryCow cow;
     private LivingEntity calf;
 
@@ -27,7 +28,8 @@ public class MotherCalfGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby() || !cow.brain.is(CowBrain.Action.FAMILY)) return false;
         calf = cow.brain.family();
-        return calf != null && cow.distanceToSqr(calf) > STOP_DISTANCE * STOP_DISTANCE;
+        // сама йде до теляти лише тоді, коли воно далеко (теля має ходити за матір'ю, а не навпаки — Fij)
+        return calf != null && cow.distanceToSqr(calf) > START_DISTANCE * START_DISTANCE;
     }
 
     @Override
