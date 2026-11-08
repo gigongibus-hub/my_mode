@@ -178,6 +178,15 @@
   Сіль: бажання +1/30 с (дорослі), ламінарія −30; з 40 — `LickSaltGoal` (13): лизунець у 16 бл., який бачить/чує носом або
   пам'ятає → 4 с лиже: −60, +1 серце, дофамін. Блок `hungrycows:salt_lick` (`ModBlocks`, `HungryCowsMod.BLOCKS`; текстура
   намальована скриптом у тексті коміту; рецепт 8 кісткового борошна навколо каменю; кайло; не зношується). Книга «Смак».
+- `CowTouch` + `ai/GroomGoal`: ДОТИК (план Fij, етап 5). Гладити: присісти + ПКМ порожньою рукою (`mobInteract`, після допомоги
+  при пологах — та має перевагу; раз на 1 с). Кут від морди (`yBodyRot`): спереду ≤ 60° — окситоцин +8, кортизол −4, страх −6,
+  довіра +2 (раз на 10 с, без TEST_MULTIPLIER); бік — +4/−2/−3/+1; ззаду > 150° — страх +25, 30% хвицає (крім друга 50+).
+  Чужого (довіра ≤ 0) не підпускає: страх +15, відходить. Серця-частинки. Вилизування (`GroomGoal`, 19): раз на 15 с, спокійна
+  (страх < 10, голод < 40, не вночі); партнер до 8 бл. — рідні (мати/теля) ×3 і з шансом 40%, інші 15% × (0,5 + товариськість),
+  дружба ×(1 + 0,02·дружба); лиже 5 с біля шиї → обом дружба +5 (−100…+100, 50 корів, ≈ −1 за 40 хв; зберігається — етап 6
+  візьме за основу), окситоцин +6. Шкіра щосекунди: мокра (вода, дощ), холодно (надворі в біомі з температурою < 0,15),
+  мокро + холодно → кортизол +0,3/с; уночі під дахом сухо й не спекотно — кортизол −0,2/с. Колючки: урон кактус/ягідний кущ
+  (і троянда — `eatFood` б'є як кактус) → `CowMemory.addPlace(PLACE_HURT)` — `AvoidBadPlaceGoal` і вибір їжі обходять. Книга «Дотик».
 - `ShelterFromRainGoal`: до дому мусить бути шлях (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
@@ -187,7 +196,7 @@
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
 9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster, FollowMother · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
-14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve ·
+14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve, Groom ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
 Пошук шляху — ванільний A* зі своєю «ціною» клітинок (`nav/CowNodeEvaluator`, далі від стін); ходіння за шляхом — ще ванільне.
@@ -350,6 +359,9 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - Ще тести, що писались до зору: fearFromSuddenPlayer — гравець з'являвся позаду (сліпа зона, нерухомий) → страх 0; тепер корова
   повернута до нього. rainHaterHidesLoverStays падав часто: корова 60 с ішла до укриття, застрягши (шлях «є»), — тепер 3 с без
   наближення на 1 бл. → шукає ближче укриття (`ShelterFromRainGoal`, справжнє виправлення гри).
+- `test/HungryCowTouchTests` (партія "touch"): pettingFrontBackStranger (спереду окситоцин 30→38, довіра 55→57; ззаду страх 25;
+  чужий — страх 15, довіра 0), motherAndCalfGroom (5–10 с, дружба 5/5), thornsMakeBadPlace (місце 0 → −0,4).
+  explosionStartles — окрема партія "hearing_boom": вибух (64 бл.) лякав корову в тесті дзвону поруч.
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

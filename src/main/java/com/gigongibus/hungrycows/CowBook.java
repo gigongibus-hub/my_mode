@@ -114,6 +114,7 @@ public final class CowBook {
         out.addAll(cow.smell.lines());
         out.addAll(cow.hearing.lines());
         out.addAll(cow.taste.lines());
+        out.addAll(cow.touch.lines());
         // 6б. Мозок
         out.addAll(cow.brain.lines());
 

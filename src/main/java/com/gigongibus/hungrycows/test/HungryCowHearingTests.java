@@ -37,7 +37,8 @@ public class HungryCowHearingTests {
     }
 
     // 1. Вибух (справжній, як TNT) за межами огорожі — корова лякається й відбігає
-    @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 200)
+    // окрема партія: вибух чути на 64 бл. — він лякав корів у сусідніх тестах (дзвін)
+    @GameTest(template = ARENA, batch = "hearing_boom", timeoutTicks = 200)
     public static void explosionStartles(GameTestHelper h) {
         HungryCow cow = still(h, new BlockPos(7, 2, 7));
         cow.fear = 0;

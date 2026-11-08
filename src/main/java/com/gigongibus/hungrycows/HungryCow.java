@@ -270,7 +270,8 @@ public class HungryCow extends Cow {
     public final CowVision vision = new CowVision(this);
     public final CowSmell smell = new CowSmell(this);
     public final CowHearing hearing = new CowHearing(this);
-    public final CowTaste taste = new CowTaste(this);                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
+    public final CowTaste taste = new CowTaste(this);
+    public final CowTouch touch = new CowTouch(this);                   // дотик (план Fij, етап 5)                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -783,6 +784,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(3, new com.gigongibus.hungrycows.ai.StartleGoal(this));        // різкий звук — відбігає (слух)
         this.goalSelector.addGoal(7, new com.gigongibus.hungrycows.ai.ComeToSoundGoal(this));    // приємний звук (дзвін = їжа) / клич теляти — іде туди
         this.goalSelector.addGoal(13, new com.gigongibus.hungrycows.ai.LickSaltGoal(this));   // хоче солі — лиже лизунець (смак)
+        this.goalSelector.addGoal(19, new com.gigongibus.hungrycows.ai.GroomGoal(this));        // вилизує подругу / теля / матір (дотик)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
@@ -906,6 +908,7 @@ public class HungryCow extends Cow {
             updateHotBiome();
             heat.secondTick();
             taste.secondTick();
+            touch.secondTick();
             updateBullSpeed();
             aging.secondTick();
             if (!this.isAlive()) return;
@@ -1356,7 +1359,12 @@ public class HungryCow extends Cow {
             }
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
-        // (присісти + ПКМ — родовід у чат — прибрано на прохання Fij; родовід у книзі «Корововедення»)
+        // дотик (етап 5): присісти + ПКМ порожньою рукою — погладити (не під час пологів — там допомога, вище)
+        if (player.isShiftKeyDown() && stack.isEmpty()) {
+            if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
+            if (server) touch.pet(player);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         // доїння: замість ванільного молока для будь-якої корови
         if (stack.is(Items.BUCKET)) {
             if (server) tryMilk(player, hand, stack);
@@ -1754,6 +1762,8 @@ public class HungryCow extends Cow {
     public boolean hurt(DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
         if (result && !this.level().isClientSide) {
+            // колючки (троянда, ягідний кущ, кактус) — місце погане, обходитиме
+            if (source.is(net.minecraft.world.damagesource.DamageTypes.CACTUS) || source.is(net.minecraft.world.damagesource.DamageTypes.SWEET_BERRY_BUSH)) touch.onThorns();
             chem.onHurt(amount);   // біль і адреналін від будь-якого урону
             // нюх: кров пахне тривогою 1 хв — коли хтось поранив або сильний удар (не голод і не спрага)
             if (source.getEntity() != null || amount >= CowSmell.BLOOD_DAMAGE) CowSmell.addBlood(this.level(), this.position(), this.getUUID());
@@ -1866,6 +1876,7 @@ public class HungryCow extends Cow {
         smell.save(tag);
         hearing.save(tag);
         taste.save(tag);
+        touch.save(tag);
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
@@ -1900,6 +1911,7 @@ public class HungryCow extends Cow {
         smell.load(tag);
         hearing.load(tag);
         taste.load(tag);
+        touch.load(tag);
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);

@@ -196,6 +196,18 @@ public class CowChemistry {
         cortisol = clamp(cortisol - calm);
     }
 
+    // Дотик: гладять чи вилизують — окситоцин ↑, кортизол ↓
+    public void onPetted(double oxy, double calm) {
+        double k = g(Gene.HORMONE_SENSITIVITY);
+        oxytocin = clamp(oxytocin + oxy * k);
+        cortisol = clamp(cortisol - calm);
+    }
+
+    // Неприємне на шкірі (холодно й мокро): кортизол ↑
+    public void addStress(double amount) {
+        cortisol = clamp(cortisol + amount * g(Gene.HORMONE_SENSITIVITY));
+    }
+
     public void onTreat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_TREAT * g(Gene.HORMONE_SENSITIVITY));
         cow.hearing.onGood();   // слух: звук перед частуванням стає приємним
