@@ -72,7 +72,11 @@ public class CowCharacter {
         FIRE("поруч вогонь",
                 Trait.FEARFULNESS, 3, Trait.STRESS_SENSITIVITY, 3),
         RESCUED_FROM_WATER("гравець витягнув з води",
-                Trait.HUMAN_ATTACHMENT, 8, Trait.OBEDIENCE, 2);
+                Trait.HUMAN_ATTACHMENT, 8, Trait.OBEDIENCE, 2),
+        BULL_FIGHT_WON("переміг у бійці биків",
+                Trait.DOMINANCE, 4, Trait.BRAVERY, 1),
+        BULL_FIGHT_LOST("програв у бійці биків",
+                Trait.DOMINANCE, -3, Trait.FEARFULNESS, 1);
 
         public final String title;
         final Object[] changes;   // пари: Trait, скільки

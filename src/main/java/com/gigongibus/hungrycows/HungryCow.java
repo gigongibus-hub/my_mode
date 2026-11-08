@@ -679,7 +679,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(6, new DrinkMilkGoal(this));             // теля йде пити молоко
         this.goalSelector.addGoal(6, new DrinkWaterGoal(this));            // доросла йде пити воду (ідея 10)
         this.goalSelector.addGoal(7, new SeekGrassGoal(this));             // пошук їжі
-        this.goalSelector.addGoal(8, new MateGoal(this));                  // самка в тічці йде до бика (замість ванільного розмноження)
+        this.goalSelector.addGoal(8, new MateGoal(this));
+        this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.BullFightGoal(this));   // бики б'ються (ідея 13)                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
         this.goalSelector.addGoal(9, new SleepGoal(this));                 // вночі додому і спати (ідея 9)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));             // сонячно — відпочивати в тіні (ідея 9)
@@ -1546,6 +1547,16 @@ public class HungryCow extends Cow {
     }
 
     // ===================== БИКИ І «БИЙ АБО ТІКАЙ» (ідея 12) =====================
+
+    // Бійка биків (BullFightGoal): з ким б'ється й до якого тіку; переможений тікає від переможця
+    public HungryCow fightRival = null;
+    public int fightUntil = 0;
+    public HungryCow retreatFrom = null;
+    public int retreatUntil = 0;
+
+    public boolean retreating() {
+        return retreatFrom != null && retreatFrom.isAlive() && this.tickCount < retreatUntil;
+    }
 
     // Дорослий бик
     public boolean isBull() {

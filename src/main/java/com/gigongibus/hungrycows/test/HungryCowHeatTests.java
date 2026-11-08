@@ -137,6 +137,13 @@ public class HungryCowHeatTests {
     // ---------- 3. Без тями в тіні: охолоняє й приходить до тями сама, ще до шкоди ----------
     @GameTest(template = ARENA, batch = BATCH, timeoutTicks = WAKE_TIMEOUT)
     public static void unconsciousCowWakesInShade(GameTestHelper h) {
+        // справжня тінь: дах над коровою (відколи ділянки довкола активні, гра рахує світло неба — інакше корова на сонці)
+        for (int x = 5; x <= 9; x++) {
+            for (int z = 5; z <= 9; z++) h.setBlock(new BlockPos(x, 4, z), Blocks.STONE);
+        }
+        h.runAfterDelay(WAKE_TIMEOUT - 1, () -> {
+            for (int x = 5; x <= 9; x++) for (int z = 5; z <= 9; z++) h.setBlock(new BlockPos(x, 4, z), Blocks.AIR);
+        });
         HungryCow cow = spawnCow(h, CENTER);
         cow.heat.heat = CowHeat.MAX;
         float health = cow.getHealth();
@@ -150,6 +157,7 @@ public class HungryCowHeatTests {
                     (h.getTick() - outAt[0]) / 20, Math.round(cow.heat.heat), health, cow.getHealth());
             h.assertTrue(cow.getHealth() >= health, "охолоняючи в тіні, втратила здоров'я: " + health + " -> " + cow.getHealth());
             cow.discard();
+            for (int x = 5; x <= 9; x++) for (int z = 5; z <= 9; z++) h.setBlock(new BlockPos(x, 4, z), Blocks.AIR);
         });
     }
 }

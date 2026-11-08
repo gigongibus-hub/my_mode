@@ -28,6 +28,8 @@ public class CowHerd {
     // ранг (хто кому поступається): домінантність + розмір + бик
     public static final double RANK_SIZE = 100;          // більша на 10% — сильніша на 10
     public static final double RANK_BULL = 20;           // бик сильніший на стільки
+    public static final double BULL_KICK_WEIGHT = 0.5;   // сила бика: половина — ген «сила удару» ...
+    public static final double BULL_DOMINANCE_WEIGHT = 0.5; // ... половина — домінантність (ген + досвід бійок)
 
     private final HungryCow cow;
     private HungryCow leader = null;
@@ -135,6 +137,22 @@ public class CowHerd {
         return Math.max(3, farFromLeader() - BACK_MARGIN);
     }
 
+    // Сила бика (ідея 13): сила удару (ген) і розмір + домінантність (ген і досвід бійок)
+    public static double bullPower(HungryCow c) {
+        return BULL_KICK_WEIGHT * c.genes.value(CowGenes.Gene.KICK_STRENGTH) + (c.sizeScale() - 1.0) * RANK_SIZE
+                + BULL_DOMINANCE_WEIGHT * c.character.get(Trait.DOMINANCE);
+    }
+
+    // Головний бик стада (найсильніший дорослий бик серед корів стада); null — биків немає
+    public HungryCow topBull() {
+        HungryCow best = null;
+        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(HERD_RANGE),
+                c -> c.isAlive() && c.isBull() && c.distanceToSqr(cow) <= HERD_RANGE * HERD_RANGE)) {
+            if (best == null || bullPower(c) > bullPower(best)) best = c;
+        }
+        return best;
+    }
+
     public double distanceToLeader() {
         HungryCow l = leader();
         return l == null ? 0 : Math.sqrt(cow.distanceToSqr(l));
@@ -154,6 +172,9 @@ public class CowHerd {
         out.add(isLeader() ? "Вона — ватажок стада" : "Ватажок: " + l.family.name + " (" + Math.round(distanceToLeader()) + " бл.)");
         out.add("Ранг: " + (rank + 1) + " з " + adults + (rank == 0 ? " (найсильніша)" : ""));
         out.add("Лідерська сила: " + Math.round(leadership(cow)) + ", сила в ієрархії: " + Math.round(dominance(cow)));
+        HungryCow top = topBull();
+        if (top != null) out.add(top == cow ? "Він — головний бик стада" : "Головний бик: " + top.family.name);
+        if (cow.isBull()) out.add("Сила бика: " + Math.round(bullPower(cow)));
         return out;
     }
 }

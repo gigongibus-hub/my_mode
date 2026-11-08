@@ -84,4 +84,35 @@ public class HungryCowBullTests {
             z.discard();
         });
     }
+
+    // 3. Бійка двох биків: обидва живі, хтось програв і тікає, переможець домінантніший
+    private static final int FIGHT_TIMEOUT = 600;
+
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = FIGHT_TIMEOUT)
+    public static void bullsFightUntilOneYields(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 2, new BlockPos(4, 2, 7), new BlockPos(10, 2, 7));
+        h.assertTrue(bulls.size() == 2, "не вийшло створити 2 биків");
+        HungryCow a = bulls.get(0), b = bulls.get(1);
+        int domA = a.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+        int domB = b.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+        float fullA = a.getHealth(), fullB = b.getHealth();
+        com.gigongibus.hungrycows.ai.BullFightGoal.startFight(a, b);
+        h.runAfterDelay(FIGHT_TIMEOUT - 1, () -> bulls.forEach(HungryCow::discard));
+        h.succeedWhen(() -> {
+            h.assertTrue(a.isAlive() && b.isAlive(), "бик загинув у бійці");
+            h.assertTrue(a.fightRival == null && b.fightRival == null, "ще б'ються");
+            h.assertTrue(a.retreating() || b.retreating(), "бійка скінчилась, але ніхто не тікає");
+            HungryCow winner = a.retreating() ? b : a, loser = winner == a ? b : a;
+            int domW = winner.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+            int before = winner == a ? domA : domB;
+            LOG.info("[тест] bullsFightUntilOneYields: за {} с; {} {} -> {}, {} {} -> {}; переміг {} (домінантність {} -> {})",
+                    String.format("%.1f", h.getTick() / 20.0), a.family.name, fullA, a.getHealth(), b.family.name, fullB, b.getHealth(),
+                    winner.family.name, before, domW);
+            h.assertTrue(a.getHealth() < fullA || b.getHealth() < fullB, "у бійці ніхто не отримав удару");
+            h.assertTrue(domW >= before, "переможець не став домінантнішим");
+            bulls.forEach(HungryCow::discard);
+        });
+    }
 }
