@@ -323,7 +323,7 @@ public class CowBrain {
             double b = cow.touch.bond(c);
             friendBond = Math.max(friendBond, b);
             enemyBond = Math.min(enemyBond, b);
-            if (c.fear < 10 && !c.sleeping && cow.vision.canSee(c)) calmPartner = true;
+            if (c.fear < 10 && !c.sleeping && c.touch.canGroom() && cow.vision.canSee(c)) calmPartner = true;
         }
         knowsWater = cow.episodes.nearest(CowEpisodes.Place.WATER, p -> true) != null;
         knowsSalt = cow.episodes.nearest(CowEpisodes.Place.SALT, p -> true) != null;
@@ -450,7 +450,7 @@ public class CowBrain {
         possible[Action.SNIFF.ordinal()] = true;
         possible[Action.LISTEN.ordinal()] = cow.tickCount - cow.hearing.lastHeardTick() < 200;
         possible[Action.SCRATCH.ordinal()] = cow.touch.itch > SCRATCH_ITCH && scratchPost;
-        possible[Action.GROOM.ordinal()] = calmPartner;
+        possible[Action.GROOM.ordinal()] = calmPartner && cow.touch.canGroom();
         possible[Action.LICK_SALT.ordinal()] = adult && cow.taste.wantsSalt();
         possible[Action.MOO.ordinal()] = true;
         possible[Action.CALL_CALF.ordinal()] = adult && family != null && familyDist > CALL_CALF_FROM;
@@ -491,7 +491,7 @@ public class CowBrain {
             case SNIFF -> 2 * input[10] + (input[12] > 0 && foodNear ? 0 : input[12] * hunger * 2) + 0.5 * curious - 1.8;
             case LISTEN -> 1.5 * input[22] * (1 - input[23]) + input[18] - 2.5;   // не частіше за їжу: голодна не стоїть і не слухає
             case SCRATCH -> 4 * (cow.touch.itch / 100.0) - 1;
-            case GROOM -> 1 + 2 * social - 3 * hunger - 3 * fear - (cow.isNightTime() ? 2 : 0) - 0.5;
+            case GROOM -> 1 + 2 * social - 3 * hunger - 3 * fear - (cow.isNightTime() ? 2 : 0) - 1.0;   // було −0,5: вилизували надто часто (Fij)
             case LICK_SALT -> 6 * (cow.taste.salt / 100.0 - 0.4) + 0.5;
             case MOO -> 2.5 * lonely + (cow.repro.isFemale() && cow.cycle.inEstrus() ? 1.5 : 0) - 2;
             case CALL_CALF -> 2 * motherhood + familyDist / 10.0 - 0.5;

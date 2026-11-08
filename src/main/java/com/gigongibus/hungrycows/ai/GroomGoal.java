@@ -15,11 +15,11 @@ import java.util.EnumSet;
 public class GroomGoal extends Goal {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     private static final int CHECK_EVERY = 300;          // вирішує раз на 15 с
-    private static final double CHANCE = 0.15;           // шанс × (0,5 + товариськість)
-    private static final double MOTHER_CHANCE = 0.4;     // мати з телям поруч — 40%
+    private static final double CHANCE = 0.08;           // шанс 8% × (0,5 + товариськість) (було 15%)
+    private static final double MOTHER_CHANCE = 0.25;    // мати з телям поруч — 25% (було 40%)
     private static final double RANGE = 8;               // кого вилизувати — до 8 блоків
-    private static final double REACH = 1.8;
-    private static final double KIN_NEAR = 3;            // своє теля вилизує, лише коли воно ближче 3 бл.             // лиже ближче 1,8 бл.
+    private static final double REACH = 1.8;             // лиже ближче 1,8 бл.
+    private static final double KIN_NEAR = 3;            // своє теля вилизує, лише коли воно ближче 3 бл.
     private static final int LICK_TICKS = 100;           // лиже 5 с
     private static final int MAX_WALK = 200;             // іде до неї щонайдовше 10 с
     private static final int CALM_FEAR = 10, CALM_HUNGER = 40;
@@ -40,6 +40,11 @@ public class GroomGoal extends Goal {
     }
 
     private boolean calm(HungryCow c) {
+        return c.isAlive() && c.touch.canGroom() && c.fear < CALM_FEAR && !c.sleeping && !c.heat.unconscious && !c.choking;
+    }
+
+    // поки лиже, «відпочинок» не перевіряє (його ставить саме кінець вилизування)
+    private boolean calmNow(HungryCow c) {
         return c.isAlive() && c.fear < CALM_FEAR && !c.sleeping && !c.heat.unconscious && !c.choking;
     }
 
@@ -69,7 +74,7 @@ public class GroomGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return partner != null && calm(cow) && calm(partner) && licking < LICK_TICKS && walk < MAX_WALK
+        return partner != null && calmNow(cow) && calmNow(partner) && licking < LICK_TICKS && walk < MAX_WALK
                 && cow.distanceToSqr(partner) < RANGE * RANGE * 1.5;
     }
 
@@ -92,7 +97,7 @@ public class GroomGoal extends Goal {
         if (++licking % 25 == 0 && cow.level() instanceof ServerLevel s) {
             s.sendParticles(ParticleTypes.SPLASH, partner.getX(), partner.getEyeY() - 0.2, partner.getZ(), 4, 0.2, 0.1, 0.2, 0);
         }
-        if (licking >= LICK_TICKS) {
+        if (licking == LICK_TICKS) {
             cow.touch.groomed(partner);
             partner.touch.groomed(cow);
             cow.tell(cow.family.name + " вилизала " + partner.family.name);

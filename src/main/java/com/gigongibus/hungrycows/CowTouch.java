@@ -45,6 +45,8 @@ public class CowTouch {
     public static final double BOND_FORGET = 1.0 / 2400;  // дружба забувається на 1 за 40 хв (за секунду)
     public static final int BONDS_MAX = 50;               // пам'ятає до 50 корів
     public static final double OXY_GROOM = 6;             // вилизування — окситоцин обом
+    public static final int GROOM_REST_MIN = 6000;        // після вилизування (своє чи її) — 5–10 хв не вилизує знову (Fij: «занадто часто»)
+    public static final int GROOM_REST_MAX = 12000;
     public static final double COLD_BELOW = 0.15;         // холодно: температура біому нижче 0,15 (сніжні) ...
     public static final double COLD_WET_STRESS = 0.3;     // ... і мокра — кортизол +0,3 за секунду
     public static final double COSY_CALM = 0.2;           // уночі під дахом суха й не спекотно — кортизол −0,2/с
@@ -149,8 +151,16 @@ public class CowTouch {
         }
     }
 
+    // Чи вже відпочила від минулого вилизування (не зберігається: після перезаходу можна одразу)
+    private int nextGroomTick = 0;
+
+    public boolean canGroom() {
+        return cow.tickCount >= nextGroomTick;
+    }
+
     // Вилизала (або її вилизали): обом приємно, дружба росте
     public void groomed(HungryCow other) {
+        nextGroomTick = cow.tickCount + GROOM_REST_MIN + cow.getRandom().nextInt(GROOM_REST_MAX - GROOM_REST_MIN);
         addBond(other, BOND_GROOM);
         lastTouchedTick = cow.tickCount;
         cow.psyche.stimulate(0.15);
