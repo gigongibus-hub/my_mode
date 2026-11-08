@@ -1251,12 +1251,7 @@ public class HungryCow extends Cow {
             }
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
-        // присісти + ПКМ порожньою рукою: родинне дерево в чат (поки для тестів)
-        if (player.isShiftKeyDown() && stack.isEmpty()) {
-            if (hand != InteractionHand.MAIN_HAND) return InteractionResult.PASS;
-            if (server) family.showTo(player);
-            return InteractionResult.sidedSuccess(this.level().isClientSide);
-        }
+        // (присісти + ПКМ — родовід у чат — прибрано на прохання Fij; родовід у книзі «Корововедення»)
         // доїння: замість ванільного молока для будь-якої корови
         if (stack.is(Items.BUCKET)) {
             if (server) tryMilk(player, hand, stack);
@@ -1554,6 +1549,7 @@ public class HungryCow extends Cow {
 
     // Бійка биків (BullFightGoal): з ким б'ється й до якого тіку; переможений тікає від переможця
     public HungryCow fightRival = null;
+    public boolean fightDeadly = false;   // серйозна бійка — до смерті (5%)
     public int fightUntil = 0;
     public HungryCow retreatFrom = null;
     public int retreatUntil = 0;

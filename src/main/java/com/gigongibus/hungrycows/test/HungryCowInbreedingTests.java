@@ -71,7 +71,10 @@ public class HungryCowInbreedingTests {
         cow.aging.ageSeconds = life * 0.9 * CowCycle.SECONDS_PER_DAY;
         h.assertTrue(cow.aging.old(), "у 90% життя не стара");
         h.assertTrue(!cow.repro.isFemale() || cow.repro.isInfertile(), "стара самка ще може вагітніти");
-        cow.aging.ageSeconds = life * CowCycle.SECONDS_PER_DAY - 1;   // за мить до кінця
+        // життя скінчилось, а корова не спить (полудень) — ще жива; на 110% життя помирає будь-коли
+        cow.aging.ageSeconds = life * 1.02 * CowCycle.SECONDS_PER_DAY;
+        h.assertTrue(cow.isAlive(), "померла вдень, не уві сні, ще до 110% життя");
+        cow.aging.ageSeconds = life * com.gigongibus.hungrycows.CowAging.LATE_DEATH * CowCycle.SECONDS_PER_DAY - 1;
         h.succeedWhen(() -> {
             h.assertTrue(!cow.isAlive(), "не померла від старості (вік " + Math.round(cow.aging.ageDays()) + " з " + Math.round(life) + ")");
             LOG.info("[тест] oldCowDiesOfAge: життя {} діб, померла на тіку {}", Math.round(life), h.getTick());

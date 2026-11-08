@@ -75,9 +75,25 @@ public class ModForgeEvents {
                         .then(Commands.literal("on").executes(c -> setBrain(c.getSource(), true)))
                         .then(Commands.literal("off").executes(c -> setBrain(c.getSource(), false))))
                 .then(Commands.literal("path").executes(c -> pathTest(c.getSource())))
+                .then(Commands.literal("old").executes(c -> spawnOld(c.getSource())))
                 .then(Commands.literal("birth")
                         .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
                         .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
+    }
+
+    // /hungrycows old — доросла корова віком 999 діб (перевірити старість)
+    public static final double OLD_COW_DAYS = 999;
+
+    private static int spawnOld(CommandSourceStack source) {
+        ServerLevel level = source.getLevel();
+        HungryCow cow = ModEntities.HUNGRY_COW.get().create(level);
+        if (cow == null) return 0;
+        net.minecraft.world.phys.Vec3 p = source.getPosition();
+        cow.moveTo(p.x, p.y, p.z, 0, 0);
+        cow.aging.ageSeconds = OLD_COW_DAYS * CowCycle.SECONDS_PER_DAY;
+        level.addFreshEntity(cow);
+        source.sendSuccess(() -> Component.literal(cow.family.name + ": " + cow.aging.line()), true);
+        return 1;
     }
 
     // /hungrycows brain on|off — увімкнути чи вимкнути мозок усіх корів (до перезапуску гри)

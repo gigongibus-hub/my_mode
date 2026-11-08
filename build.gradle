@@ -213,5 +213,10 @@ tasks.withType(JavaCompile).configureEach {
 tasks.matching { it.name == 'runGameTestServer' }.configureEach {
     doFirst {
         delete file('run-gametest/world')
+        // порожній пласкій світ (без озер, лави й споруд): гра догенеровувала їх біля майданчиків під час тестів
+        copy {
+            from file('gametest-datapack')
+            into file('run-gametest/world/datapacks/hungrycows_gametest')
+        }
     }
 }

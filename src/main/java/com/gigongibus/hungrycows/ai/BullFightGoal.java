@@ -12,17 +12,19 @@ import java.util.EnumSet;
 
 /**
  * Бійки биків (ідея Fij 13). Два дорослі бики ближче 10 блоків: раз на хвилину шанс 20% (50%, якщо поруч самка в тічці),
- * що зчепляться. Б'ються лобами 5–15 с, кожен своєю силою (ген «сила удару» × розмір). До смерті не б'ються: хто впав
- * нижче 40% здоров'я — програв. Кінець бійки: переможець — у кого більша частка здоров'я; переможений 30 с тікає від
+ * що зчепляться (раз на 2 хв: 10%, при самці в тічці 30%). Б'ються лобами 5–15 с, кожен своєю силою (ген «сила удару» × розмір).
+ * Звичайна бійка — до 40% здоров'я; 5% бійок «серйозні» — до смерті одного (щонайдовше 1 хв). Кінець бійки: переможець — у кого більша частка здоров'я; переможений 30 с тікає від
  * нього. Досвід: переможець домінантніший, переможений — менш. Головного бика стада видно в книзі (сторінка «Стадо»).
  * Усі числа зібрані на початку файлу.
  */
 public class BullFightGoal extends Goal {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final double FIGHT_RANGE = 10;          // суперник ближче 10 блоків
-    public static final int CHECK_EVERY = 1200;           // раз на хвилину кидає шанс
-    public static final double CHANCE = 0.2;              // 20% ...
-    public static final double CHANCE_ESTRUS = 0.5;       // ... 50%, коли поруч самка в тічці
+    public static final int CHECK_EVERY = 2400;           // раз на 2 хв кидає шанс (Fij: «не так часто»)
+    public static final double CHANCE = 0.1;              // 10% ...
+    public static final double CHANCE_ESTRUS = 0.3;       // ... 30%, коли поруч самка в тічці
+    public static final double DEADLY_CHANCE = 0.05;      // 5% бійок «серйозні» — до смерті (Fij, варіант Б)
+    public static final int DEADLY_MAX_TICKS = 1200;      // серйозна бійка — щонайдовше 1 хв
     public static final double ESTRUS_RANGE = 16;         // «поруч» для самки
     public static final int MIN_TICKS = 100, MAX_TICKS = 300;   // бійка триває 5–15 с
     public static final double STOP_HEALTH = 0.4;         // нижче 40% здоров'я — програв (до смерті не б'ються)
@@ -83,19 +85,24 @@ public class BullFightGoal extends Goal {
     // Почати бійку двох биків (обидва отримують одне одного суперником і однаковий кінець)
     public static void startFight(HungryCow a, HungryCow b) {
         int until = a.tickCount + MIN_TICKS + a.getRandom().nextInt(MAX_TICKS - MIN_TICKS + 1);
+        boolean deadly = a.getRandom().nextDouble() < DEADLY_CHANCE;
+        if (deadly) until = a.tickCount + DEADLY_MAX_TICKS;
         a.fightRival = b;
         b.fightRival = a;
+        a.fightDeadly = deadly;
+        b.fightDeadly = deadly;
         a.fightUntil = until;
         b.fightUntil = b.tickCount + (until - a.tickCount);
-        a.tell(a.family.name + " і " + b.family.name + " (бики) б'ються");
+        a.tell(a.family.name + " і " + b.family.name + " (бики) б'ються" + (deadly ? " НА СМЕРТЬ" : ""));
     }
 
     @Override
     public boolean canContinueToUse() {
         if (cow.retreating()) return true;
         HungryCow r = cow.fightRival;
-        return r != null && r.isAlive() && cow.tickCount < cow.fightUntil
-                && cow.getHealth() > cow.getMaxHealth() * STOP_HEALTH && r.getHealth() > r.getMaxHealth() * STOP_HEALTH;
+        if (r == null || !r.isAlive() || cow.tickCount >= cow.fightUntil) return false;
+        if (cow.fightDeadly) return true;   // серйозна — доки один не загине (або хвилина)
+        return cow.getHealth() > cow.getMaxHealth() * STOP_HEALTH && r.getHealth() > r.getMaxHealth() * STOP_HEALTH;
     }
 
     @Override

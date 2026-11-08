@@ -121,7 +121,7 @@ public class CowMilk {
             double thirstK = 1.0 - THIRST_MILK_SLOWDOWN
                     * Math.max(0, Math.min(1, (cow.thirst - HungryCow.THIRSTY_AT) / (double) (HungryCow.DEHYDRATE_AT - HungryCow.THIRSTY_AT)));
             int every = Math.max(1, (int) Math.round(REGEN_SECONDS
-                    / (cow.gene(CowGenes.Gene.MILK_REGEN) * cow.chem.milkSpeedFactor() * thirstK)));
+                    / (cow.gene(CowGenes.Gene.MILK_REGEN) * cow.chem.milkSpeedFactor() * thirstK * cow.aging.milkFactor())));
             if (milk < max() && ++regenSeconds >= every) {
                 regenSeconds = 0;
                 milk++;
