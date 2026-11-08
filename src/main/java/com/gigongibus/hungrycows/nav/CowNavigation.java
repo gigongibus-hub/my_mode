@@ -40,7 +40,7 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double WAYPOINT_DY = 1.05;    // ... і різниця висоти до 1 блока включно (точкою буває сам блок під ногами:
                                                       // стежка, килим — рівно 1,0, і з «менше 1» корова стояла на ній назавжди)
     public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
-    public static final int WAYPOINT_STUCK_TICKS = 20; // 1 с не наближається до точки (крок навскіс, пагорбок) — переходить до наступної
+    public static final int WAYPOINT_STUCK_TICKS = 60; // 3 с не наближається до точки (крок навскіс, пагорбок) — переходить до наступної
                                                       // (міняє напрямок), щоб не застрягти; ванільного зрізання кутів немає
     public static final double WAYPOINT_PROGRESS = 0.05; // «наближається» = за тік ближче хоча б на 0,05 бл. (сумарно)
     // Крок убік лише туди, де вільно
