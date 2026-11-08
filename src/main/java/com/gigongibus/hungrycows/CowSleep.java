@@ -72,7 +72,7 @@ public class CowSleep {
         if (cow.level().dimensionType().hasFixedTime() || !cow.level().dimensionType().hasSkyLight()) {
             sleepiness = 0;
         } else {
-            long t = cow.level().getDayTime() % 24000L;
+            long t = cow.cowTime();   // у жаркому біомі — зсунутий на пів доби (спить удень)
             if (t < EVENING_FROM || t >= NIGHT_UNTIL) {
                 sleepiness = 0;                                   // день: спати не хоче
             } else if (!cow.sleeping) {

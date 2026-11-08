@@ -29,7 +29,7 @@
 - `CowMilk`: шкала молока, лактація, раціон → якість. `MilkQuality`: що робить молоко кожної якості.
 - `QualityMilkBucketItem`: предмет «Відро молока (якість X)».
 - `CowFamily`: ім'я, мати (корова або гравець), забування матері, родинне дерево, діти. `CowNames`: імена.
-- `CowGenes`: 72 гени (71 + `HEAT_TOLERANCE` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
+- `CowGenes`: 75 генів (71 + `HEAT_TOLERANCE`, `COAT_COLOR`, `COAT_PATTERN`, `RAIN_LIKING` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
   Теля бере по одній випадковій копії від кожного з батьків + мутація. Гормони й імунітет поки лише успадковуються.
 - `CowCharacter`: 14 рис (ген темпераменту з `CowGenes` 35% + досвід 65%), таблиця подій досвіду.
 - `client/HungryCowRenderer`: модель корови з масштабом за геном «розмір» (синхронізується `DATA_SIZE`).
@@ -101,6 +101,13 @@
   `textures/entity/cow/c{масть}_p{візерунок}.png` (24 шт.). Текстури малює `tools/make_cow_textures.py` (розгортка ванільної
   моделі 64×32: голова 0,0; роги 22,0; тіло 18,4 — довжина вздовж V; вим'я 52,0; ноги 0,16), аркуш `tools/cow_textures_preview.png`.
   Книга: «Масть: …».
+- Жаркі біоми (Fij): пустеля, савани (3), джунглі (3), безплідні землі (3), кам'янисті вершини (`HungryCow.HOT_BIOMES`, перевірка
+  раз на секунду) — розклад корови зсунутий на пів доби (`cowTime()`: `isNightTime`, `isMorning`, шкала сну, вхід мозку «ніч»):
+  удень спить (у хліві, якщо є, інакше під деревом — як звичайна ніч), уночі пасеться. Сонце, спека й тінь — за справжнім часом.
+- Дощ (Fij): ген `RAIN_LIKING` («любов до дощу», темперамент, у кінці переліку). Нижче 40 — не любить: `ShelterFromRainGoal` (9)
+  веде в дім (до 32 бл.), інакше під дерево, інакше під будь-яке накриття, і стоїть там до кінця дощу (до 5 хв, потім вирішує
+  знову); 60+ — любить. `GoOutGoal` у дощ: шанс × (0,1 … 1,0 за геном; було ×0,3 для всіх). «Дощ падає на корову»
+  (`rainReaches`) — за блоками над нею до 16 (дах, листя), не за світлом неба. Книга «Характер»: «Дощ: …», «Жаркий біом».
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
@@ -108,7 +115,7 @@
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
-9 BullCourt, Sleep, SeekShade · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
+9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
 14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
@@ -249,6 +256,10 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - `cowsQueueInNarrowCorridor` (партія "sleep_corridor", barn.nbt): удень знаходять хлів, уночі 4 корови в проході 1 блок
   до входу одна за одною → усі сплять у хліві (3/3, 10–55 с; у черзі ≤ 7 с, ставала в чергу ≤ 2 рази).
 - Нестабільне: fearFromHit 1 з ~7 (утекла рівно на межі 1,5 бл.).
+- `test/HungryCowRainHotTests`: rainHaterHidesLoverStays (партія "rain": дощ, навіс у куті, ген 10 → ховається за 13–24 с;
+  ген 90 — на дощі), hotBiomeSwapsDayAndNight (партія "hot": `/fillbiome` пустеля → опівдні «ніч»; рівнини → день).
+- ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
+  жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).
 - Тести прибирають за собою (корів — `discard`, хліви й огорожу — `clearBarn`): споруди лишаються у світі, і наступна партія
   стоїть на них; залишки даху робили з чужих майданчиків «хлів», а чужі корови — «стадо».
 - Нестабільне місце: cowWatchesFriendLong з появою GoOut — 2/6 провалів (корова тягнеться до стада: HerdCohesion/HerdUp),

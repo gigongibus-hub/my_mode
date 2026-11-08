@@ -430,14 +430,78 @@ public class HungryCow extends Cow {
     }
 
     public boolean isMorning() {
-        long t = this.level().getDayTime() % 24000L;
+        long t = cowTime();
         return t >= MORNING_FROM || t < MORNING_UNTIL;
     }
 
     public boolean isNightTime() {
         if (!this.level().dimensionType().hasSkyLight() || this.level().dimensionType().hasFixedTime()) return false;
-        long t = this.level().getDayTime() % 24000L;
+        long t = cowTime();
         return t >= SLEEP_FROM_TIME && t < SLEEP_UNTIL_TIME;
+    }
+
+    // ===================== ЖАРКІ БІОМИ (Fij): удень спати, вночі пастися =====================
+
+    @SuppressWarnings("unchecked")
+    private static final net.minecraft.resources.ResourceKey<net.minecraft.world.level.biome.Biome>[] HOT_BIOMES = new net.minecraft.resources.ResourceKey[]{
+            net.minecraft.world.level.biome.Biomes.DESERT, net.minecraft.world.level.biome.Biomes.SAVANNA,
+            net.minecraft.world.level.biome.Biomes.SAVANNA_PLATEAU, net.minecraft.world.level.biome.Biomes.WINDSWEPT_SAVANNA,
+            net.minecraft.world.level.biome.Biomes.JUNGLE, net.minecraft.world.level.biome.Biomes.SPARSE_JUNGLE,
+            net.minecraft.world.level.biome.Biomes.BAMBOO_JUNGLE, net.minecraft.world.level.biome.Biomes.BADLANDS,
+            net.minecraft.world.level.biome.Biomes.WOODED_BADLANDS, net.minecraft.world.level.biome.Biomes.ERODED_BADLANDS,
+            net.minecraft.world.level.biome.Biomes.STONY_PEAKS};
+    public static final long HOT_SHIFT = 12000;          // у жаркому біомі «день» і «ніч» корови навпаки (спить удень)
+    private boolean hotBiome = false;                    // оновлюється раз на секунду
+
+    public boolean inHotBiome() {
+        return hotBiome;
+    }
+
+    private void updateHotBiome() {
+        var biome = this.level().getBiome(this.blockPosition());
+        boolean hot = false;
+        for (var key : HOT_BIOMES) if (biome.is(key)) { hot = true; break; }
+        if (hot != hotBiome) tell(family.name + (hot ? ": жаркий біом — удень спатиме, вночі пастиметься" : ": звичайний біом — удень пастиметься"));
+        hotBiome = hot;
+    }
+
+    // Час доби для розкладу корови: у жаркому біомі зсунутий на пів доби (удень — «ніч», спить; уночі — «день», пасеться)
+    public long cowTime() {
+        long t = this.level().getDayTime() % 24000L;
+        return hotBiome ? (t + HOT_SHIFT) % 24000L : t;
+    }
+
+    // ===================== ДОЩ (Fij): одні корови люблять, інші ховаються =====================
+    public static final int RAIN_HATE_BELOW = 40;        // ген «любов до дощу» нижче 40 — не любить: ховається (дім або дерево)
+    public static final int RAIN_LOVE_FROM = 60;         // 60+ — любить: виходить і в дощ
+
+    public int rainLiking() {
+        return genes.value(CowGenes.Gene.RAIN_LIKING);
+    }
+
+    public boolean hatesRain() {
+        return rainLiking() < RAIN_HATE_BELOW;
+    }
+
+    public String rainAttitude() {
+        int v = rainLiking();
+        return v < RAIN_HATE_BELOW ? "не любить дощ (ховається)" : v >= RAIN_LOVE_FROM ? "любить дощ (гуляє й під дощем)" : "до дощу байдужа";
+    }
+
+    // Дощ просто на неї: дощить, у біомі йде дощ (не сніг, не пустеля) і над нею до 16 блоків нічого немає (ні даху,
+    // ні листя). За блоками, а не за світлом неба: воно буває ще не пораховане (тести)
+    public boolean rainedOn() {
+        return rainReaches(this.level(), this.blockPosition());
+    }
+
+    public static boolean rainReaches(net.minecraft.world.level.Level level, BlockPos pos) {
+        if (!level.isRaining()) return false;
+        for (int i = 2; i <= CowHome.ROOF_HEIGHT; i++) {
+            BlockPos p = pos.above(i);
+            net.minecraft.world.level.block.state.BlockState st = level.getBlockState(p);
+            if (st.is(net.minecraft.tags.BlockTags.LEAVES) || !st.getCollisionShape(level, p).isEmpty()) return false;
+        }
+        return level.getBiome(pos).value().getPrecipitationAt(pos) == net.minecraft.world.level.biome.Biome.Precipitation.RAIN;
     }
 
     public boolean shouldRest() {
@@ -707,7 +771,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.BullFightGoal(this));   // бики б'ються (ідея 13)                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
         this.goalSelector.addGoal(9, new SleepGoal(this));                 // вночі додому і спати (ідея 9)
-        this.goalSelector.addGoal(9, new SeekShadeGoal(this));             // сонячно — відпочивати в тіні (ідея 9)
+        this.goalSelector.addGoal(9, new SeekShadeGoal(this));
+        this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
         this.goalSelector.addGoal(11, new RuminateGoal(this));             // ремигання після їжі (лише з мозком)
         this.goalSelector.addGoal(11, new GoOutGoal(this));                // удень з хліва на пасовище (за характером, за ватажком; дощ — рідше)
@@ -825,6 +890,7 @@ public class HungryCow extends Cow {
             home.secondTick();
             herd.secondTick();
             sleep.secondTick();
+            updateHotBiome();
             heat.secondTick();
             updateBullSpeed();
             aging.secondTick();

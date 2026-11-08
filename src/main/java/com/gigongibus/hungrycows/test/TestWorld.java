@@ -18,6 +18,7 @@ final class TestWorld {
     private static final int LAVA_MARGIN = 20;           // прибрати лаву на 20 блоків довкола майданчика
     private static final int LAVA_BELOW = 3, LAVA_ABOVE = 30;   // корови тонули у воді на 23 блоки вище підлоги
     private static final int PLOT_SIZE = 81;
+    private static final int BIOME_MARGIN = 16;          // рівнини ще на 16 бл. довкола майданчика
     private static final int TICK_MARGIN = 32;           // ділянки світу (чанки) на 32 бл. довкола майданчика роблять активними             // найбільший майданчик (bigbarn); менші — те саме, із запасом
 
     private TestWorld() {
@@ -40,6 +41,16 @@ final class TestWorld {
         for (int cx = (Math.min(a.getX(), c.getX()) - TICK_MARGIN) >> 4; cx <= (Math.max(a.getX(), c.getX()) + TICK_MARGIN) >> 4; cx++) {
             for (int cz = (Math.min(a.getZ(), c.getZ()) - TICK_MARGIN) >> 4; cz <= (Math.max(a.getZ(), c.getZ()) + TICK_MARGIN) >> 4; cz++) {
                 level.setChunkForced(cx, cz, true);
+            }
+        }
+        // Біом: тестовий світ має випадкові біоми, і майданчик буває в жаркому (там корови вдень сплять — HungryCow.inHotBiome).
+        // Тести перевіряють звичайний розклад — майданчик і запас довкола стають рівнинами (тест жаркого біому міняє сам)
+        var server = level.getServer();
+        var source = server.createCommandSourceStack().withLevel(level).withSuppressedOutput();
+        for (int x = Math.min(a.getX(), c.getX()) - BIOME_MARGIN; x <= Math.max(a.getX(), c.getX()) + BIOME_MARGIN; x += 16) {
+            for (int z = Math.min(a.getZ(), c.getZ()) - BIOME_MARGIN; z <= Math.max(a.getZ(), c.getZ()) + BIOME_MARGIN; z += 16) {
+                server.getCommands().performPrefixedCommand(source, "fillbiome " + x + " " + (floor - LAVA_BELOW) + " " + z + " "
+                        + (x + 15) + " " + (floor + LAVA_ABOVE) + " " + (z + 15) + " minecraft:plains");
             }
         }
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();

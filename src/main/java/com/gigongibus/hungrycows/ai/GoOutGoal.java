@@ -23,7 +23,8 @@ public class GoOutGoal extends Goal {
     private static final double CURIOSITY_BONUS = 0.20;     // допитлива до +20%
     private static final double FEAR_MALUS = 0.20;          // полохлива до −20%
     private static final double FOLLOW_LEADER = 0.50;       // ватажок надворі: товариська до +50%
-    private static final double RAIN = 0.3;                 // дощ: ×0,3
+    private static final double RAIN_MIN = 0.1;             // дощ: не любить (ген 0) ×0,1 ... байдужа (50) ×0,55 ...
+    private static final double RAIN_MAX = 1.0;             // ... любить (100) ×1 — виходить, як у суху погоду
     private static final int OUT_MIN = 12, OUT_MAX = 28;    // куди йде: 12–28 блоків від себе
     private static final int PASTURE_FROM_ROOF = 10;        // пасовище = до найближчого даху понад 10 блоків (не біля дверей)
     private static final int GRASS_AROUND = 2;              // траву рахує в квадраті 5×5 навколо місця
@@ -78,7 +79,7 @@ public class GoOutGoal extends Goal {
         if (leader != null && leader != cow && !inShelter(leader)) {
             c += FOLLOW_LEADER * cow.character.fraction(Trait.SOCIABILITY);
         }
-        if (cow.level().isRaining()) c *= RAIN;
+        if (cow.level().isRaining()) c *= RAIN_MIN + (RAIN_MAX - RAIN_MIN) * cow.rainLiking() / 100.0;
         return Math.max(0, Math.min(1, c));
     }
 

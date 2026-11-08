@@ -310,7 +310,7 @@ public class CowBrain {
         input[18] = cow.getHealth() / cow.getMaxHealth();
         input[19] = cow.repro.isPregnant() ? 1 : 0;
         input[20] = cow.repro.isFemale() ? (cow.cycle.inEstrus() ? 1 : 0) : (estrusFemaleNear ? 1 : 0);
-        input[21] = cow.level().isDay() ? 0 : 1;
+        input[21] = cow.isNightTime() ? 1 : 0;   // «ніч» корови (у жаркому біомі зсунута)
         input[22] = cow.level().isRainingAt(cow.blockPosition()) ? 1 : 0;
         input[23] = cow.character.fraction(Trait.CURIOSITY);
         input[24] = cow.character.fraction(Trait.SOCIABILITY);

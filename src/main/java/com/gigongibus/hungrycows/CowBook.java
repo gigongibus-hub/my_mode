@@ -107,6 +107,8 @@ public final class CowBook {
         for (CowCharacter.Trait trait : CowCharacter.Trait.values()) {
             out.add(trait.title + ": " + cow.character.get(trait));
         }
+        out.add("Дощ: " + cow.rainAttitude());
+        if (cow.inHotBiome()) out.add("Жаркий біом: удень спить, вночі пасеться");
         // 6б. Мозок
         out.addAll(cow.brain.lines());
 

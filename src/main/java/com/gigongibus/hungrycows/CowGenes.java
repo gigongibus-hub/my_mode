@@ -137,7 +137,8 @@ public class CowGenes {
         // ---- тіло, додано пізніше (у кінці, щоб не зсунути інші) ----
         HEAT_TOLERANCE(Group.BODY, "витривалість до спеки"),
         COAT_COLOR(Group.BODY, "масть (0 біла … 100 чорна)"),
-        COAT_PATTERN(Group.BODY, "візерунок (суцільна, білоголова, з поясом, ряба)");
+        COAT_PATTERN(Group.BODY, "візерунок (суцільна, білоголова, з поясом, ряба)"),
+        RAIN_LIKING(Group.TEMPERAMENT, "любов до дощу");
 
         public final Group group;
         public final String title;
@@ -205,6 +206,12 @@ public class CowGenes {
     // Зворотний множник: ген 100 → ×0.7, 0 → ×1.3 (для «стійкості»: вищий ген — менше шкоди)
     public double inverse(Gene g) {
         return 2.0 - factor(g);
+    }
+
+    // Задати ген (обидві копії) — для тестів і команд
+    public void set(Gene g, int v) {
+        copyA[g.ordinal()] = v;
+        copyB[g.ordinal()] = v;
     }
 
     // ---------- спадковість ----------
