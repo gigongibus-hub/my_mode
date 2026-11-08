@@ -202,14 +202,14 @@ public class ModForgeEvents {
     @SubscribeEvent
     public static void onSoundAtPosition(net.minecraftforge.event.PlayLevelSoundEvent.AtPosition event) {
         if (event.getLevel().isClientSide || event.getSound() == null) return;
-        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), event.getPosition(), null));
+        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), event.getPosition(), null, event.getOriginalVolume()));
     }
 
     @SubscribeEvent
     public static void onSoundAtEntity(net.minecraftforge.event.PlayLevelSoundEvent.AtEntity event) {
         if (event.getLevel().isClientSide || event.getSound() == null || event.getEntity() == null) return;
         Entity e = event.getEntity();
-        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), e.position().add(0, e.getBbHeight() / 2, 0), e));
+        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), e.position().add(0, e.getBbHeight() / 2, 0), e, event.getOriginalVolume()));
     }
 
     @SubscribeEvent
@@ -223,19 +223,28 @@ public class ModForgeEvents {
     // Гравець зламав блок: на цьому місці нічого не відросте (наприклад, перекопав землю з-під моху)
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
-        if (event.getLevel() instanceof ServerLevel level) Regrowth.blockChanged(level, event.getPos());
+        if (event.getLevel() instanceof ServerLevel level) {
+            Regrowth.blockChanged(level, event.getPos());
+            // слух: звук ламання гра грає лише в гравця (не на сервері) — корови «чують» саму подію
+            CowHearing.onSound(level, event.getState().getSoundType().getBreakSound().getLocation().toString(), Vec3.atCenterOf(event.getPos()), event.getPlayer());
+        }
     }
 
     // Гравець поставив блок: теж скасовує відростання на цьому місці
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
-        if (event.getLevel() instanceof ServerLevel level) Regrowth.blockChanged(level, event.getPos());
+        if (event.getLevel() instanceof ServerLevel level) {
+            Regrowth.blockChanged(level, event.getPos());
+            CowHearing.onSound(level, event.getPlacedBlock().getSoundType().getPlaceSound().getLocation().toString(), Vec3.atCenterOf(event.getPos()), event.getEntity());
+        }
     }
 
     // Вибух поруч: корови, яких він зачепив, отримують досвід «поруч вибух»
     @SubscribeEvent
     public static void onExplosion(ExplosionEvent.Detonate event) {
         if (event.getLevel().isClientSide()) return;
+        // слух: звук вибуху гра грає лише в гравця — корови «чують» сам вибух (до 64 бл.)
+        CowHearing.onSound(event.getLevel(), "minecraft:entity.generic.explode", event.getExplosion().getPosition(), null);
         for (Entity e : event.getAffectedEntities()) {
             if (e instanceof HungryCow cow && cow.isAlive()) {
                 cow.experience(Experience.EXPLOSION, HungryCow.EXPLOSION_EXPERIENCE_COOLDOWN);

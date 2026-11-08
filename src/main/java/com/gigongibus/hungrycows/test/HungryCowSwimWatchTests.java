@@ -208,6 +208,12 @@ public class HungryCowSwimWatchTests {
         HungryCow cow = spawnCow(h, new BlockPos(7, 2, 9));
         Wolf wolf = h.spawn(EntityType.WOLF, new BlockPos(7, 2, 3));
         wolf.setNoAi(true);   // вовк стоїть (тест перевіряє погляд корови, а не вовка)
+        // зір (етап 1): позаду сліпа зона 30°, і нерухомого там не видно — корова повернута боком до вовка (бачить краєм ока)
+        Vec3 c = cow.position(), w = wolf.position();
+        float toWolf = (float) (Math.atan2(w.z - c.z, w.x - c.x) * 180 / Math.PI) - 90F;
+        cow.setYRot(toWolf + 90F);
+        cow.yBodyRot = toWolf + 90F;
+        cow.setYHeadRot(toWolf + 90F);
         h.succeedWhen(() -> {
             double err = lookError(cow, wolf);
             h.assertTrue(err < LOOKING_AT, String.format("не дивиться на вовка: відхилення %.0f°", err));

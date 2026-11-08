@@ -35,6 +35,8 @@ public class SearchFoodGoal extends Goal {
     private static final int MAX_TICKS = 400;            // іде щонайдовше 20 с, потім вибирає інше місце
     private static final double SPEED = 1.0;
     private static final int SMELL_IGNORE_TICKS = 1200;  // на запах їжі, до якої немає дороги (чи дійшла, а їжі не видно), — 1 хв не йде
+    private static final int LOOK_AROUND_TICKS = 40;     // їжі не видно — спершу 2 с озирається (розвертається на 180°: позаду сліпа зона)
+    private static final int LOOK_AROUND_EVERY = 400;    // ... не частіше раз на 20 с
     private static final int SHORT_RUN = 20;             // ціль скінчилась швидше 1 с — пауза 1 с (щоб не смикатись і не спамити)
     private static final int RECENT_SPOTS = 6;           // пам'ятає 6 останніх місць, де вже шукала ...
     private static final double RECENT_NEAR = 6;         // ... і нове бере щонайменше за 6 бл. від них
@@ -48,6 +50,8 @@ public class SearchFoodGoal extends Goal {
     private int ticks;
     private final Map<Long, Integer> skipped = new HashMap<>();
     private int retryAt = 0;
+    private int lookUntil = 0, lastLook = -100000;
+    private float lookFrom = 0;
     private final java.util.Deque<long[]> recent = new java.util.ArrayDeque<>();   // {позиція, тік} — де вже шукала   // клітинка пам'яті → до якого тіку не йти
 
     public SearchFoodGoal(HungryCow cow) {
@@ -147,11 +151,25 @@ public class SearchFoodGoal extends Goal {
     @Override
     public void start() {
         ticks = 0;
+        if (cow.tickCount - lastLook > LOOK_AROUND_EVERY) {   // спершу озирнутись
+            lastLook = cow.tickCount;
+            lookUntil = cow.tickCount + LOOK_AROUND_TICKS;
+            lookFrom = cow.getYRot();
+            cow.getNavigation().stop();
+        }
     }
 
     @Override
     public void tick() {
         if (spot == null) return;
+        if (cow.tickCount < lookUntil) {
+            // розвертається на місці: тіло й голова, за 2 с на 180° (так побачить те, що було за спиною)
+            float yaw = lookFrom + 180F * (1F - (lookUntil - cow.tickCount) / (float) LOOK_AROUND_TICKS);
+            cow.setYRot(yaw);
+            cow.yBodyRot = yaw;
+            cow.setYHeadRot(yaw);
+            return;
+        }
         ticks++;
         if (ticks == 1 || ticks % 20 == 0) cow.getNavigation().moveTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, SPEED);
     }

@@ -61,7 +61,9 @@ public class CowHearing {
     public static final int STARTLE_MIN = 8;                 // від такого переляку відбігає від звуку (StartleGoal)
     public static final int STARTLE_TICKS = 60;              // ... 3 с
     public static final int CALF_CALL_FROM = 10;             // теля кличе матір, коли воно далі 10 бл. від неї ...
-    public static final int CALF_CALL_EVERY = 10;            // ... раз на 10 с
+    public static final int CALF_CALL_EVERY = 5;             // ... раз на 5 с (Fij: було 10 с, не помітно)
+    public static final float CALF_CALL_VOLUME = 2.0F;       // гучно (гравцю чути здалеку)
+    public static final double OTHER_PER_VOLUME = 16, OTHER_MIN = 4;   // інші звуки: 16 бл. × гучність, щонайменше 4
     public static final int AMBIENT_EVERY = 5;               // вода й листя довкола — раз на 5 с
     public static final int AMBIENT_RADIUS = 6;
     public static final int WATER_PLEASANT = 3, LEAVES_PLEASANT = 6;   // стільки блоків води / листя поруч — приємно
@@ -86,7 +88,7 @@ public class CowHearing {
     }
 
     // Звук, що прозвучав у світі
-    public record Sound(long seq, String id, Kind kind, Vec3 pos, long time, Entity source) {
+    public record Sound(long seq, String id, Kind kind, Vec3 pos, long time, Entity source, double range) {
     }
 
     private static long nextSeq = 0;   // номер звуку по порядку (за часом не можна: у тому самому тіку звук міг прозвучати після того, як корова слухала)
@@ -104,10 +106,16 @@ public class CowHearing {
         if (id.contains("zombie") || id.contains("skeleton") || id.contains("spider") || id.contains("wolf.growl")
                 || id.contains("creeper.primed") || id.contains("husk") || id.contains("drowned") || id.contains("pillager")) return Kind.MOB;
         if (id.startsWith("minecraft:block.") && id.endsWith(".break")) return Kind.BREAK;
-        return null;   // решту (кроки, шелест інтерфейсу тощо) не беремо
+        if (id.contains(".step") || id.startsWith("minecraft:ui.") || id.startsWith("minecraft:music.") || id.startsWith("minecraft:ambient.")) return null;   // кроки рахує сама; музика гри й фон — не у світі
+        return Kind.OTHER;   // усе інше теж чути (двері, скриня, жування, плескіт…) — без переляку, але можна звикнути чи полюбити
     }
 
     public static void onSound(Level level, String id, Vec3 pos, Entity source) {
+        onSound(level, id, pos, source, 1.0F);
+    }
+
+    // volume — гучність, з якою гра грає звук: інші звуки чути на 16 бл. × гучність (як у грі), щонайменше 4
+    public static void onSound(Level level, String id, Vec3 pos, Entity source, float volume) {
         // голоси тварин гра часто грає «у точці», без джерела: хто стоїть там — той і подав голос
         if (source == null && id.startsWith("minecraft:entity.")) {
             double best = SOURCE_NEAR * SOURCE_NEAR;
@@ -121,7 +129,8 @@ public class CowHearing {
         Deque<Sound> q = SOUNDS.computeIfAbsent(level, l -> new ArrayDeque<>());
         long now = level.getGameTime();
         while (!q.isEmpty() && now - q.peekFirst().time() > SOUND_MEMORY) q.pollFirst();
-        q.addLast(new Sound(++nextSeq, id, k, pos, now, source));
+        double range = k == Kind.OTHER ? Math.max(OTHER_MIN, OTHER_PER_VOLUME * Math.min(volume, 2.0F)) : k.range;
+        q.addLast(new Sound(++nextSeq, id, k, pos, now, source, range));
         while (q.size() > SOUNDS_MAX) q.pollFirst();
     }
 
@@ -161,7 +170,7 @@ public class CowHearing {
         if (q != null) {
             for (Sound s : q) {
                 if (s.seq() <= lastHeard || s.source() == cow) continue;
-                double range = s.kind().range;
+                double range = s.range();
                 double d = s.pos().distanceTo(ear);
                 if (d > range) continue;
                 if (blocked(level, s.pos(), ear)) range *= MUFFLE;
@@ -204,7 +213,11 @@ public class CowHearing {
             calfCallIn = CALF_CALL_EVERY * 20 / EVERY;
             HungryCow m = cow.family.findMother();
             if (m != null && cow.distanceToSqr(m) > CALF_CALL_FROM * CALF_CALL_FROM) {
-                cow.playSound(SoundEvents.COW_AMBIENT, 1.0F, 1.6F);   // клич теляти (високий голос)
+                cow.playSound(SoundEvents.COW_AMBIENT, CALF_CALL_VOLUME, 1.6F);   // клич теляти (високий голос)
+                cow.tell("Теля " + cow.family.name + " кличе матір (" + m.family.name + ", " + Math.round(cow.distanceTo(m)) + " бл.)");
+                if (cow.level() instanceof net.minecraft.server.level.ServerLevel sl) {
+                    sl.sendParticles(net.minecraft.core.particles.ParticleTypes.NOTE, cow.getX(), cow.getEyeY() + 0.5, cow.getZ(), 1, 0, 0, 0, 0);
+                }
             }
         }
         if (pleasantNow > 0) {
@@ -224,9 +237,11 @@ public class CowHearing {
     private void hear(String id, Kind kind, Vec3 pos, Entity source, double far) {
         note(kind.title);
         if (kind != Kind.MOO && kind != Kind.CALF) pending.put(id, cow.level().getGameTime());   // мукання й клич — вроджене значення, не вчиться
-        // повертає голову на звук
-        if (source instanceof LivingEntity le && le != cow) cow.vision.alertTo(le);
-        else cow.getLookControl().setLookAt(pos.x, pos.y, pos.z);
+        // повертає голову на звук (на звичні тихі звуки — ні, інакше смикалась би від кожного)
+        if (kind != Kind.OTHER || habit.getOrDefault(id, 0.0) < 0.5) {
+            if (source instanceof LivingEntity le && le != cow) cow.vision.alertTo(le);
+            else cow.getLookControl().setLookAt(pos.x, pos.y, pos.z);
+        }
         // переляк: різкий звук лякає одразу (звикання зменшує)
         if (kind.startle > 0 && !cow.isBaby() || kind == Kind.EXPLOSION) {
             double h = habit.getOrDefault(id, 0.0);

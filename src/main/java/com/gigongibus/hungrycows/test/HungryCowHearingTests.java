@@ -36,14 +36,18 @@ public class HungryCowHearingTests {
         h.getLevel().playSound(null, p.x, p.y, p.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
-    // 1. Вибух за межами огорожі (не видно, хто) — корова лякається й відбігає
+    // 1. Вибух (справжній, як TNT) за межами огорожі — корова лякається й відбігає
     @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 200)
     public static void explosionStartles(GameTestHelper h) {
         HungryCow cow = still(h, new BlockPos(7, 2, 7));
         cow.fear = 0;
         int[] fear = { 0 };
         boolean[] ran = { false };
-        h.runAtTickTime(20, () -> play(h, new BlockPos(7, 2, 30), SoundEvents.GENERIC_EXPLODE));
+        // справжній вибух (як TNT), а не лише його звук: у грі звук вибуху чує тільки гравець, сервер його не грає
+        h.runAtTickTime(20, () -> {
+            Vec3 p = h.absoluteVec(Vec3.atCenterOf(new BlockPos(7, 2, 30)));
+            h.getLevel().explode(null, p.x, p.y, p.z, 4.0F, net.minecraft.world.level.Level.ExplosionInteraction.NONE);
+        });
         h.onEachTick(() -> {
             fear[0] = Math.max(fear[0], cow.fear);
             if (cow.goalSelector.getRunningGoals().anyMatch(g -> g.getGoal() instanceof com.gigongibus.hungrycows.ai.StartleGoal)) ran[0] = true;
@@ -130,6 +134,55 @@ public class HungryCowHearingTests {
             h.assertTrue(open[0] > 0, "удар за 10 бл. не почула");
             h.assertTrue(walled[0] == 0, "почула крізь стіну");
             h.succeed();
+        });
+    }
+
+    // 5. Гравець ламає блок поруч (справжнє ламання: звук гра грає лише гравцю — корова «чує» саму подію)
+    @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 200)
+    public static void hearsPlayerBreakingBlock(GameTestHelper h) {
+        HungryCow cow = still(h, new BlockPos(7, 2, 7));
+        cow.goalSelector.removeAllGoals(g -> true);
+        BlockPos stone = new BlockPos(9, 2, 7);
+        h.setBlock(stone, Blocks.STONE);
+        int[] fear = { 0 };
+        h.runAtTickTime(20, () -> {
+            cow.fear = 0;
+            net.minecraftforge.common.util.FakePlayer p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+            p.gameMode.destroyBlock(h.absolutePos(stone));
+        });
+        h.onEachTick(() -> fear[0] = Math.max(fear[0], cow.fear));
+        h.runAtTickTime(60, () -> {
+            boolean broken = h.getLevel().getBlockState(h.absolutePos(stone)).isAir();
+            LOG.info("[тест] hearsPlayerBreakingBlock: блок зламано {}, страх {}", broken, fear[0]);
+            h.setBlock(stone, Blocks.AIR);
+            cow.discard();
+            h.assertTrue(broken, "тест не зламав блок");
+            h.assertTrue(fear[0] > 0, "не почула, як гравець зламав камінь за 2 бл.");
+            h.succeed();
+        });
+    }
+
+    // 6. Теля далеко від матері кличе, мати чує й іде до нього
+    @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 600)
+    public static void calfCallsMotherComes(GameTestHelper h) {
+        HungryCow mother = still(h, new BlockPos(2, 2, 2));
+        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(12, 2, 12));
+        calf.setAge(-24000);
+        calf.family.setupNewborn(mother, null);
+        calf.goalSelector.removeAllGoals(g -> true);   // лише для тесту: теля стоїть на місці (як на повідку)
+        boolean[] came = { false };
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; mother.discard(); calf.discard(); };
+        h.onEachTick(() -> {
+            if (mother.goalSelector.getRunningGoals().anyMatch(g -> g.getGoal() instanceof com.gigongibus.hungrycows.ai.ComeToSoundGoal)) came[0] = true;
+        });
+        h.runAfterDelay(599, clear);
+        h.succeedWhen(() -> {
+            h.assertTrue(!cleared[0], "час вийшов (мати йшла на клич: " + came[0] + ")");
+            h.assertTrue(came[0], "мати не пішла на клич");
+            h.assertTrue(mother.distanceTo(calf) < 6, "мати ще не біля теляти");
+            LOG.info("[тест] calfCallsMotherComes: мати біля теляти на {} с", h.getTick() / 20.0);
+            clear.run();
         });
     }
 }
