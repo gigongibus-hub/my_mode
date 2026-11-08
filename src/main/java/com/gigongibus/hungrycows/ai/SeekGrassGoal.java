@@ -43,6 +43,7 @@ public class SeekGrassGoal extends Goal {
     private static final int MAX_RUN_TICKS = 400;         // скільки максимум йти до однієї цілі (20 сек)
     private static final int MAX_PATH_CHECKS = 6;         // скільки шляхів перевіряти за один вибір
     private static final int MAX_REACHABLE_COMPARED = 3;  // скільки досяжних варіантів порівнювати
+    private static final int MAX_SMELL_CHECKS = 30;       // нюх: скільки найближчих невидимих блоків їжі «понюхати»
     private static final int MAX_SIGHT_CHECKS = 80;       // зір: скільки блоків їжі перевіряти «чи видно» за один пошук (найближчі)
     private static final boolean DEBUG = true;            // писати в чат, коли їжа недосяжна
 
@@ -376,6 +377,21 @@ public class SeekGrassGoal extends Goal {
         return FLOWER_APPETITE.getOrDefault(b, 1) * (1.0 - cow.memory.aversion(b.asItem()));
     }
 
+    // Нюх: найближча їжа, запах якої доходить (за вітром, не крізь камінь) — SearchFoodGoal іде туди
+    private void smellFood(List<Candidate> all) {
+        all.sort(Comparator.comparingDouble((Candidate c) -> c.dist));
+        int left = MAX_SMELL_CHECKS;
+        for (Candidate c : all) {
+            if (left-- <= 0) break;
+            if (unreachable.contains(c.pos)) continue;
+            if (cow.smell.smellsBlock(c.pos)) {
+                cow.smelledFood = c.pos;
+                cow.smelledFoodTick = cow.tickCount;
+                return;
+            }
+        }
+    }
+
     // Лише видима їжа: найближча першою, щонайбільше MAX_SIGHT_CHECKS перевірок погляду за пошук
     private List<Candidate> visible(List<Candidate> list) {
         list.sort(Comparator.comparingDouble((Candidate c) -> c.dist));
@@ -519,12 +535,17 @@ public class SeekGrassGoal extends Goal {
 
         // зір (план Fij, етап 1): лише їжа, яку корова бачить
         sightLeft = MAX_SIGHT_CHECKS;
+        List<Candidate> all = new ArrayList<>(normal);
+        all.addAll(flowers);
+        all.addAll(desperate);
+        all.addAll(bluet);
         normal = visible(normal);
         flowers = visible(flowers);
         desperate = visible(desperate);
         bluet = visible(bluet);
         if (normal.isEmpty() && flowers.isEmpty() && desperate.isEmpty() && bluet.isEmpty()) {
             cow.foodNotSeenTick = cow.tickCount;   // не бачить жодної їжі — SearchFoodGoal поведе шукати
+            smellFood(all);                        // нюх: може, чує її запах
             return null;
         }
 

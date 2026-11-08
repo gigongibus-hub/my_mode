@@ -72,34 +72,28 @@ public class HungryCowVisionTests {
         });
     }
 
-    // 2. Їжа за стіною: голодна корова її не бачить, іде шукати і зрештою знаходить і з'їдає
+    // 2. Їжа за стіною: голодна корова її не бачить, іде шукати, обходить стінку й з'їдає
     @GameTest(template = ARENA, batch = "vision", timeoutTicks = 1800)
     public static void cowSearchesForHiddenFood(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        // трав'яний блок у підлозі в кутку, загороджений стінкою з каменю (2 бл.) з боку корови
-        BlockPos grass = new BlockPos(12, 1, 12);
+        // трав'яний блок у підлозі за кам'яною стінкою (3 бл. заввишки, 7 завширшки) посеред загону: з місця корови не видно,
+        // обійде стінку — побачить
+        BlockPos grass = new BlockPos(7, 1, 10);
         h.setBlock(grass, Blocks.GRASS_BLOCK);
-        for (int i = 9; i <= 13; i++) {
-            for (int y = 2; y <= 3; y++) {
-                h.setBlock(new BlockPos(i, y, 10), Blocks.STONE);
-                h.setBlock(new BlockPos(10, y, i), Blocks.STONE);
-            }
+        for (int i = 4; i <= 10; i++) {
+            for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(i, y, 8), Blocks.STONE);
         }
-        h.setBlock(new BlockPos(10, 2, 13), Blocks.AIR);   // вузький прохід у куток збоку
-        h.setBlock(new BlockPos(10, 3, 13), Blocks.AIR);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(3, 2, 3));
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.hunger = 60;
+        LOG.info("[тест] cowSearchesForHiddenFood: корова {}", cow.family.name);
         int[] notSeenAt = { -1 };
         boolean[] cleared = { false };
         Runnable clear = () -> {
             cleared[0] = true;
             cow.discard();
-            for (int i = 9; i <= 13; i++) for (int y = 2; y <= 3; y++) {
-                h.setBlock(new BlockPos(i, y, 10), Blocks.AIR);
-                h.setBlock(new BlockPos(10, y, i), Blocks.AIR);
-            }
+            for (int i = 4; i <= 10; i++) for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(i, y, 8), Blocks.AIR);
             h.setBlock(grass, Blocks.STONE);
         };
         h.onEachTick(() -> {

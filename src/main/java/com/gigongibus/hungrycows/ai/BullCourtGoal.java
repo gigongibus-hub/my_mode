@@ -30,7 +30,7 @@ public class BullCourtGoal extends Goal {
 
     private boolean stillWanted() {
         return female != null && female.isAlive() && female.cycle.inEstrus() && !female.cycle.matedThisEstrus()
-                && cow.distanceToSqr(female) < SEE_RANGE * SEE_RANGE;
+                && (cow.distanceToSqr(female) < SEE_RANGE * SEE_RANGE || cow.smell.smells(female));   // або чує її запах
     }
 
     @Override
@@ -39,10 +39,12 @@ public class BullCourtGoal extends Goal {
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = 20;
         female = null;
-        double bestDist = SEE_RANGE * SEE_RANGE;
-        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(SEE_RANGE),
+        double bestDist = Double.MAX_VALUE;
+        // бачить ближче 16 або чує запах самки в тічці (за вітром до 48 бл.)
+        for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(com.gigongibus.hungrycows.Wind.RANGE_WITH),
                 c -> c != cow && c.isAlive() && !c.isBaby() && c.repro.isFemale()
-                        && c.cycle.inEstrus() && !c.cycle.matedThisEstrus())) {
+                        && c.cycle.inEstrus() && !c.cycle.matedThisEstrus()
+                        && (cow.distanceToSqr(c) < SEE_RANGE * SEE_RANGE || cow.smell.smells(c)))) {
             double d = cow.distanceToSqr(c);
             if (d < bestDist) {
                 bestDist = d;

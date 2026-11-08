@@ -93,6 +93,12 @@ public class CowVision {
         return glance != null && glance.isAlive() && cow.tickCount - glanceTick <= EVERY * 2 ? glance : null;
     }
 
+    // Інше чуття (нюх, слух) підказало, де щось є — повернути туди голову
+    public void alertTo(LivingEntity e) {
+        glance = e;
+        glanceTick = cow.tickCount;
+    }
+
     public void tick() {
         if ((cow.tickCount + cow.getId()) % EVERY != 0) return;
         update();

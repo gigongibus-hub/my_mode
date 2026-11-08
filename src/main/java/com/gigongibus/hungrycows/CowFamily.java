@@ -121,7 +121,7 @@ public class CowFamily {
     public void secondTick() {
         if (!cow.isBaby() || motherId == null) return;
         HungryCow mother = findMother();
-        if (mother != null && cow.distanceToSqr(mother) <= MOTHER_RANGE * MOTHER_RANGE) {
+        if (mother != null && (cow.distanceToSqr(mother) <= MOTHER_RANGE * MOTHER_RANGE || cow.smell.smellsMother(mother))) {   // чує запах — не загубилось
             separatedSeconds = 0;
             return;
         }

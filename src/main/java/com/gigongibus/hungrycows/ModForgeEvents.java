@@ -202,6 +202,7 @@ public class ModForgeEvents {
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
             Regrowth.tick(level);
+            if (level.getGameTime() % CowSmell.TRAIL_EVERY == 0) CowSmell.recordTrails(level);   // сліди запаху
         }
     }
 

@@ -28,16 +28,23 @@ public class SearchFoodGoal extends Goal {
     private static final int MEMORY_SKIP_TICKS = 2400;   // місце, куди ходила й нічого не побачила, — 2 хв не йде знову
     private static final int WANDER_XZ = 16, WANDER_Y = 4;   // нове місце: до 16 блоків по горизонталі, ±4 по висоті
     private static final double WANDER_MIN = 8;          // ... але не ближче 8
-    private static final int WANDER_TRIES = 8;           // скільки випадкових місць пробує (бере перше надворі)
+    private static final int WANDER_TRIES = 16;          // скільки випадкових місць пробує (бере перше надворі)
+    private static final double WANDER_MIN_CLOSE = 4;    // далеких немає (тісний загін) — годиться й ближче 4 бл.
+    private static final int RETRY_TICKS = 20;           // не знайшла, куди йти, — наступна спроба за 1 с
     private static final double ARRIVED = 2.5;           // дійшла
     private static final int MAX_TICKS = 400;            // іде щонайдовше 20 с, потім вибирає інше місце
     private static final double SPEED = 1.0;
+    private static final int RECENT_SPOTS = 6;           // пам'ятає 6 останніх місць, де вже шукала ...
+    private static final double RECENT_NEAR = 6;         // ... і нове бере щонайменше за 6 бл. від них
+    private static final int RECENT_TICKS = 2400;        // ... протягом 2 хв
 
     private final HungryCow cow;
     private BlockPos spot;
     private boolean fromMemory;
     private int ticks;
-    private final Map<Long, Integer> skipped = new HashMap<>();   // клітинка пам'яті → до якого тіку не йти
+    private final Map<Long, Integer> skipped = new HashMap<>();
+    private int retryAt = 0;
+    private final java.util.Deque<long[]> recent = new java.util.ArrayDeque<>();   // {позиція, тік} — де вже шукала   // клітинка пам'яті → до якого тіку не йти
 
     public SearchFoodGoal(HungryCow cow) {
         this.cow = cow;
@@ -53,12 +60,20 @@ public class SearchFoodGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby() || cow.choking || cow.heat.unconscious || !cow.onGround()) return false;
         if (cow.tickCount - cow.foodNotSeenTick > NOT_SEEN_FRESH || !cow.shouldSeekFood()) return false;
+        if (cow.tickCount < retryAt) return false;
         spot = choose();
+        if (spot == null) retryAt = cow.tickCount + RETRY_TICKS;
         return spot != null;
     }
 
     private BlockPos choose() {
         skipped.values().removeIf(t -> t < cow.tickCount);
+        // нюх: чує запах їжі — іде на нього
+        if (cow.smelledFood != null && cow.tickCount - cow.smelledFoodTick <= NOT_SEEN_FRESH) {
+            fromMemory = false;
+            cow.tell(cow.family.name + " не бачить їжі, але чує її запах — іде туди");
+            return cow.smelledFood;
+        }
         Set<Long> skip = new HashSet<>(skipped.keySet());
         BlockPos mem = cow.memory.bestPlace(cow.blockPosition(), MEMORY_RANGE, MEMORY_MIN, skip);
         if (mem != null) {
@@ -71,19 +86,40 @@ public class SearchFoodGoal extends Goal {
             skipped.put(CowMemory.cellKey(mem), cow.tickCount + MEMORY_SKIP_TICKS);
         }
         fromMemory = false;
-        BlockPos any = null;
+        recent.removeIf(e -> cow.tickCount - e[1] > RECENT_TICKS);
+        BlockPos any = null, close = null;
         for (int i = 0; i < WANDER_TRIES; i++) {
             Vec3 v = LandRandomPos.getPos(cow, WANDER_XZ, WANDER_Y);
-            if (v == null || v.distanceToSqr(cow.position()) < WANDER_MIN * WANDER_MIN) continue;
+            if (v == null || v.distanceToSqr(cow.position()) < WANDER_MIN_CLOSE * WANDER_MIN_CLOSE) continue;
+            if (v.distanceToSqr(cow.position()) < WANDER_MIN * WANDER_MIN) {
+                BlockPos c = BlockPos.containing(v);
+                if (close == null && !searchedNear(c)) {
+                    Path cp = cow.getNavigation().createPath(c, 1);
+                    if (cp != null && cp.canReach()) close = c;
+                }
+                continue;
+            }
             BlockPos b = BlockPos.containing(v);
+            if (searchedNear(b)) continue;                         // тут уже шукала — далі
+            Path path = cow.getNavigation().createPath(b, 1);
+            if (path == null || !path.canReach()) continue;        // туди не дійти
             if (!CowHome.hasRoof(cow.level(), b)) {
                 cow.tell(cow.family.name + " не бачить їжі — шукає");
                 return b;
             }
             if (any == null) any = b;
         }
+        if (any == null) any = close;
         if (any != null) cow.tell(cow.family.name + " не бачить їжі — шукає");
+        else recent.clear();   // усе поруч обшукала — наступного разу шукатиме знову скрізь
         return any;
+    }
+
+    private boolean searchedNear(BlockPos b) {
+        for (long[] e : recent) {
+            if (BlockPos.of(e[0]).distSqr(b) < RECENT_NEAR * RECENT_NEAR) return true;
+        }
+        return false;
     }
 
     @Override
@@ -108,6 +144,10 @@ public class SearchFoodGoal extends Goal {
     public void stop() {
         // дійшла до пам'ятного місця, а їжі не видно — 2 хв туди не ходить
         if (spot != null && fromMemory && cow.distanceToSqr(Vec3.atBottomCenterOf(spot)) <= (ARRIVED + 1) * (ARRIVED + 1)) skipped.put(CowMemory.cellKey(spot), cow.tickCount + MEMORY_SKIP_TICKS);
+        if (spot != null) {
+            recent.addLast(new long[]{ spot.asLong(), cow.tickCount });
+            while (recent.size() > RECENT_SPOTS) recent.pollFirst();
+        }
         spot = null;
         cow.getNavigation().stop();
     }

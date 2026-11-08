@@ -263,8 +263,11 @@ public class HungryCow extends Cow {
     public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
+    public BlockPos smelledFood = null;                                 // їжа, яку чує носом (не бачить)
+    public int smelledFoodTick = -100000;
     public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
-    public final CowVision vision = new CowVision(this);                // зір (план Fij, етап 1)
+    public final CowVision vision = new CowVision(this);
+    public final CowSmell smell = new CowSmell(this);                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -860,7 +863,7 @@ public class HungryCow extends Cow {
 
     @Override
     public void aiStep() {
-        if (!this.level().isClientSide) vision.tick();
+        if (!this.level().isClientSide) { vision.tick(); smell.tick(); }
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
@@ -998,6 +1001,7 @@ public class HungryCow extends Cow {
         }
         int before = trust.get(player.getUUID());
         int after = trust.add(player.getUUID(), real);
+        if (real > 0) smell.learn(player, CowSmell.LEARN_TREAT);   // нюх: запах того, хто добрий, стає приємним
         if (after != before) {
             tell("Довіра до " + player.getName().getString() + ": " + before + " -> " + after + " (" + reason + ")");
         }
@@ -1733,7 +1737,12 @@ public class HungryCow extends Cow {
     @Override
     public boolean hurt(DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
-        if (result && !this.level().isClientSide) chem.onHurt(amount);   // біль і адреналін від будь-якого урону
+        if (result && !this.level().isClientSide) {
+            chem.onHurt(amount);   // біль і адреналін від будь-якого урону
+            // нюх: кров пахне тривогою 1 хв — коли хтось поранив або сильний удар (не голод і не спрага)
+            if (source.getEntity() != null || amount >= CowSmell.BLOOD_DAMAGE) CowSmell.addBlood(this.level(), this.position(), this.getUUID());
+            if (source.getEntity() != null && !(source.getEntity() instanceof HungryCow)) smell.learn(source.getEntity(), CowSmell.LEARN_HURT);
+        }
         Entity attacker = source.getEntity();
         if (result && !this.level().isClientSide && attacker != null) {
             // пам'ять місця: тут ударили (окрім удару, що рятує подавлену корову)
@@ -1778,6 +1787,7 @@ public class HungryCow extends Cow {
     @Override
     public void die(DamageSource source) {
         if (!this.level().isClientSide) {
+            CowSmell.addBlood(this.level(), this.position(), this.getUUID());   // мертва корова пахне тривогою
             Component msg = Component.literal("Корова померла від: " + source.getMsgId()
                     + " | голод " + hunger + " | втома " + fatigue + " | страх " + fear);
             this.level().players().forEach(p -> p.sendSystemMessage(msg));
@@ -1834,6 +1844,7 @@ public class HungryCow extends Cow {
         chem.save(tag);
         brain.save(tag);
         memory.save(tag);
+        smell.save(tag);
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
@@ -1865,6 +1876,7 @@ public class HungryCow extends Cow {
         chem.load(tag);
         brain.load(tag);
         memory.load(tag);
+        smell.load(tag);
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);

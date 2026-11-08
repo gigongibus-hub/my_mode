@@ -191,6 +191,11 @@ public class CowChemistry {
         adrenaline = clamp(adrenaline + ADRENALINE_ON_ALARM * g(Gene.HORMONE_SENSITIVITY));
     }
 
+    // Приємний запах (квіти, сіно, знайомий, рідні): стрес спадає
+    public void onPleasantSmell(double calm) {
+        cortisol = clamp(cortisol - calm);
+    }
+
     public void onTreat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_TREAT * g(Gene.HORMONE_SENSITIVITY));
     }

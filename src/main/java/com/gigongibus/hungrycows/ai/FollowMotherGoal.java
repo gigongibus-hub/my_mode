@@ -37,7 +37,8 @@ public class FollowMotherGoal extends Goal {
 
     private boolean inRange(double dist) {
         double d = cow.distanceToSqr(mother);
-        return d <= CowFamily.MOTHER_RANGE * CowFamily.MOTHER_RANGE && d > dist * dist;
+        // далі, ніж бачить, — іде на запах матері (теля запам'ятало його після народження)
+        return (d <= CowFamily.MOTHER_RANGE * CowFamily.MOTHER_RANGE || cow.smell.smellsMother(mother)) && d > dist * dist;
     }
 
     @Override
