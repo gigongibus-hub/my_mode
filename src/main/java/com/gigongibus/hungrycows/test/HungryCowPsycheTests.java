@@ -112,4 +112,20 @@ public class HungryCowPsycheTests {
             h.succeed();
         });
     }
+
+    // 5. Етап 11: напис над головою — стан (туга) і подія (злякалась звуку)
+    @GameTest(template = "platform", batch = "psyche", timeoutTicks = 40)
+    public static void labelOverHead(GameTestHelper h) {
+        HungryCow c = cow(h, new BlockPos(4, 2, 4));
+        c.goalSelector.removeAllGoals(g -> true);
+        c.episodes.remember(CowEpisodes.Kind.FRIEND_DEATH, "Ромашка");
+        String grief = c.stateLabel();
+        c.status("нюхає повітря");
+        String sniff = c.stateLabel();
+        LOG.info("[тест] labelOverHead: «{}», потім «{}»", grief, sniff);
+        c.discard();
+        h.assertTrue(grief.toLowerCase().contains("тужить"), "немає напису про тугу: " + grief);
+        h.assertTrue(sniff.equals("Нюхає повітря"), "немає напису про дію: " + sniff);
+        h.succeed();
+    }
 }

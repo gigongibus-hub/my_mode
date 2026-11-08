@@ -59,7 +59,10 @@ public class ShelterFromRainGoal extends Goal {
         for (int i = 0; i < SHADE_ROUNDS && dry(shelter) == null; i++) shelter = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, true);  // дерево
         for (int i = 0; i < SHADE_ROUNDS && dry(shelter) == null; i++) shelter = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false); // будь-яке накриття
         shelter = dry(shelter);
-        if (shelter != null) cow.tell(cow.family.name + ": не любить дощу — іде в укриття");
+        if (shelter != null) {
+            cow.tell(cow.family.name + ": не любить дощу — іде в укриття");
+            cow.status("ховається від дощу");
+        }
         return shelter != null;
     }
 

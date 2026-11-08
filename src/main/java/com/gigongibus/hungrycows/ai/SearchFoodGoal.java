@@ -88,6 +88,7 @@ public class SearchFoodGoal extends Goal {
                 if (!food.equals(toldFood)) {
                     toldFood = food;
                     cow.tell(cow.family.name + " не бачить їжі, але чує її запах — іде туди");
+                    cow.status("чує запах їжі");
                 }
                 return p.getEndNode() != null ? p.getEndNode().asBlockPos() : p.getTarget();   // кінець дороги, а не сама ціль
             }
@@ -130,7 +131,10 @@ public class SearchFoodGoal extends Goal {
             if (any == null) any = b;
         }
         if (any == null) any = close;
-        if (any != null) cow.tell(cow.family.name + " не бачить їжі — шукає");
+        if (any != null) {
+            cow.tell(cow.family.name + " не бачить їжі — шукає");
+            cow.status("шукає їжу");
+        }
         else recent.clear();   // усе поруч обшукала — наступного разу шукатиме знову скрізь
         return any;
     }

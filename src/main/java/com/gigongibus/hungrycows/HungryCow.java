@@ -277,6 +277,30 @@ public class HungryCow extends Cow {
     }
 
     public static final int STATUS_TICKS = 100;
+    public static final double LABEL_RANGE = 8;     // напис над головою видно ближче 8 бл.
+
+    // Що написати над головою: свіжа дія/подія (5 с), інакше тривалий стан, інакше що робить мозок (лише цікаве)
+    public String stateLabel() {
+        if (this.tickCount < statusUntil && !statusText.isEmpty()) return capital(statusText);
+        if (heat.unconscious) return "Без тями";
+        if (sleeping) return "Спить";
+        if (psyche.grief > 0.3) return "Тужить";
+        if (psyche.stereotypy >= CowPsyche.STEREO_FROM) return "Нудьгує";
+        if (psyche.helpless > 0.5) return "Пригнічена";
+        if (limping()) return "Кульгає";
+        if (disease.sick()) return "Хворіє";
+        if (chem.fearFelt() >= scaredAt()) return "Боїться";
+        if (CowBrain.enabled) {
+            CowBrain.Action a = brain.current();
+            if (a != CowBrain.Action.WANDER && a != CowBrain.Action.EAT && a != CowBrain.Action.REST && isDoing(a)) return capital(a.title);
+        }
+        if (psyche.content > 0.6) return "Задоволена";
+        return "";
+    }
+
+    private static String capital(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 
     public final CowVision vision = new CowVision(this);
     public final CowSmell smell = new CowSmell(this);
@@ -976,9 +1000,14 @@ public class HungryCow extends Cow {
                 tell("Корову назвали: " + family.name);
             }
             name = repro.decorate(name);
+            // етап 11: стан чи дія над головою — «Боїться води», «Тужить за Ромашкою», «Нюхає повітря»…
+            String state = stateLabel();
+            if (DEBUG_MESSAGES) name = (state.isEmpty() ? "" : "[" + state + "] ") + name;   // службовий напис лишається (Fij)
+            else name = family.name + (state.isEmpty() ? "" : " — " + state);
             lastLabel = name;
             this.setCustomName(Component.literal(name));
-            this.setCustomNameVisible(true);
+            // видно, коли гравець ближче 8 бл. (а коли дивиться на корову — гра показує напис сама)
+            this.setCustomNameVisible(this.level().getNearestPlayer(this, LABEL_RANGE) != null);
         }
     }
 

@@ -105,6 +105,7 @@ public class CowTouch {
         }
         hearts(front ? 2 : 1);
         lastTouchedTick = cow.tickCount;
+        cow.status(front ? "їй приємно" : "дозволяє погладити");
         if (front && cow.getRandom().nextDouble() < PET_MEMORY) cow.episodes.remember(CowEpisodes.Kind.PETTED, player.getName().getString());
         cow.getNavigation().stop();
         cow.getLookControl().setLookAt(player, 10F, 10F);

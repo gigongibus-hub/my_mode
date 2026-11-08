@@ -84,6 +84,7 @@ public class LickSaltGoal extends Goal {
         walk = 0;
         licking = 0;
         cow.tell(cow.family.name + " хоче солі — іде до лизунця");
+        cow.status("хоче солі");
     }
 
     @Override

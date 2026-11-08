@@ -80,9 +80,10 @@ public class VillageCows extends SavedData {
         if (changed) v.setDirty();
     }
 
-    public static int spawnCows(ServerLevel level, BlockPos center) {
+    public static List<HungryCow> spawnCows(ServerLevel level, BlockPos center) {
         int n = MIN_COWS + level.getRandom().nextInt(MAX_COWS - MIN_COWS + 1);
         int done = 0;
+        List<HungryCow> made = new ArrayList<>();
         for (int i = 0; i < n * 4 && done < n; i++) {
             int x = center.getX() + level.getRandom().nextInt(SPREAD * 2 + 1) - SPREAD;
             int z = center.getZ() + level.getRandom().nextInt(SPREAD * 2 + 1) - SPREAD;
@@ -102,9 +103,9 @@ public class VillageCows extends SavedData {
             if (cow == null) continue;
             cow.moveTo(x + 0.5, y, z + 0.5, level.getRandom().nextFloat() * 360F, 0);
             cow.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.STRUCTURE, null, null);
-            level.addFreshEntity(cow);
+            if (level.addFreshEntity(cow)) made.add(cow);
             done++;
         }
-        return done;
+        return made;
     }
 }

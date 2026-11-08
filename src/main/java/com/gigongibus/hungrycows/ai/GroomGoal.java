@@ -96,6 +96,7 @@ public class GroomGoal extends Goal {
             cow.touch.groomed(partner);
             partner.touch.groomed(cow);
             cow.tell(cow.family.name + " вилизала " + partner.family.name);
+            cow.status("вилизує " + partner.family.name);
         }
     }
 

@@ -46,13 +46,13 @@ public class HungryCowRareTests {
     public static void villageGetsCows(GameTestHelper h) {
         TestWorld.calm(h);
         BlockPos center = h.absolutePos(new BlockPos(7, 2, 7));
-        int n = VillageCows.spawnCows(h.getLevel(), center);
-        AABB box = new AABB(center).inflate(10, 100, 10);   // висота — уся (у тестовому світі карта висот дивна)
-        List<HungryCow> cows = h.getLevel().getEntitiesOfClass(HungryCow.class, box);
-        LOG.info("[тест] villageGetsCows: поставлено {}, у селі корів {}", n, cows.size());
+        List<HungryCow> cows = VillageCows.spawnCows(h.getLevel(), center);
+        int n = cows.size();
+        boolean near = cows.stream().allMatch(c -> Math.abs(c.getX() - center.getX()) <= VillageCows.SPREAD + 1 && Math.abs(c.getZ() - center.getZ()) <= VillageCows.SPREAD + 1);
+        LOG.info("[тест] villageGetsCows: поставлено {} (усі до {} бл. від середини: {})", n, VillageCows.SPREAD, near);
         cows.forEach(HungryCow::discard);
         h.assertTrue(n >= VillageCows.MIN_COWS && n <= VillageCows.MAX_COWS, "корів не 1–6: " + n);
-        h.assertTrue(cows.size() == n, "поставлено " + n + ", а знайдено " + cows.size());
+        h.assertTrue(near, "корови далеко від села");
         h.succeed();
     }
 

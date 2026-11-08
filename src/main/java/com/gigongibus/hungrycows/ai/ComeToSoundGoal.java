@@ -47,6 +47,7 @@ public class ComeToSoundGoal extends Goal {
     @Override
     public void start() {
         cow.tell(cow.family.name + " чує " + cow.hearing.comeWhy + " — іде туди");
+        cow.status("чує " + cow.hearing.comeWhy);
     }
 
     @Override

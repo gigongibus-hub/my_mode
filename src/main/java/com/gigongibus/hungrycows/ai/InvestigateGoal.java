@@ -60,6 +60,7 @@ public class InvestigateGoal extends Goal {
         if (novel) {
             cow.memory.onInvestigate(target);
             cow.tell(cow.family.name + " роздивляється нове: " + target.getName().getString());
+            cow.status("роздивляється " + target.getName().getString());
         }
     }
 
