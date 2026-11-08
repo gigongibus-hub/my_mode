@@ -98,7 +98,8 @@ public class CowDisease {
     private void spread() {
         for (HungryCow o : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(SPREAD_RANGE),
                 o -> o != cow && o.isAlive() && !o.disease.sick())) {
-            double chance = SPREAD_CHANCE * o.genes.inverse(CowGenes.Gene.IMMUNITY) * o.genes.inverse(CowGenes.Gene.CONTACT_INFECTION_RESIST);
+            double chance = SPREAD_CHANCE * o.genes.inverse(CowGenes.Gene.IMMUNITY) * o.genes.inverse(CowGenes.Gene.CONTACT_INFECTION_RESIST)
+                    * o.psyche.sicknessFactor();   // задоволена рідше хворіє
             if (o.getRandom().nextDouble() < chance) o.disease.infect();
         }
     }

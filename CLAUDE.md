@@ -231,7 +231,7 @@
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
 9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster, FollowMother · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
-14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate, BrainAction · 18 MotherCalf · 19 Grieve, Groom ·
+14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate, BrainAction · 18 MotherCalf, Play · 19 Grieve, Groom ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
 Пошук шляху — ванільний A* зі своєю «ціною» клітинок (`nav/CowNodeEvaluator`, далі від стін); ходіння за шляхом — ще ванільне.
@@ -404,6 +404,9 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   у повідомленні тепер видно, чим корова зайнята.
 - `test/HungryCowBrainTests` (партія "brain"): lobesSizesAndSave (500 нейронів, 4478 зв'язків, нюх ген 100 → 48 / ген 0 → 32,
   ваги відновлюються), itchyCowScratches (свербіж 90 + паркан → почухалась за ~7 с; 1 з 3 мозок за 60 с не вибрав «чесатися»).
+- `test/HungryCowPsycheTests` (партія "psyche"): waterPhobia (3 × ледь не втопилась → фобія 1,0, біля води страх 23),
+  motherGrievesCalf (туга 0,95, апетит ×0,62), calvesPlay, traumaAtPlace (травма → страх на місці 13). Безпорадність і
+  задоволеність (потрібна доба гри) тестом не перевірені.
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

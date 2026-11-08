@@ -231,6 +231,7 @@ public class CowMemory {
         investigating = typeKey(e) + "|" + category(e);
         investigateTick = cow.tickCount;
         cow.chem.onTasty(CURIOUS_JOY);
+        cow.psyche.stimulate(0.3);   // нове — не нудно
     }
 
     public void doneInvestigating(net.minecraft.world.entity.LivingEntity e) {

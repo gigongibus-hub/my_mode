@@ -805,6 +805,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(13, new com.gigongibus.hungrycows.ai.LickSaltGoal(this));   // хоче солі — лиже лизунець (смак)
         this.goalSelector.addGoal(19, new com.gigongibus.hungrycows.ai.GroomGoal(this));        // вилизує подругу / теля / матір (дотик)
         this.goalSelector.addGoal(17, new com.gigongibus.hungrycows.ai.BrainActionGoal(this));  // нюхати, слухати, мукати, чесатися, додому (етап 8)
+        this.goalSelector.addGoal(18, new com.gigongibus.hungrycows.ai.PlayGoal(this));         // телята граються (етап 9)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
@@ -1108,7 +1109,7 @@ public class HungryCow extends Cow {
     // Поріг страху: полохлива корова тікає раніше
     public int scaredAt() {
         double t = SCARED_AT_CALM - (SCARED_AT_CALM - SCARED_AT_TIMID) * character.fraction(Trait.FEARFULNESS);
-        return (int) Math.round(t * chem.fearThresholdFactor());   // самотня тікає раніше
+        return (int) Math.round(t * chem.fearThresholdFactor() * psyche.fleeThresholdFactor());   // самотня тікає раніше; безпорадна чи задоволена — пізніше
     }
 
     // Як швидко минає страх: смілива заспокоюється швидше

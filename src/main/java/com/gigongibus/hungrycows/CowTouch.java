@@ -152,6 +152,7 @@ public class CowTouch {
     public void groomed(HungryCow other) {
         addBond(other, BOND_GROOM);
         lastTouchedTick = cow.tickCount;
+        cow.psyche.stimulate(0.15);
         cow.chem.onPetted(OXY_GROOM, CALM_SIDE);
         hearts(1);
     }

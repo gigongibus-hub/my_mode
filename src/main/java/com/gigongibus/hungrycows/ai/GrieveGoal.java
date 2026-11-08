@@ -26,15 +26,30 @@ public class GrieveGoal extends Goal {
         return true;
     }
 
+    // етап 9: доросла тужить (загинула подруга чи теля) — інколи ходить на те місце й стоїть там
+    private static final double ADULT_GRIEF = 0.3;        // туга від 0,3
+    private static final int ADULT_VISIT_EVERY = 1200;    // іде туди не частіше раз на хвилину
+    private static final int ADULT_VISIT_TICKS = 400;     // і стоїть 20 с
+    private int nextAdultVisit = 0;
+    private boolean adult;
+
     @Override
     public boolean canUse() {
-        if (!cow.isBaby()) return false;
-        place = cow.family.motherDeathPos();
-        return place != null;
+        if (cow.isBaby()) {
+            place = cow.family.motherDeathPos();
+            adult = false;
+            return place != null;
+        }
+        if (cow.psyche.grief < ADULT_GRIEF || cow.psyche.griefPlace == null || cow.tickCount < nextAdultVisit) return false;
+        nextAdultVisit = cow.tickCount + ADULT_VISIT_EVERY + cow.getRandom().nextInt(ADULT_VISIT_EVERY);
+        place = cow.psyche.griefPlace;
+        adult = true;
+        return true;
     }
 
     @Override
     public boolean canContinueToUse() {
+        if (adult) return ticks < ADULT_VISIT_TICKS && cow.psyche.grief >= ADULT_GRIEF;
         return cow.isBaby() && cow.family.motherDeathPos() != null;
     }
 

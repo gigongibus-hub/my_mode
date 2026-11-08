@@ -237,6 +237,7 @@ public class CowChemistry {
     }
 
     public void onFreshPasture() {
+        cow.psyche.stimulate(0.1);   // пасовище — не нудно
         dopamine = clamp(dopamine + DOPAMINE_ON_PASTURE * g(Gene.HORMONE_SENSITIVITY));
     }
 
@@ -275,6 +276,7 @@ public class CowChemistry {
     // Наскільки сильно корова ВІДЧУВАЄ голод порівняно з тим, скільки їй бракує їжі (×0.3 … ×1.3)
     public double appetite() {
         double k = APPETITE_MIN + (APPETITE_MAX - APPETITE_MIN) * cow.character.fraction(Trait.APPETITE);
+        k *= cow.psyche.appetiteFactor();   // етап 9: безпорадність і туга — менше їсть
         if (cortisol > STRESS_APPETITE_FROM) {
             k *= 1.0 - STRESS_APPETITE_LOSS * (cortisol - STRESS_APPETITE_FROM) / (100 - STRESS_APPETITE_FROM);
         }
@@ -300,6 +302,7 @@ public class CowChemistry {
         double k = TIRED_LAZY - (TIRED_LAZY - TIRED_ACTIVE) * cow.character.fraction(Trait.ACTIVITY);
         k *= 1.0 - ADRENALINE_HIDES_TIRED * adrenaline / 100.0;
         k *= 1.0 + PAIN_ADDS_TIRED * feltPain() / 100.0;   // болить — більше лежить
+        k *= cow.psyche.tiredFactor();   // етап 9: безпорадна більше лежить
         if (cow.repro.isPregnant()) k *= 1.0 + PREGNANT_TIRED;
         return Math.max(0.3, k);
     }
@@ -351,7 +354,7 @@ public class CowChemistry {
 
     // стрес сповільнює молоко: множник швидкості (1.0 … 0.5)
     public double milkSpeedFactor() {
-        return 1.0 - STRESS_MILK_SLOWDOWN * cortisol / 100.0;
+        return (1.0 - STRESS_MILK_SLOWDOWN * cortisol / 100.0) * cow.psyche.milkFactor();   // задоволена — більше молока
     }
 
     // ---------- для книги ----------
