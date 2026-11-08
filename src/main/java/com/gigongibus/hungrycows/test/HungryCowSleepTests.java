@@ -242,7 +242,11 @@ public class HungryCowSleepTests {
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.ACTIVITY),
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.CURIOSITY),
                                 c.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.FEARFULNESS),
-                                firstOut[i] < 0 ? "лишилась у хліві" : String.format("вийшла на %.0f с, відійшла від хліва на %.0f бл.", firstOut[i] / 20.0, farthest[i])));
+                                firstOut[i] < 0 ? "лишилась у хліві" : String.format("вийшла на %.0f с, відійшла від хліва на %.0f бл.", firstOut[i] / 20.0, farthest[i])))
+                                .append(String.format(" [мозок %s, цілі %s, голод %.0f, втома %.0f, страх %.0f, неспокій %.0f]; ",
+                                        com.gigongibus.hungrycows.CowBrain.enabled ? c.brain.current().name() : "вимк",
+                                        c.goalSelector.getRunningGoals().map(g -> g.getGoal().getClass().getSimpleName()).collect(java.util.stream.Collectors.joining(",")),
+                                        (double) c.hunger, (double) c.fatigue, (double) c.fear, (double) c.barnUnrest));
                     }
                     LOG.info("[тест] cowsGoOutToPasture: вийшло {} з {}, відійшли на {}+ бл. — {}: {}", out, cows.size(), (int) FAR_FROM_BARN, far, sb);
                     StringBuilder q = new StringBuilder();
