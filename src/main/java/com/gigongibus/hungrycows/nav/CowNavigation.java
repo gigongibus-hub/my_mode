@@ -37,10 +37,11 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double NEAR_GOAL = 2.5;       // ціль ближче 2,5 бл. (підходить їсти поруч з іншою) — не обходить
     // Ходіння за шляхом (followThePath): не зрізати кути
     public static final double WAYPOINT_REACH = 0.35; // точку пройдено, коли центр корови ближче 0,35 бл. до центру точки (по X і по Z)
-    public static final double WAYPOINT_DY = 1.0;     // ... і різниця висоти менша за 1 блок
+    public static final double WAYPOINT_DY = 1.05;    // ... і різниця висоти до 1 блока включно (точкою буває сам блок під ногами:
+                                                      // стежка, килим — рівно 1,0, і з «менше 1» корова стояла на ній назавжди)
     public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
-    public static final int WAYPOINT_STUCK_TICKS = 20; // 1 с не наближається до точки (крок навскіс, пагорбок, точка блоком нижче) —
-                                                      // раз діє ванільне правило (може зрізати кут), щоб не застрягти назавжди
+    public static final int WAYPOINT_STUCK_TICKS = 20; // 1 с не наближається до точки (крок навскіс, пагорбок) — переходить до наступної
+                                                      // (міняє напрямок), щоб не застрягти; ванільного зрізання кутів немає
     public static final double WAYPOINT_PROGRESS = 0.05; // «наближається» = за тік ближче хоча б на 0,05 бл. (сумарно)
     // Крок убік лише туди, де вільно
     public static final double SIDESTEP_CHECK = 0.6;  // рамку корови зсуває на 0,6 бл. у бік кроку й дивиться, чи там вільно
@@ -111,7 +112,8 @@ public class CowNavigation extends GroundPathNavigation {
         } else if (!reached && ++stuckTicks >= WAYPOINT_STUCK_TICKS) {
             stuckTicks = 0;
             stuckNode = -1;
-            super.followThePath();   // ванільне: ширший допуск і зрізання кута (у ньому й doStuckDetection)
+            this.path.advance();   // до наступної точки (інший напрямок); остання — шлях скінчено, ціль перебудує
+            this.doStuckDetection(tempPos);
             return;
         }
         boolean straightSkip = !reached && dy < WAYPOINT_DY && dx < STRAIGHT_REACH && dz < STRAIGHT_REACH && straightAt(i);

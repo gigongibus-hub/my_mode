@@ -67,8 +67,8 @@ public class HungryCowNavTests {
             h.assertTrue(d < ARRIVED, String.format("%s: не дійшла (до цілі %.2f бл.), корова (%.2f %.2f %.2f), шлях %s, ударів %d", name, d,
                     cow.getX() - h.absoluteVec(Vec3.ZERO).x, cow.getY(), cow.getZ() - h.absoluteVec(Vec3.ZERO).z,
                     p == null ? "немає" : p.getNextNodeIndex() + "/" + p.getNodeCount(), bumps[0]));
-            LOG.info("[тест] {}: дійшла за {} с, ударів об стіну {}", name, String.format("%.1f", h.getTick() / 20.0), bumps[0]);
             h.assertTrue(bumps[0] <= maxBumps, name + ": ударів об стіну " + bumps[0]);
+            LOG.info("[тест] {}: дійшла за {} с, ударів об стіну {}", name, String.format("%.1f", h.getTick() / 20.0), bumps[0]);
             cow.discard();
             clear(h);
         });
@@ -88,7 +88,7 @@ public class HungryCowNavTests {
             for (int z = 1; z <= 13; z++) h.setBlock(new BlockPos(x, 1, z), Blocks.DIRT_PATH);
         }
         HungryCow cow = cowWithoutGoals(h, new BlockPos(2, 2, 2));
-        walk(h, cow, new BlockPos(11, 2, 12), "walksFromDirtPath", 0);
+        walk(h, cow, new BlockPos(11, 2, 12), "walksFromDirtPath", 1);   // крок зі стежки (на 1/16 нижча) на камінь гра теж рахує «упертись»
     }
 
     // 3. Через прохід завширшки 1 блок у стіні, з поворотом перед ним і після нього
