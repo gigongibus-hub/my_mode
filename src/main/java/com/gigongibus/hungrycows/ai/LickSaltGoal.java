@@ -48,6 +48,7 @@ public class LickSaltGoal extends Goal {
         if (cow.tickCount < nextSearch) return false;
         nextSearch = cow.tickCount + SEARCH_EVERY;
         lick = isLick(remembered) ? remembered : find();
+        if (lick == null) lick = cow.episodes.nearest(com.gigongibus.hungrycows.CowEpisodes.Place.SALT, this::isLick);   // пам'ятає, де лизунець (до 64 бл.)
         if (lick == null) return false;
         Path path = cow.getNavigation().createPath(lick, 1);
         if (path == null || !path.canReach()) return false;
@@ -99,6 +100,7 @@ public class LickSaltGoal extends Goal {
         if (++licking % 20 == 0) cow.playSound(SoundEvents.GENERIC_EAT, 0.5F, 1.4F);
         if (licking >= LICK_TICKS) {
             cow.taste.onLick();
+            cow.episodes.visit(com.gigongibus.hungrycows.CowEpisodes.Place.SALT, lick);
             cow.tell(cow.family.name + " полизала сіль");
         }
     }

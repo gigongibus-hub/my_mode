@@ -41,6 +41,7 @@ public class StartleGoal extends Goal {
     @Override
     public void start() {
         cow.tell(cow.family.name + " злякалась звуку й відбігає");
+        cow.episodes.remember(com.gigongibus.hungrycows.CowEpisodes.Kind.FRIGHT, "звук");
         run();
     }
 

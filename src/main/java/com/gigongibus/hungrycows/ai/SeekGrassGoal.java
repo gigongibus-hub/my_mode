@@ -172,6 +172,9 @@ public class SeekGrassGoal extends Goal {
             if (cow.tickCount - lastYieldTell > 600) {   // у чат — не частіше раз на 30 с
                 lastYieldTell = cow.tickCount;
                 cow.tell(cow.family.name + " поступилась їжею " + other.family.name);
+                cow.touch.setStronger(other, true);   // пам'ять про корів: та сильніша
+                other.touch.setStronger(cow, false);
+                cow.touch.addBond(other, -2);
             }
             calmUntil = cow.tickCount + YIELD_CALM_TICKS;
             return true;
@@ -283,6 +286,7 @@ public class SeekGrassGoal extends Goal {
     private void eatTarget(BlockState state) {
         Block block = state.getBlock();
         cow.onAte();   // для ремигання
+        if (block == Blocks.GRASS_BLOCK || block == Blocks.GRASS || block == Blocks.TALL_GRASS) cow.episodes.visit(com.gigongibus.hungrycows.CowEpisodes.Place.GRASS, target);
         boolean grass = block == Blocks.GRASS_BLOCK || block == Blocks.GRASS || block == Blocks.TALL_GRASS;
         if (grass && com.gigongibus.hungrycows.CowHome.roofDistance(cow.level(), target, PASTURE_FROM_ROOF) > PASTURE_FROM_ROOF) {
             cow.chem.onFreshPasture();   // свіжа трава на пасовищі — трохи радості: мозок вчиться виходити
@@ -370,7 +374,7 @@ public class SeekGrassGoal extends Goal {
         double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
         double plant = (c.block == Blocks.GRASS || c.block == Blocks.TALL_GRASS) ? PLANT_BONUS : 0;
         double taste = com.gigongibus.hungrycows.CowTaste.SCORE * cow.taste.tastiness(c.block.asItem());   // смак, набридання
-        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste;
+        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste + socialScore(c.pos);
     }
 
     // «апетит» до виду квітки з урахуванням відрази
@@ -507,7 +511,24 @@ public class SeekGrassGoal extends Goal {
     }
 
     // Вибирає, куди йти їсти
+    // Пам'ять про корів: з подругами пасеться поруч (+дружба/10, до 10), від ворогів далі
+    private final List<HungryCow> neighbours = new ArrayList<>();
+    private static final double FRIEND_GRAZE = 6;        // корова ближче 6 бл. від трави впливає на вибір
+    private static final double FRIEND_SCORE_MAX = 10;
+
+    private double socialScore(BlockPos p) {
+        double s = 0;
+        for (HungryCow o : neighbours) {
+            if (o.distanceToSqr(p.getX() + 0.5, p.getY(), p.getZ() + 0.5) > FRIEND_GRAZE * FRIEND_GRAZE) continue;
+            s += cow.touch.bond(o) / 10.0;
+        }
+        return Math.max(-FRIEND_SCORE_MAX, Math.min(FRIEND_SCORE_MAX, s));
+    }
+
     private BlockPos findFood() {
+        neighbours.clear();
+        neighbours.addAll(cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(radius + FRIEND_GRAZE),
+                o -> o != cow && o.isAlive() && Math.abs(cow.touch.bond(o)) >= 5));
         BlockPos origin = cow.blockPosition();
         List<Candidate> normal = new ArrayList<>();
         List<Candidate> flowers = new ArrayList<>();

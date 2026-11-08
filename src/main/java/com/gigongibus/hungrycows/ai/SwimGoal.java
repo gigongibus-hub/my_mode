@@ -104,6 +104,7 @@ public class SwimGoal extends Goal {
             if (!sinking) {
                 sinking = true;
                 cow.tell(cow.family.name + " виснажилась у воді й тоне!");
+                cow.episodes.remember(com.gigongibus.hungrycows.CowEpisodes.Kind.NEAR_DROWN, "вода");
             }
             Entity holder = cow.getLeashHolder();
             if (holder instanceof Player p) {
@@ -183,6 +184,7 @@ public class SwimGoal extends Goal {
                 && p.getUUID().equals(rescuer)) {
             cow.addTrust(p, RESCUE_TRUST, "витягнув з води", false);
             cow.experience(Experience.RESCUED_FROM_WATER, 0);
+            cow.episodes.remember(com.gigongibus.hungrycows.CowEpisodes.Kind.RESCUED, p.getName().getString());
             sinking = false;
             rescuer = null;
         }

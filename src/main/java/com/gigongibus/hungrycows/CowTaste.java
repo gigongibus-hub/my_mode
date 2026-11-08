@@ -51,6 +51,7 @@ public class CowTaste {
     public static final int MEALS_KEPT = 40;
     public static final double BITTER_TRY = 0.5;          // «гірка» їжа — гіркота від 0,5
     public static final double BITE = 0.3;                // незнайому гірку лише пробує: насичує на 30%, отрута вдвічі коротша
+    public static final double TASTY_MEMORY = 0.4;        // смачніше 0,4 — запам'ятовує як подію («смачно поїла»)
     public static final double SCORE = 25;                // у виборі їжі смачність ±1 дає ±25 балів
     public static final double PLEASURE = 6;              // смачна (1) їжа — дофамін +6 зверху
     public static final double REFUSE_BELOW = -0.45;      // з рук не бере зовсім несмачне, якщо не дуже голодна ...
@@ -183,6 +184,7 @@ public class CowTaste {
         mealNames.put(d.hashCode(), d);
         while (meals.size() > MEALS_KEPT) meals.pollFirst();
         if (t > 0) cow.chem.onTasty(PLEASURE * t);   // смачно — задоволення
+        if (t >= TASTY_MEMORY) cow.episodes.remember(CowEpisodes.Kind.TASTY, item.getDescription().getString());
         if (cow.memory.aversion(item) < 0.2) habit.merge(d, HABIT_GAIN, (a, b) -> Math.min(HABIT_MAX, a + b));
         if (item == Items.KELP) salt = Math.max(0, salt - KELP_SALT);
     }

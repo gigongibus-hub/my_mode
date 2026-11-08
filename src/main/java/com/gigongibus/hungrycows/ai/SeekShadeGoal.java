@@ -41,6 +41,8 @@ public class SeekShadeGoal extends Goal {
         nextTry = cow.tickCount + RETRY_TICKS;
         shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, TREES_FIRST);           // спершу тінь дерев ...
         if (shade == null) shade = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false); // ... немає — будь-яка (навіс, хлів)
+        if (shade == null) shade = cow.episodes.nearest(com.gigongibus.hungrycows.CowEpisodes.Place.SHADE, p -> com.gigongibus.hungrycows.CowHome.shaded(cow.level(), p));   // пам'ятна тінь
+        if (shade != null) cow.episodes.visit(com.gigongibus.hungrycows.CowEpisodes.Place.SHADE, shade);
         return shade != null;
     }
 

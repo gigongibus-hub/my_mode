@@ -271,7 +271,9 @@ public class HungryCow extends Cow {
     public final CowSmell smell = new CowSmell(this);
     public final CowHearing hearing = new CowHearing(this);
     public final CowTaste taste = new CowTaste(this);
-    public final CowTouch touch = new CowTouch(this);                   // дотик (план Fij, етап 5)                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
+    public final CowTouch touch = new CowTouch(this);
+    public final CowPsyche psyche = new CowPsyche(this);                // психологічні стани (етап 9)
+    public final CowEpisodes episodes = new CowEpisodes(this);          // спогади й корисні місця (етап 6)                   // дотик (план Fij, етап 5)                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -397,6 +399,7 @@ public class HungryCow extends Cow {
     }
 
     public void drinkWater() {
+        episodes.visit(CowEpisodes.Place.WATER, this.blockPosition());   // запам'ятати, де вода
         thirst = Math.max(0, thirst - DRINK_AMOUNT);
         tell(family.name + " попила води (спрага " + thirst + ")");
     }
@@ -909,6 +912,8 @@ public class HungryCow extends Cow {
             heat.secondTick();
             taste.secondTick();
             touch.secondTick();
+            episodes.secondTick();
+            psyche.secondTick();
             updateBullSpeed();
             aging.secondTick();
             if (!this.isAlive()) return;
@@ -1750,6 +1755,7 @@ public class HungryCow extends Cow {
 
     // Хвицнути корову, що в неї врізалась
     public void kickCow(HungryCow target) {
+        target.touch.addBond(this, -10);   // пам'ять про корів: хвицнула — ворогом трохи більше
         float damage = (float) (KICK_COW_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
         this.lookAt(target, 30F, 30F);
         if (!target.hurt(this.damageSources().mobAttack(this), damage)) return;
@@ -1768,6 +1774,9 @@ public class HungryCow extends Cow {
             // нюх: кров пахне тривогою 1 хв — коли хтось поранив або сильний удар (не голод і не спрага)
             if (source.getEntity() != null || amount >= CowSmell.BLOOD_DAMAGE) CowSmell.addBlood(this.level(), this.position(), this.getUUID());
             if (source.getEntity() != null && !(source.getEntity() instanceof HungryCow)) {
+                // спогад: удар від гравця — «вдарили», від моба — «напали»
+                episodes.remember(source.getEntity() instanceof Player ? CowEpisodes.Kind.HIT : CowEpisodes.Kind.ATTACK,
+                        source.getEntity() instanceof Player pl ? pl.getName().getString() : CowSmell.keyOf(source.getEntity()));
                 smell.learn(source.getEntity(), CowSmell.LEARN_HURT);
                 hearing.onBad();   // звуки перед ударом стають неприємними
             }
@@ -1844,7 +1853,15 @@ public class HungryCow extends Cow {
             }
             if (this.isBaby()) {
                 HungryCow mother = family.findMother();
-                if (mother != null) mother.milk.onCalfDied();
+                if (mother != null) {
+                    mother.milk.onCalfDied();
+                    mother.episodes.remember(CowEpisodes.Kind.CALF_DEATH, family.name);   // дуже сильний спогад
+                }
+            }
+            // подруги поруч (дружба 20+) запам'ятовують смерть подруги
+            for (HungryCow f : this.level().getEntitiesOfClass(HungryCow.class, this.getBoundingBox().inflate(32),
+                    c -> c != this && c.isAlive() && c.touch.bond(this) >= 20 && !isMotherOf(c))) {
+                f.episodes.remember(CowEpisodes.Kind.FRIEND_DEATH, family.name);
             }
         }
         super.die(source);
@@ -1877,6 +1894,8 @@ public class HungryCow extends Cow {
         hearing.save(tag);
         taste.save(tag);
         touch.save(tag);
+        episodes.save(tag);
+        psyche.save(tag);
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
@@ -1912,6 +1931,8 @@ public class HungryCow extends Cow {
         hearing.load(tag);
         taste.load(tag);
         touch.load(tag);
+        episodes.load(tag);
+        psyche.load(tag);
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);

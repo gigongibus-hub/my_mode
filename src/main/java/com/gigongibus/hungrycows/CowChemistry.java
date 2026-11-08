@@ -233,6 +233,7 @@ public class CowChemistry {
 
     public void onBirth() {
         oxytocin = clamp(oxytocin + OXYTOCIN_ON_BIRTH * g(Gene.HORMONE_SENSITIVITY));
+        cow.episodes.remember(CowEpisodes.Kind.BIRTH, "");
     }
 
     public void addPain(double amount) {

@@ -60,6 +60,10 @@ public class DrinkWaterGoal extends Goal {
         if (cooldown > 0) { cooldown--; return false; }
         radius = (lastFoundNothing && cow.thirst >= HungryCow.NIGHT_DRINK_AT) ? WIDE_RADIUS : SEARCH_RADIUS;
         target = findWater();
+        if (target == null) {
+            target = cow.episodes.nearest(com.gigongibus.hungrycows.CowEpisodes.Place.WATER, this::isWater);   // пам'ятає, де пила (до 64 бл.)
+            if (target != null) cauldron = cow.level().getBlockState(target).is(Blocks.WATER_CAULDRON);
+        }
         lastFoundNothing = target == null && radius == SEARCH_RADIUS;
         cooldown = target != null ? 10 : SEARCH_COOLDOWN;
         return target != null;

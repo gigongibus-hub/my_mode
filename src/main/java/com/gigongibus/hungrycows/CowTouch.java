@@ -28,6 +28,7 @@ import java.util.UUID;
  */
 public class CowTouch {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    public static final double PET_MEMORY = 0.2;          // гладили спереду — з шансом 20% запам'ятовує (щоб не забивати пам'ять)
     public static final int PET_COOLDOWN = 20;            // гладити можна раз на 1 с
     public static final int PET_TRUST_EVERY = 200;        // довіра від гладіння — не частіше раз на 10 с
     public static final double FRONT_ANGLE = 60;          // спереду = гравець у межах ±60° від морди
@@ -99,6 +100,7 @@ public class CowTouch {
             cow.addTrust(player, front ? TRUST_FRONT : TRUST_SIDE, front ? "гладили шию" : "гладили бік", false);
         }
         hearts(front ? 2 : 1);
+        if (front && cow.getRandom().nextDouble() < PET_MEMORY) cow.episodes.remember(CowEpisodes.Kind.PETTED, player.getName().getString());
         cow.getNavigation().stop();
         cow.getLookControl().setLookAt(player, 10F, 10F);
         return true;
@@ -111,6 +113,18 @@ public class CowTouch {
     }
 
     // ---------- дружба й вилизування ----------
+
+    // Хто сильніший (пам'ять про корів): +1 — та сильніша, −1 — слабша (зберігається разом з дружбою)
+    private final Map<UUID, Integer> stronger = new HashMap<>();
+
+    public void setStronger(HungryCow other, boolean otherStronger) {
+        stronger.put(other.getUUID(), otherStronger ? 1 : -1);
+        bondNames.put(other.getUUID(), other.family.name);
+    }
+
+    public int stronger(HungryCow other) {
+        return stronger.getOrDefault(other.getUUID(), 0);
+    }
 
     public double bond(HungryCow other) {
         return bonds.getOrDefault(other.getUUID(), 0.0);
@@ -180,7 +194,9 @@ public class CowTouch {
         int n = 0;
         for (Map.Entry<UUID, Double> e : bonds.entrySet()) {
             if (n >= 4 || Math.abs(e.getValue()) < 5) continue;
-            out.add("- " + bondNames.getOrDefault(e.getKey(), "?") + ": дружба " + Math.round(e.getValue()));
+            int st = stronger.getOrDefault(e.getKey(), 0);
+            out.add("- " + bondNames.getOrDefault(e.getKey(), "?") + ": дружба " + Math.round(e.getValue())
+                    + (st > 0 ? ", сильніша" : st < 0 ? ", слабша" : ""));
             n++;
         }
         return out;
@@ -193,6 +209,7 @@ public class CowTouch {
             c.putUUID("Id", e.getKey());
             c.putDouble("V", e.getValue());
             c.putString("N", bondNames.getOrDefault(e.getKey(), ""));
+            c.putInt("S", stronger.getOrDefault(e.getKey(), 0));
             list.add(c);
         }
         tag.put("Bonds", list);
@@ -205,6 +222,7 @@ public class CowTouch {
             CompoundTag c = (CompoundTag) t;
             bonds.put(c.getUUID("Id"), c.getDouble("V"));
             bondNames.put(c.getUUID("Id"), c.getString("N"));
+            if (c.getInt("S") != 0) stronger.put(c.getUUID("Id"), c.getInt("S"));
         }
     }
 }
