@@ -142,6 +142,19 @@
   скінчилась швидше 1 с, — пауза 1 с. Тест `cowWalksAroundWallToSmelledFood` (сіно за 2 бл. за стінкою, прохід у кінці):
   обходить за ~15 с, пошук починався 1–2 рази. Також «місце з пам'яті» йшло на `getTarget()` (ціль), тепер на кінець шляху.
   Раз у тесті cowEatsRaisedHayNotFloor «корова загинула» без повідомлення про причину — не досліджено.
+- `CowHearing`: СЛУХ (план Fij, етап 3). Звуки сервера ловить `ModForgeEvents` (`PlayLevelSoundEvent.AtPosition/AtEntity`) →
+  `CowHearing.onSound` (звук «у точці» з `minecraft:entity.*` належить істоті ближче 1,5 бл.). Види й дальність: вибух 64, клич
+  теляти й дзвін 32, мукання й музика 24, голоси мобів, удар, постріл 16, ламання блока 12; кроки — сама з руху (біг 8, хода 5,
+  крадькома 1,5; лише увага, не страх). Тверді блоки (як для зору) — дальність ×0,5. Слухає раз на 0,5 с; звуки нумеруються
+  (`seq`) — за часом не можна: звук у тому самому тіку після того, як корова слухала, губився (вибух «не чули»).
+  Почула — повертає голову (`vision.alertTo`/lookAt). Переляк одразу: вибух 45, постріл 20, удар 15, ламання й моби 10 ×
+  (1 − 0,6 × відстань/дальність) × (1 − звикання); від 8 — `StartleGoal` (3): 3 с відбігає від звуку (навіть без видимого
+  джерела). Звикання: звук, після якого 10 с не було лиха, +0,08 (до 0,9; ≈5 діб забуває); удар — скидає й робить звук
+  неприємним. Навчання: звук за 10 с до доброго (`chem.onTreat`/`onEat` → `hearing.onGood`) +0,12; з 0,3 — `ComeToSoundGoal` (7)
+  іде на нього 20 с (дзвін перед годуванням). Мукання й клич не вчаться (інакше корови «полюбили» мукання й ходили на нього).
+  Теля далі 10 бл. від матері кличе раз на 10 с (високе мукання); мати чує — іде (той самий `ComeToSoundGoal`).
+  Приємне: музика, спокійне мукання (страх джерела < 20), вода 3+ і листя 6+ у 6 бл. — кортизол ↓, місце добре.
+  Не зроблено: «голос знайомого гравця» (у грі гравці не мають голосу). Книга: «Слух».
 - `ShelterFromRainGoal`: до дому мусить бути шлях (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
@@ -149,7 +162,7 @@
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
-0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate, SearchFood ·
+0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
 9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
 14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
@@ -303,6 +316,10 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - cowSearchesForHiddenFood переробено (кишеня в кутку з проходом 1 бл. — загадка, а не пошук; тепер стінка 7×3 посеред загону):
   1 з 2 провалів — корова (Веселка) навіть не почала шукати, була в «стаді» з чужою коровою; причину не досліджено.
   cowsGoOutToPasture після етапів 1–2 падає ~3 з 9 (раніше 6/6) — чи від зору/нюху, не перевірено.
+- `test/HungryCowHearingTests` (партія "hearing"): explosionStartles (вибух за 23 бл. → страх 25, відбігла), getsUsedToSafeSound
+  (ламання каменю поруч 12 разів раз на 15 с: страх 28 → 1, звикання 0,9), bellBeforeFoodCallsCow (4 × дзвін + частування →
+  приємність 0,48 → іде на дзвін з 14 бл. за 3–6 с), wallMufflesSound (удар за 10 бл.: відкрито страх 7, за каменем 0). 2 прогони:
+  43/43 і 42/43 (tiredCowSinksAndIsRescued — давнє нестабільне).
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

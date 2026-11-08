@@ -198,10 +198,12 @@ public class CowChemistry {
 
     public void onTreat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_TREAT * g(Gene.HORMONE_SENSITIVITY));
+        cow.hearing.onGood();   // слух: звук перед частуванням стає приємним
     }
 
     public void onEat() {
         dopamine = clamp(dopamine + DOPAMINE_ON_EAT * g(Gene.HORMONE_SENSITIVITY));
+        cow.hearing.onGood();
     }
 
     public void onFreshPasture() {

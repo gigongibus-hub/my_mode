@@ -268,7 +268,8 @@ public class HungryCow extends Cow {
     public final java.util.Map<BlockPos, Integer> smellIgnore = new java.util.HashMap<>();   // їжа на запах, до якої не дійти (до якого тіку не йти)
     public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
     public final CowVision vision = new CowVision(this);
-    public final CowSmell smell = new CowSmell(this);                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
+    public final CowSmell smell = new CowSmell(this);
+    public final CowHearing hearing = new CowHearing(this);             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -778,6 +779,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
         this.goalSelector.addGoal(9, new SleepGoal(this));                 // вночі додому і спати (ідея 9)
         this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.SearchFoodGoal(this)); // не бачить їжі — іде шукати (зір, Fij)
+        this.goalSelector.addGoal(3, new com.gigongibus.hungrycows.ai.StartleGoal(this));        // різкий звук — відбігає (слух)
+        this.goalSelector.addGoal(7, new com.gigongibus.hungrycows.ai.ComeToSoundGoal(this));    // приємний звук (дзвін = їжа) / клич теляти — іде туди
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
@@ -864,7 +867,7 @@ public class HungryCow extends Cow {
 
     @Override
     public void aiStep() {
-        if (!this.level().isClientSide) { vision.tick(); smell.tick(); }
+        if (!this.level().isClientSide) { vision.tick(); smell.tick(); hearing.tick(); }
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
@@ -1742,7 +1745,10 @@ public class HungryCow extends Cow {
             chem.onHurt(amount);   // біль і адреналін від будь-якого урону
             // нюх: кров пахне тривогою 1 хв — коли хтось поранив або сильний удар (не голод і не спрага)
             if (source.getEntity() != null || amount >= CowSmell.BLOOD_DAMAGE) CowSmell.addBlood(this.level(), this.position(), this.getUUID());
-            if (source.getEntity() != null && !(source.getEntity() instanceof HungryCow)) smell.learn(source.getEntity(), CowSmell.LEARN_HURT);
+            if (source.getEntity() != null && !(source.getEntity() instanceof HungryCow)) {
+                smell.learn(source.getEntity(), CowSmell.LEARN_HURT);
+                hearing.onBad();   // звуки перед ударом стають неприємними
+            }
         }
         Entity attacker = source.getEntity();
         if (result && !this.level().isClientSide && attacker != null) {
@@ -1846,6 +1852,7 @@ public class HungryCow extends Cow {
         brain.save(tag);
         memory.save(tag);
         smell.save(tag);
+        hearing.save(tag);
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
@@ -1878,6 +1885,7 @@ public class HungryCow extends Cow {
         brain.load(tag);
         memory.load(tag);
         smell.load(tag);
+        hearing.load(tag);
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);

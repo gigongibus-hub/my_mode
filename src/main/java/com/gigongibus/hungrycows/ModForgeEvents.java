@@ -198,6 +198,20 @@ public class ModForgeEvents {
     }
 
     // Відростання трави й моху: раз на секунду в кожному світі
+    // Слух: кожен звук, який грає сервер (вибух, удар, дзвін, мукання…), — у CowHearing
+    @SubscribeEvent
+    public static void onSoundAtPosition(net.minecraftforge.event.PlayLevelSoundEvent.AtPosition event) {
+        if (event.getLevel().isClientSide || event.getSound() == null) return;
+        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), event.getPosition(), null));
+    }
+
+    @SubscribeEvent
+    public static void onSoundAtEntity(net.minecraftforge.event.PlayLevelSoundEvent.AtEntity event) {
+        if (event.getLevel().isClientSide || event.getSound() == null || event.getEntity() == null) return;
+        Entity e = event.getEntity();
+        event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), e.position().add(0, e.getBbHeight() / 2, 0), e));
+    }
+
     @SubscribeEvent
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
