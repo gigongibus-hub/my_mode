@@ -203,6 +203,10 @@ public class HungryCowFearTests {
         HungryCow cow = spawnCow(h);
         TestPlayer p = makePlayer(h);
         Vec3 dir = new Vec3(0, 0, -1);
+        // зір (етап 1): позаду сліпа зона й нерухомого там не видно — корова повернута в бік, де з'явиться гравець (на північ)
+        cow.setYRot(180F);
+        cow.yBodyRot = 180F;
+        cow.setYHeadRot(180F);
         Watch w = new Watch();
         placePlayer(p, cow, cow.position().add(dir.scale(FAR)));
         int startFear = cow.fear;

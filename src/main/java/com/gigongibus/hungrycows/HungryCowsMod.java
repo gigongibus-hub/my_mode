@@ -13,10 +13,13 @@ public class HungryCowsMod {
     public static final String MODID = "hungrycows";
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
+    public static final DeferredRegister<net.minecraft.world.level.block.Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
 
     public HungryCowsMod(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
+        ModBlocks.init();
         ModItems.init();
+        BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);

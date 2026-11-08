@@ -138,7 +138,12 @@ public class CowGenes {
         HEAT_TOLERANCE(Group.BODY, "витривалість до спеки"),
         COAT_COLOR(Group.BODY, "масть (0 біла … 100 чорна)"),
         COAT_PATTERN(Group.BODY, "візерунок (суцільна, білоголова, з поясом, ряба)"),
-        RAIN_LIKING(Group.TEMPERAMENT, "любов до дощу");
+        RAIN_LIKING(Group.TEMPERAMENT, "любов до дощу"),
+        TASTE_SWEET(Group.METABOLISM, "смак: солодке"),
+        TASTE_SALTY(Group.METABOLISM, "смак: солоне"),
+        TASTE_BITTER(Group.METABOLISM, "смак: гірке"),
+        TASTE_SOUR(Group.METABOLISM, "смак: кисле"),
+        TASTE_SAVORY(Group.METABOLISM, "смак: ситне");
 
         public final Group group;
         public final String title;

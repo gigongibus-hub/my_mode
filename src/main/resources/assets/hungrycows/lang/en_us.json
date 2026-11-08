@@ -4,5 +4,6 @@
   "item.hungrycows.quality_milk_bucket": "Milk Bucket (quality %s)",
   "effect.hungrycows.cow_friend": "Cow Friend",
   "item.hungrycows.cow_book": "Cow Husbandry",
-  "item.hungrycows.brain_stick": "Brain Debug Stick"
+  "item.hungrycows.brain_stick": "Brain Debug Stick",
+  "block.hungrycows.salt_lick": "Salt Lick"
 }

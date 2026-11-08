@@ -3,6 +3,7 @@ package com.gigongibus.hungrycows.ai;
 import com.gigongibus.hungrycows.HungryCow;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
 
@@ -19,12 +20,15 @@ public class ShelterFromRainGoal extends Goal {
     private static final int MAX_WALK_TICKS = 1200;   // іде до укриття щонайбільше 60 с
     private static final int MAX_STAY_TICKS = 6000;   // стоїть в укритті щонайдовше 5 хв, потім вирішує знову
     private static final int RETRY_TICKS = 200;       // укриття не знайшла — наступна спроба за 10 с
+    private static final int NO_PROGRESS_TICKS = 60;  // за 3 с не наблизилась ні на блок — застрягла
     private static final int STUCK_CHECK = 40;        // раз на 2 с: стоїть під дощем, а йти нікуди — шукає ближче укриття
     private static final int SHADE_ROUNDS = 3;        // тінь, на яку все ж падає дощ (тінь від світла неба), — шукає ще раз, до 3 разів
 
     private final HungryCow cow;
     private BlockPos shelter;
     private int walkTicks = 0;
+    private boolean stuck = false;
+    private double lastDist = Double.MAX_VALUE;
     private int stayTicks = 0;
     private int nextTry = 0;
 
@@ -74,6 +78,8 @@ public class ShelterFromRainGoal extends Goal {
     @Override
     public void start() {
         walkTicks = 0;
+        stuck = false;
+        lastDist = Double.MAX_VALUE;
         stayTicks = 0;
     }
 
@@ -82,8 +88,14 @@ public class ShelterFromRainGoal extends Goal {
         if (shelter == null) return;
         if (cow.rainedOn()) {
             walkTicks++;
-            // дорогою зупинилась (шлях скінчився, а дощ досі на неї) — шукає укриття ближче
-            if (walkTicks % STUCK_CHECK == 0 && cow.getNavigation().isDone()) {
+            // дорогою зупинилась (шлях скінчився) або 3 с не наближається (застрягла) — шукає укриття ближче
+            double d = cow.distanceToSqr(Vec3.atBottomCenterOf(shelter));
+            if (walkTicks % NO_PROGRESS_TICKS == 0) {
+                stuck = d > lastDist - 1.0;
+                lastDist = d;
+            }
+            if (walkTicks % STUCK_CHECK == 0 && (cow.getNavigation().isDone() || stuck)) {
+                stuck = false;
                 BlockPos near = dry(cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false));
                 if (near != null) shelter = near;
             }

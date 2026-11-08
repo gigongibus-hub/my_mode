@@ -269,7 +269,8 @@ public class HungryCow extends Cow {
     public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
     public final CowVision vision = new CowVision(this);
     public final CowSmell smell = new CowSmell(this);
-    public final CowHearing hearing = new CowHearing(this);             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
+    public final CowHearing hearing = new CowHearing(this);
+    public final CowTaste taste = new CowTaste(this);                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -781,6 +782,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.SearchFoodGoal(this)); // не бачить їжі — іде шукати (зір, Fij)
         this.goalSelector.addGoal(3, new com.gigongibus.hungrycows.ai.StartleGoal(this));        // різкий звук — відбігає (слух)
         this.goalSelector.addGoal(7, new com.gigongibus.hungrycows.ai.ComeToSoundGoal(this));    // приємний звук (дзвін = їжа) / клич теляти — іде туди
+        this.goalSelector.addGoal(13, new com.gigongibus.hungrycows.ai.LickSaltGoal(this));   // хоче солі — лиже лизунець (смак)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
@@ -903,6 +905,7 @@ public class HungryCow extends Cow {
             sleep.secondTick();
             updateHotBiome();
             heat.secondTick();
+            taste.secondTick();
             updateBullSpeed();
             aging.secondTick();
             if (!this.isAlive()) return;
@@ -1383,6 +1386,11 @@ public class HungryCow extends Cow {
             if (server) tell(family.name + " відвертається: пам'ятає, що від цього було погано");
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
+        // смак: зовсім несмачне не бере, якщо не дуже голодна
+        if (taste.refuses(item)) {
+            if (server) tell(family.name + " нюхає й відвертається: не смакує");
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         if (!this.level().isClientSide) {
             // ласощі (що дають довіру) беруться завжди, іншу безпечну їжу сита здорова корова відкидає
             boolean treat = CowTrust.feedGain(item) > 0;
@@ -1418,6 +1426,9 @@ public class HungryCow extends Cow {
             foodDay = day;
             foodCounts = new CompoundTag();
         }
+        // смак: незнайому гірку лише пробує — маленький шматок (менше насичує, отрута коротша)
+        boolean bite = taste.onlyTries(item);
+        if (bite) tell(family.name + " обережно пробує незнайоме гірке: " + item.getDescription().getString());
         String key = food.group != null ? food.group : ForgeRegistries.ITEMS.getKey(item).toString();
         int count = foodCounts.getInt(key) + 1;
         foodCounts.putInt(key, count);
@@ -1426,6 +1437,7 @@ public class HungryCow extends Cow {
         String dietGroup = CowMilk.dietGroup(item);
         int foodHunger = ("veg".equals(dietGroup) || "fruit".equals(dietGroup))
                 ? (int) Math.round(food.hunger * gene(CowGenes.Gene.PRODUCE_DIGEST)) : food.hunger;
+        if (bite) foodHunger = (int) Math.round(foodHunger * CowTaste.BITE);
         hunger = Math.max(0, hunger - foodHunger);
         milk.recordDiet(item);
         chem.onEat();
@@ -1440,7 +1452,7 @@ public class HungryCow extends Cow {
             this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, food.firstRegenSeconds * 20));
         }
         if (food.poisonSeconds > 0) {
-            this.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTicks(food.poisonSeconds)));
+            this.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTicks((int) Math.round(food.poisonSeconds * (bite ? 0.5 : 1)))));
         }
         if (food.limitFrom > 0 && count >= food.limitFrom) {
             this.addEffect(new MobEffectInstance(MobEffects.POISON, poisonTicks(food.limitPoisonSeconds)));
@@ -1458,7 +1470,7 @@ public class HungryCow extends Cow {
             memory.blameDirect(item, CowMemory.THORN_BLAME, "вкололась");
         }
         if (food.toxinSeconds > 0) {
-            toxinLeft = Math.max(1, (int) Math.round(food.toxinSeconds * genes.inverse(CowGenes.Gene.POISON_RESIST)));
+            toxinLeft = Math.max(1, (int) Math.round(food.toxinSeconds * (bite ? 0.5 : 1) * genes.inverse(CowGenes.Gene.POISON_RESIST)));
             toxinDamage = food.toxinDamage;
         }
         if (food.chokeChance > 0) {
@@ -1853,6 +1865,7 @@ public class HungryCow extends Cow {
         memory.save(tag);
         smell.save(tag);
         hearing.save(tag);
+        taste.save(tag);
         home.save(tag);
         sleep.save(tag);
         heat.save(tag);
@@ -1886,6 +1899,7 @@ public class HungryCow extends Cow {
         memory.load(tag);
         smell.load(tag);
         hearing.load(tag);
+        taste.load(tag);
         home.load(tag);
         sleep.load(tag);
         heat.load(tag);

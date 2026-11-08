@@ -29,7 +29,7 @@
 - `CowMilk`: шкала молока, лактація, раціон → якість. `MilkQuality`: що робить молоко кожної якості.
 - `QualityMilkBucketItem`: предмет «Відро молока (якість X)».
 - `CowFamily`: ім'я, мати (корова або гравець), забування матері, родинне дерево, діти. `CowNames`: імена.
-- `CowGenes`: 75 генів (71 + `HEAT_TOLERANCE`, `COAT_COLOR`, `COAT_PATTERN`, `RAIN_LIKING` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
+- `CowGenes`: 80 генів (71 + `HEAT_TOLERANCE`, `COAT_COLOR`, `COAT_PATTERN`, `RAIN_LIKING`, 5 × `TASTE_*` у кінці переліку — нові гени додавати в кінець), кожен по дві копії (від матері й від батька), корова показує середнє; `factor()` = ×0.7…×1.3.
   Теля бере по одній випадковій копії від кожного з батьків + мутація. Гормони й імунітет поки лише успадковуються.
 - `CowCharacter`: 14 рис (ген темпераменту з `CowGenes` 35% + досвід 65%), таблиця подій досвіду.
 - `client/HungryCowRenderer`: модель корови з масштабом за геном «розмір» (синхронізується `DATA_SIZE`).
@@ -164,6 +164,16 @@
   непомітний — тепер раз на 5 с, гучність 2, нота над головою й рядок у чаті «Теля X кличе матір».
   Їжа за спиною: не бачить жодної — `SearchFoodGoal` спершу 2 с розвертається на 180° (сліпа зона), не частіше раз на 20 с.
   `cowWatchesDanger`: корова з'являлась у випадковий бік, вовк часом у сліпій зоні — тест писався до зору; тепер вовк збоку.
+- `CowTaste`: СМАК (план Fij, етап 4). 5 смаків (солодке, солоне, гірке, кисле, ситне) — профіль кожної їжі (`PROFILE`, 0…1);
+  уподобання = вроджене (гірке −0,4, солодке/ситне +0,2, солоне +0,1, кисле −0,1) + гени `TASTE_*` (5 нових у кінці переліку, ±0,3).
+  Смачність = Σ профіль × уподобання (+ солоне × бажання солі) + звичка до страви (до 0,3, +0,02 за трапезу без відрази, ≈20 діб
+  забуває) − набридання (та сама страва за 10 хв: −0,06 за раз, до −0,5; уся трава — одна страва). Хук: `CowMemory.rememberMeal`
+  → `taste.onEat` (і з землі, і з рук) → дофамін `chem.onTasty` за смачне. Вибір їжі: `SeekGrassGoal.score` + 25 × смачність,
+  квіти — вага × (1 + смачність). З рук: смачність < −0,45 і голод < 40 — «нюхає й відвертається». Незнайома гірка (гіркота ≥ 0,5,
+  ще не їла) — лише пробує (`eatFood`: насичує 30%, отрута/токсин удвічі коротші); погано стало — відраза (`CowMemory`, як було).
+  Сіль: бажання +1/30 с (дорослі), ламінарія −30; з 40 — `LickSaltGoal` (13): лизунець у 16 бл., який бачить/чує носом або
+  пам'ятає → 4 с лиже: −60, +1 серце, дофамін. Блок `hungrycows:salt_lick` (`ModBlocks`, `HungryCowsMod.BLOCKS`; текстура
+  намальована скриптом у тексті коміту; рецепт 8 кісткового борошна навколо каменю; кайло; не зношується). Книга «Смак».
 - `ShelterFromRainGoal`: до дому мусить бути шлях (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
@@ -172,7 +182,7 @@
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
 0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear, Startle · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass, ComeToSound · 8 Mate, SearchFood ·
-9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
+9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква), LickSalt ·
 14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
 `super.registerGoals()` не викликається; ванільних цілей немає (Float/LookAtPlayer/RandomLookAround замінено своїми).
@@ -331,6 +341,11 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   43/43 і 42/43 (tiredCowSinksAndIsRescued — давнє нестабільне).
 - Тести слуху додатково: hearsPlayerBreakingBlock (FakePlayer ламає камінь за 2 бл. → страх 9), calfCallsMotherComes (теля
   за 14 бл. без цілей, мати приходить за ~4 с). explosionStartles — справжній вибух (страх 24).
+- `test/HungryCowTasteTests` (партія "taste"): tastesAndBoredom (трава 0,15, папороть −0,30, кавун ласунці 0,49; трава після 8 разів
+  −0,17), triesUnfamiliarBitter (латаття: уперше насичує 2, удруге 5), cowLicksSalt (лизунець за 7 бл. → 6,6 с, сіль 80 → 20).
+- Ще тести, що писались до зору: fearFromSuddenPlayer — гравець з'являвся позаду (сліпа зона, нерухомий) → страх 0; тепер корова
+  повернута до нього. rainHaterHidesLoverStays падав часто: корова 60 с ішла до укриття, застрягши (шлях «є»), — тепер 3 с без
+  наближення на 1 бл. → шукає ближче укриття (`ShelterFromRainGoal`, справжнє виправлення гри).
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

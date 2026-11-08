@@ -369,12 +369,14 @@ public class SeekGrassGoal extends Goal {
         BlockPos stand = (c.kind == Kind.GRASS_BLOCK || c.kind == Kind.MOSS_BLOCK) ? c.pos.above() : c.pos;
         double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
         double plant = (c.block == Blocks.GRASS || c.block == Blocks.TALL_GRASS) ? PLANT_BONUS : 0;
-        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant;
+        double taste = com.gigongibus.hungrycows.CowTaste.SCORE * cow.taste.tastiness(c.block.asItem());   // смак, набридання
+        return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste;
     }
 
     // «апетит» до виду квітки з урахуванням відрази
     private double flowerWeight(Block b) {
-        return FLOWER_APPETITE.getOrDefault(b, 1) * (1.0 - cow.memory.aversion(b.asItem()));
+        return FLOWER_APPETITE.getOrDefault(b, 1) * (1.0 - cow.memory.aversion(b.asItem()))
+                * Math.max(0.1, 1.0 + cow.taste.tastiness(b.asItem()));   // смачніші квіти частіше
     }
 
     // Нюх: найближча їжа, запах якої доходить (за вітром, не крізь камінь) — SearchFoodGoal іде туди

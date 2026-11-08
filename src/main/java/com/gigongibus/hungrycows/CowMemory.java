@@ -97,6 +97,7 @@ public class CowMemory {
         meals.addFirst(new Meal(key.toString(), cow.tickCount, staple));
         while (meals.size() > MEALS_REMEMBERED) meals.removeLast();
         addPlace(cow.blockPosition(), PLACE_MEAL);
+        cow.taste.onEat(item);   // смак: звичка, набридання, задоволення
     }
 
     public double aversion(Item item) {
