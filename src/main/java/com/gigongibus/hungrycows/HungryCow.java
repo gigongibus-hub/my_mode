@@ -535,6 +535,14 @@ public class HungryCow extends Cow {
         return new com.gigongibus.hungrycows.nav.CowNavigation(this, level);
     }
 
+    // Масть і візерунок (за генами): синхронізується, щоб гра гравця вибрала текстуру
+    private static final EntityDataAccessor<Integer> DATA_COAT =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.INT);
+
+    public int coatIndex() {
+        return this.entityData.get(DATA_COAT);
+    }
+
     // Без тями від спеки: синхронізується, щоб гравець бачив корову лежачою на боці
     private static final EntityDataAccessor<Boolean> DATA_UNCONSCIOUS =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);
@@ -544,6 +552,7 @@ public class HungryCow extends Cow {
         super.defineSynchedData();
         this.entityData.define(DATA_SIZE, 1.0F);
         this.entityData.define(DATA_UNCONSCIOUS, false);
+        this.entityData.define(DATA_COAT, 0);
     }
 
     public boolean isUnconsciousVisual() {
@@ -575,6 +584,7 @@ public class HungryCow extends Cow {
         if (this.level() == null || this.level().isClientSide) return;
         float size = SIZE_MIN + (SIZE_MAX - SIZE_MIN) * genes.value(CowGenes.Gene.SIZE) / 100.0F;
         this.entityData.set(DATA_SIZE, size);
+        this.entityData.set(DATA_COAT, genes.coatColor() * CowGenes.COAT_PATTERNS + genes.coatPattern());
 
         double health = gene(CowGenes.Gene.HEALTH) * (1.0 + (size - 1.0) * SIZE_HEALTH) * inbreeding.healthFactor();
         double speed = gene(CowGenes.Gene.WALK_SPEED) * (1.0 - (size - 1.0) * SIZE_SLOWDOWN) * inbreeding.speedFactor();

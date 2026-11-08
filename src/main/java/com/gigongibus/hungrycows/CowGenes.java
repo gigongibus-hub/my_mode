@@ -135,7 +135,9 @@ public class CowGenes {
         BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися"),
         BRAIN_DRINK(Group.BRAIN, "схильність пити"),
         // ---- тіло, додано пізніше (у кінці, щоб не зсунути інші) ----
-        HEAT_TOLERANCE(Group.BODY, "витривалість до спеки");
+        HEAT_TOLERANCE(Group.BODY, "витривалість до спеки"),
+        COAT_COLOR(Group.BODY, "масть (0 біла … 100 чорна)"),
+        COAT_PATTERN(Group.BODY, "візерунок (суцільна, білоголова, з поясом, ряба)");
 
         public final Group group;
         public final String title;
@@ -154,12 +156,38 @@ public class CowGenes {
     private final int[] copyA = new int[N];   // копія від матері
     private final int[] copyB = new int[N];   // копія від батька
 
-    // Корова без батьків: випадкові копії 30–70
+    // Корова без батьків: випадкові копії 30–70; масть і візерунок — будь-які 0–100 (обидві копії однакові:
+    // інакше середнє майже завжди «посередині» й усі дикі корови були б бурі)
     public CowGenes(RandomSource random) {
         for (int i = 0; i < N; i++) {
             copyA[i] = RANDOM_MIN + random.nextInt(RANDOM_MAX - RANDOM_MIN + 1);
             copyB[i] = RANDOM_MIN + random.nextInt(RANDOM_MAX - RANDOM_MIN + 1);
         }
+        for (Gene g : new Gene[]{Gene.COAT_COLOR, Gene.COAT_PATTERN}) {
+            int v = random.nextInt(101);
+            copyA[g.ordinal()] = v;
+            copyB[g.ordinal()] = v;
+        }
+    }
+
+    // ---------- вигляд (ідея Fij: масті й візерунки; текстури — tools/make_cow_textures.py) ----------
+    public static final int COAT_COLORS = 6;      // 0 біла, 1 палева, 2 руда, 3 бура, 4 сіра, 5 чорна
+    public static final int COAT_PATTERNS = 4;    // 0 суцільна, 1 білоголова, 2 з поясом, 3 ряба
+    public static final String[] COLOR_NAMES = {"біла", "палева", "руда", "бура", "сіра", "чорна"};
+    public static final String[] PATTERN_NAMES = {"суцільна", "білоголова", "з поясом", "ряба"};
+
+    public int coatColor() {
+        return Math.min(COAT_COLORS - 1, value(Gene.COAT_COLOR) * COAT_COLORS / 101);
+    }
+
+    public int coatPattern() {
+        return Math.min(COAT_PATTERNS - 1, value(Gene.COAT_PATTERN) * COAT_PATTERNS / 101);
+    }
+
+    public String coatName() {
+        int c = coatColor(), p = coatPattern();
+        String pattern = (p == 1 && c == 0) ? "темноголова" : PATTERN_NAMES[p];
+        return COLOR_NAMES[c] + ", " + pattern;
     }
 
     // ---------- читання ----------
