@@ -97,7 +97,7 @@ public class ApproachPlayerGoal extends Goal {
         Player best = null;
         double bestDist = SEE_RANGE * SEE_RANGE;
         for (Player p : cow.level().players()) {
-            if (p.isSpectator() || p.hasEffect(MobEffects.INVISIBILITY)) continue;
+            if (p.isSpectator() || p.hasEffect(MobEffects.INVISIBILITY) || !cow.vision.canSee(p)) continue;   // лише видимого
             int t = cow.trustOf(p);
             if (t < CowTrust.FRIEND_FROM) continue;
             double d = cow.distanceToSqr(p);

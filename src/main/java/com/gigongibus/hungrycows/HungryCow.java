@@ -263,6 +263,8 @@ public class HungryCow extends Cow {
     public final CowHome home = new CowHome(this);                    // дім (укриття) і тінь (ідея 9)
     public final CowHerd herd = new CowHerd(this);                    // стадо, ватажок, ранг (ідея 11)
     public final CowSleep sleep = new CowSleep(this);                 // шкала сну і запам'ятована дорога додому
+    public int foodNotSeenTick = -100000;                               // коли востаннє не побачила жодної їжі (SearchFoodGoal)
+    public final CowVision vision = new CowVision(this);                // зір (план Fij, етап 1)
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -771,6 +773,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.BullFightGoal(this));   // бики б'ються (ідея 13)                  // самка в тічці йде до бика (замість ванільного розмноження)
         this.goalSelector.addGoal(9, new BullCourtGoal(this));             // бик іде до самки в тічці
         this.goalSelector.addGoal(9, new SleepGoal(this));                 // вночі додому і спати (ідея 9)
+        this.goalSelector.addGoal(8, new com.gigongibus.hungrycows.ai.SearchFoodGoal(this)); // не бачить їжі — іде шукати (зір, Fij)
         this.goalSelector.addGoal(9, new SeekShadeGoal(this));
         this.goalSelector.addGoal(9, new com.gigongibus.hungrycows.ai.ShelterFromRainGoal(this)); // не любить дощу — ховається (Fij)             // сонячно — відпочивати в тіні (ідея 9)
         this.goalSelector.addGoal(10, new RestGoal(this));                 // відпочинок
@@ -857,6 +860,7 @@ public class HungryCow extends Cow {
 
     @Override
     public void aiStep() {
+        if (!this.level().isClientSide) vision.tick();
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
@@ -1525,7 +1529,7 @@ public class HungryCow extends Cow {
         Player enemy = null;
         double enemyDist = CowTrust.CHARGE_RANGE * CowTrust.CHARGE_RANGE;
         for (LivingEntity e : this.level().getEntitiesOfClass(
-                LivingEntity.class, this.getBoundingBox().inflate(range), this::isScary)) {
+                LivingEntity.class, this.getBoundingBox().inflate(range), e -> isScary(e) && vision.canSee(e))) {   // лише те, що бачить
             double d = this.distanceToSqr(e);
             if (d < bestDist) {
                 bestDist = d;
@@ -1575,7 +1579,7 @@ public class HungryCow extends Cow {
         updatePlayerStillness();
         int max = 0;
         for (LivingEntity e : this.level().getEntitiesOfClass(
-                LivingEntity.class, this.getBoundingBox().inflate(10.0), this::isScary)) {
+                LivingEntity.class, this.getBoundingBox().inflate(10.0), e -> isScary(e) && vision.canSee(e))) {   // лише те, що бачить
             // ворожого гравця корова помічає з 10 блоків, решту з 6
             double range = (e instanceof Player p && trustOf(p) < 0) ? 10.0 : 6.0;
             if (this.distanceToSqr(e) < range * range) {

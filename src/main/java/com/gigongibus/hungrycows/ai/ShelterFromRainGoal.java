@@ -19,6 +19,7 @@ public class ShelterFromRainGoal extends Goal {
     private static final int MAX_WALK_TICKS = 1200;   // іде до укриття щонайбільше 60 с
     private static final int MAX_STAY_TICKS = 6000;   // стоїть в укритті щонайдовше 5 хв, потім вирішує знову
     private static final int RETRY_TICKS = 200;       // укриття не знайшла — наступна спроба за 10 с
+    private static final int STUCK_CHECK = 40;        // раз на 2 с: стоїть під дощем, а йти нікуди — шукає ближче укриття
     private static final int SHADE_ROUNDS = 3;        // тінь, на яку все ж падає дощ (тінь від світла неба), — шукає ще раз, до 3 разів
 
     private final HungryCow cow;
@@ -47,6 +48,10 @@ public class ShelterFromRainGoal extends Goal {
         nextTry = cow.tickCount + RETRY_TICKS;
         BlockPos home = cow.home.home();
         shelter = home != null && home.distSqr(cow.blockPosition()) < HOME_RADIUS * HOME_RADIUS ? home : null;
+        if (shelter != null) {   // до дому мусить бути шлях, інакше — дерево чи навіс поруч
+            net.minecraft.world.level.pathfinder.Path path = cow.getNavigation().createPath(shelter, 2);
+            if (path == null || !path.canReach()) shelter = null;
+        }
         for (int i = 0; i < SHADE_ROUNDS && dry(shelter) == null; i++) shelter = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, true);  // дерево
         for (int i = 0; i < SHADE_ROUNDS && dry(shelter) == null; i++) shelter = cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false); // будь-яке накриття
         shelter = dry(shelter);
@@ -77,6 +82,11 @@ public class ShelterFromRainGoal extends Goal {
         if (shelter == null) return;
         if (cow.rainedOn()) {
             walkTicks++;
+            // дорогою зупинилась (шлях скінчився, а дощ досі на неї) — шукає укриття ближче
+            if (walkTicks % STUCK_CHECK == 0 && cow.getNavigation().isDone()) {
+                BlockPos near = dry(cow.home.findShade(SHADE_RADIUS, SHADE_TRIES, false));
+                if (near != null) shelter = near;
+            }
             if (walkTicks == 1 || walkTicks % 20 == 0) {
                 cow.getNavigation().moveTo(shelter.getX() + 0.5, shelter.getY(), shelter.getZ() + 0.5, 1.0);
             }

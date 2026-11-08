@@ -53,6 +53,8 @@ public class HungryCowRainHotTests {
         int[] loverDry = { 0 };
         boolean[] haterWet = { false };
         h.onEachTick(() -> {
+            hater.hunger = 0;   // ситі: голодна піде шукати їжі й під дощем (голод важливіший), а тут перевіряємо лише дощ
+            lover.hunger = 0;
             if (!lover.rainedOn()) loverDry[0]++;
             if (hater.rainedOn()) haterWet[0] = true;
             if (h.getTick() % 100 == 0) LOG.info("[тест] дощ: тік {}, дощить {}, небо {}, на неї {}, на любительку {}", h.getTick(),

@@ -108,13 +108,26 @@
   веде в дім (до 32 бл.), інакше під дерево, інакше під будь-яке накриття, і стоїть там до кінця дощу (до 5 хв, потім вирішує
   знову); 60+ — любить. `GoOutGoal` у дощ: шанс × (0,1 … 1,0 за геном; було ×0,3 для всіх). «Дощ падає на корову»
   (`rainReaches`) — за блоками над нею до 16 (дах, листя), не за світлом неба. Книга «Характер»: «Дощ: …», «Жаркий біом».
+- `CowVision`: ЗІР (план Fij «штучне життя», етап 1). Раз на 8 тіків (`(tickCount + id) % 8`) список побаченого: огляд 330°
+  (сліпа зона 30° позаду, від повороту голови), чітко спереду 50°, краєм ока — `glance()` → `WatchGoal` повертає голову.
+  Дальність: день 50, ніч 20, дощ 15; хто біжить — уся, іде — 2/3, крадеться — 1/3, нерухомий — ближче 8 (Fij) або прямо спереду.
+  Промінь погляду (`lineOfSight`, крок 0,25): тверде заступає (за формою блока: півблок, зачинені двері), скло/паркани/ґрати/люки —
+  ні; листя, трава, квіти — «частково» (від 2 таких — лише ближче 8 або коли рухається). Не більше 12 променів за раз (страшні
+  й ближчі першими). Пам'ять побаченого 10 с (`canSee`; `seesNow` — останнє оновлення). Невидимість — не бачить.
+  Хто бере дані: страх (`findScary`, `fearGainNearby`), `WatchGoal`, `ConfrontGoal`, `ApproachPlayerGoal`, їжа.
+  Стадо, теля/мати, мозок і обхід корів поки без зору (до слуху й нюху). Книга: розділ «Зір».
+- Їжа за зором (Fij: «лише ту, яку бачить, повинна її шукати»): `SeekGrassGoal.visible` — до 80 найближчих блоків їжі
+  перевіряє `canSeeBlock` (трав'яний блок — його верх). Жодної не бачить → `cow.foodNotSeenTick` → `SearchFoodGoal` (8):
+  спершу до місця, де їла (`CowMemory.bestPlace`, до 48 бл.; дійшла й не побачила — 2 хв туди не йде), інакше в нове місце
+  8–16 бл., переважно надворі (без даху); до 20 с, потім інше. Голодна шукає й під дощем (важливіше за `ShelterFromRain`).
+- `ShelterFromRainGoal`: до дому мусить бути шлях (інакше дерево/навіс поруч); зупинилась під дощем — шукає ближче укриття.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
 - Ресурси `assets/hungrycows/`: `lang/` (en_us, uk_ua), `models/item/`, `textures/mob_effect/cow_friend.png`.
 
 ## Пріоритети цілей (з `HungryCow.registerGoals()`, менше число = важливіше)
-0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate ·
+0 Unconscious, Swim · 1 Labor · 2 DefendCalf · 3 Fear · 4 FirePanic · 5 Nurse · 6 DrinkMilk, DrinkWater · 7 SeekGrass · 8 Mate, SearchFood ·
 9 BullCourt, Sleep, SeekShade, ShelterFromRain · 10 Rest · 11 Ruminate, GoOut · 12 FindFoster · 13 BrainTempt (кавун, гарбуз, скибка, яблуко, морква) ·
 14 AvoidBluet, AvoidBadPlace, HerdCohesion · 15 HerdUp · 16 ApproachPlayer · 17 Investigate · 18 MotherCalf · 19 Grieve · 20 FollowMother ·
 21 BrainStroll, PersonalSpace · 22 Watch · 23 Scan. Ванільного `BreedGoal` немає, `canFallInLove()` завжди false.
@@ -258,6 +271,11 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - Нестабільне: fearFromHit 1 з ~7 (утекла рівно на межі 1,5 бл.).
 - `test/HungryCowRainHotTests`: rainHaterHidesLoverStays (партія "rain": дощ, навіс у куті, ген 10 → ховається за 13–24 с;
   ген 90 — на дощі), hotBiomeSwapsDayAndNight (партія "hot": `/fillbiome` пустеля → опівдні «ніч»; рівнини → день).
+- `test/HungryCowVisionTests` (партія "vision"): seesThroughGlassNotStone (корова без цілей, нерухомі свині спереду й позаду:
+  спереду бачить, позаду ні; за каменем ні, крізь скло так), cowSearchesForHiddenFood (трава в кутку за кам'яною стінкою з
+  проходом — не бачить, шукає, з'їдає за ~12,5 с). Урок: прибирання в `runAfterDelay(TIMEOUT-1)` міняло траву на камінь, і
+  `succeedWhen` «з'їла» проходив хибно — тепер прапорець `cleared`.
+- Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).
 - Тести прибирають за собою (корів — `discard`, хліви й огорожу — `clearBarn`): споруди лишаються у світі, і наступна партія

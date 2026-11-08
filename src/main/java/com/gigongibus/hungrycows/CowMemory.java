@@ -177,6 +177,25 @@ public class CowMemory {
         }
     }
 
+    // Найкраще місце, де їла (значення від minValue), до range блоків, крім пропущених клітинок (skip) — куди йти шукати їжу
+    public BlockPos bestPlace(BlockPos from, double range, double minValue, java.util.Set<Long> skip) {
+        BlockPos best = null;
+        double bestV = minValue;
+        for (Map.Entry<Long, Double> e : places.entrySet()) {
+            if (e.getValue() < bestV || skip.contains(e.getKey())) continue;
+            BlockPos cell = BlockPos.of(e.getKey());
+            BlockPos c = new BlockPos(cell.getX() * CELL + CELL / 2, from.getY(), cell.getZ() * CELL + CELL / 2);
+            if (c.distSqr(from) > range * range || cellOf(c) == cellOf(from)) continue;
+            bestV = e.getValue();
+            best = c;
+        }
+        return best;
+    }
+
+    public static long cellKey(BlockPos pos) {
+        return cellOf(pos);
+    }
+
     // Центр клітинки (для «піти звідси»)
     public static BlockPos cellCenter(BlockPos pos) {
         int cx = Math.floorDiv(pos.getX(), CELL) * CELL + CELL / 2;

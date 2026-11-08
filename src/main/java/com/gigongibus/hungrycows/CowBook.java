@@ -109,6 +109,8 @@ public final class CowBook {
         }
         out.add("Дощ: " + cow.rainAttitude());
         if (cow.inHotBiome()) out.add("Жаркий біом: удень спить, вночі пасеться");
+        // 6а. Зір
+        out.addAll(cow.vision.lines());
         // 6б. Мозок
         out.addAll(cow.brain.lines());
 

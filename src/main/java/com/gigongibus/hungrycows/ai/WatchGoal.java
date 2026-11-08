@@ -60,7 +60,7 @@ public class WatchGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         if (target == null || !target.isAlive() || cow.distanceToSqr(target) > RANGE * RANGE) return false;
-        if (danger) return cow.hasLineOfSight(target);   // небезпеку не спускає з очей, доки бачить
+        if (danger) return cow.vision.canSee(target);   // небезпеку не спускає з очей, доки бачить
         return lookTime > 0;
     }
 
@@ -101,7 +101,7 @@ public class WatchGoal extends Goal {
         for (LivingEntity e : cow.level().getEntitiesOfClass(LivingEntity.class, cow.getBoundingBox().inflate(RANGE),
                 e -> e != cow && e.isAlive() && !(e instanceof Player p && p.isSpectator()))) {
             now.put(e.getId(), e.position());
-            if (cow.distanceToSqr(e) > RANGE * RANGE || !cow.hasLineOfSight(e)) continue;
+            if (cow.distanceToSqr(e) > RANGE * RANGE || !cow.vision.canSee(e)) continue;
             boolean d = isDanger(e);
             double w;
             if (d) w = W_DANGER;
@@ -119,6 +119,12 @@ public class WatchGoal extends Goal {
         }
         lastPos.clear();
         lastPos.putAll(now);
+        // зір: краєм ока помітила, що збоку щось рухається — повертає туди голову (якщо немає небезпеки)
+        LivingEntity g = cow.vision.glance();
+        if (!bestDanger && g != null && cow.distanceToSqr(g) < RANGE * RANGE) {
+            danger = isDanger(g);
+            return g;
+        }
         if (best == null) return null;
         // небезпеку помічає одразу; решту — з шансом, що росте з важливістю
         if (!bestDanger && cow.getRandom().nextDouble() >= START_CHANCE * bestScore) return null;

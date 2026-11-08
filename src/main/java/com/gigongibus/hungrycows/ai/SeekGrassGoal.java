@@ -43,6 +43,7 @@ public class SeekGrassGoal extends Goal {
     private static final int MAX_RUN_TICKS = 400;         // скільки максимум йти до однієї цілі (20 сек)
     private static final int MAX_PATH_CHECKS = 6;         // скільки шляхів перевіряти за один вибір
     private static final int MAX_REACHABLE_COMPARED = 3;  // скільки досяжних варіантів порівнювати
+    private static final int MAX_SIGHT_CHECKS = 80;       // зір: скільки блоків їжі перевіряти «чи видно» за один пошук (найближчі)
     private static final boolean DEBUG = true;            // писати в чат, коли їжа недосяжна
 
     // Апетит до квіток: чим більше число, тим частіше корова обирає цей вид
@@ -92,6 +93,7 @@ public class SeekGrassGoal extends Goal {
     private int eatTicks = 0;
     private double lastDist = 0;
     private int checksLeft = 0;
+    private int sightLeft = 0;
     private int lastClearTick = 0;
     private final Set<BlockPos> unreachable = new HashSet<>();
 
@@ -374,6 +376,21 @@ public class SeekGrassGoal extends Goal {
         return FLOWER_APPETITE.getOrDefault(b, 1) * (1.0 - cow.memory.aversion(b.asItem()));
     }
 
+    // Лише видима їжа: найближча першою, щонайбільше MAX_SIGHT_CHECKS перевірок погляду за пошук
+    private List<Candidate> visible(List<Candidate> list) {
+        list.sort(Comparator.comparingDouble((Candidate c) -> c.dist));
+        List<Candidate> out = new ArrayList<>();
+        for (Candidate c : list) {
+            if (sightLeft <= 0) break;
+            if (unreachable.contains(c.pos)) continue;
+            sightLeft--;
+            boolean top = c.kind == Kind.GRASS_BLOCK || c.kind == Kind.MOSS_BLOCK;   // блок трави: видно верх
+            net.minecraft.world.phys.Vec3 point = new net.minecraft.world.phys.Vec3(c.pos.getX() + 0.5, c.pos.getY() + (top ? 1.05 : 0.5), c.pos.getZ() + 0.5);
+            if (cow.vision.canSeeBlock(c.pos, point)) out.add(c);
+        }
+        return out;
+    }
+
     // Шлях до їжі (null, якщо дійти не можна). Кожна перевірка зменшує ліміт.
     private Path pathTo(Candidate c) {
         checksLeft--;
@@ -498,6 +515,17 @@ public class SeekGrassGoal extends Goal {
             else if (k == Kind.DESPERATE) desperate.add(c);
             else if (k == Kind.BLUET) bluet.add(c);
             else normal.add(c);
+        }
+
+        // зір (план Fij, етап 1): лише їжа, яку корова бачить
+        sightLeft = MAX_SIGHT_CHECKS;
+        normal = visible(normal);
+        flowers = visible(flowers);
+        desperate = visible(desperate);
+        bluet = visible(bluet);
+        if (normal.isEmpty() && flowers.isEmpty() && desperate.isEmpty() && bluet.isEmpty()) {
+            cow.foodNotSeenTick = cow.tickCount;   // не бачить жодної їжі — SearchFoodGoal поведе шукати
+            return null;
         }
 
         checksLeft = MAX_PATH_CHECKS;

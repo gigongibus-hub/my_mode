@@ -144,7 +144,7 @@ public class ConfrontGoal extends Goal {
         cooldown = CHECK_EVERY / 2;   // canUse — раз на 2 тіки
         if (cow.isBaby() || cow.sleeping || cow.heat.unconscious || cow.getHealth() < cow.getMaxHealth() / 3) return false;
         for (Player p : cow.level().getEntitiesOfClass(Player.class, cow.getBoundingBox().inflate(RANGE),
-                p -> p.isAlive() && !p.isCreative() && !p.isSpectator())) {
+                p -> p.isAlive() && !p.isCreative() && !p.isSpectator() && cow.vision.canSee(p))) {   // лише того, кого бачить
             double dist = Math.sqrt(cow.distanceToSqr(p));
             Double before = lastDist.put(p.getUUID(), dist);
             if (cow.tickCount < nextRoll.getOrDefault(p.getUUID(), 0)) continue;
