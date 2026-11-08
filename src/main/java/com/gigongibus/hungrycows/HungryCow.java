@@ -157,6 +157,21 @@ public class HungryCow extends Cow {
     public static final double BUMP_SPEED = 0.04;        // «врізалась» = ішла на неї швидше 0,04 блока за тік
     public static final int BUMP_COOLDOWN = 60;          // зіткнення однієї корови рахується не частіше раз на 3 с
     public static final int KICK_FEAR = 20;              // страх тієї, кого хвицнули (від хижака — 50)
+    // Бики й «бий або тікай» (ідея Fij 12)
+    public static final double BULL_DAMAGE = 2.0;        // бик б'є вдвічі сильніше (1 серце замість пів)
+    public static final double BULL_KNOCKBACK = 1.5;     // і відкидає в 1,5 раза далі
+    public static final double BULL_SPEED = 0.15;        // бик на 15% швидший
+    public static final double FIGHT_CHANCE_BULL = 0.8;  // замість утечі напасти: бик 80% ...
+    public static final double FIGHT_CHANCE_COW = 0.4;   // ... корова 40%
+    public static final double FIGHT_AGGRESSION = 0.3;   // агресивність 100 → +15%, 0 → −15%
+    public static final double FIGHT_BRAVERY = 0.2;      // сміливість 100 → +10%, 0 → −10%
+    public static final double FIGHT_FEARFULNESS = 0.3;  // полохливість 100 → −15%, 0 → +15%
+    public static final double FIGHT_MIN = 0.02, FIGHT_MAX = 0.97;
+    public static final double FIGHT_HEALTH_MIN = 1.0 / 3.0; // поранена до третини здоров'я — не б'ється, тікає
+    public static final int FIGHT_TICKS = 200;           // б'ється щонайдовше 10 с
+    public static final double FIGHT_SPEED = 1.3;        // іде на ворога швидше звичайного
+    public static final int FIGHT_PLAYER_HIT_TICKS = 200; // на гравця нападає, лише якщо той бив її за останні 10 с
+    public static final double RAM_REACH = 1.0;          // б'є, коли між ними менше 1 блока (від краю до краю)
     public double barnUnrest = 0;
     public static final int DAY_EAT_AT = 25;             // удень з цього голоду йде пастися завжди (не чекає мозку)
     public static final int MORNING_EAT_AT = 5;          // уранці (після сну) з цього голоду виходить пастися
@@ -786,6 +801,7 @@ public class HungryCow extends Cow {
             herd.secondTick();
             sleep.secondTick();
             heat.secondTick();
+            updateBullSpeed();
             updateBarnUnrest();
             if (second % FIRE_CHECK_SECONDS == 0 && fireNearby()) {
                 experience(Experience.FIRE, FIRE_EXPERIENCE_COOLDOWN);
@@ -1033,10 +1049,10 @@ public class HungryCow extends Cow {
 
     private void attackPlayer(Player player, float damage) {
         // у творчому режимі й на «Мирній» складності удар не проходить, тоді й не відкидаємо
-        // ген «сила удару»: ±30%
-        damage = (float) (damage * gene(CowGenes.Gene.KICK_STRENGTH));
+        // ген «сила удару»: ±30%; бик — удвічі сильніше
+        damage = (float) (damage * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
         if (!player.hurt(this.damageSources().mobAttack(this), damage)) return;
-        player.knockback(CowTrust.ATTACK_KNOCKBACK, this.getX() - player.getX(), this.getZ() - player.getZ());
+        player.knockback(CowTrust.ATTACK_KNOCKBACK * (isBull() ? BULL_KNOCKBACK : 1.0), this.getX() - player.getX(), this.getZ() - player.getZ());
         player.hurtMarked = true;
         this.playSound(SoundEvents.COW_HURT, 1.0F, 0.8F);
         tell("Корова вдарила " + player.getName().getString());
@@ -1529,6 +1545,53 @@ public class HungryCow extends Cow {
         return Math.round(base * CowTrust.fearMultiplier(t));
     }
 
+    // ===================== БИКИ І «БИЙ АБО ТІКАЙ» (ідея 12) =====================
+
+    // Дорослий бик
+    public boolean isBull() {
+        return !repro.isFemale() && !this.isBaby();
+    }
+
+    // Шанс напасти на загрозу замість утечі: бик 80%, корова 40%, ± риси; теля, друг, крипер, ендермен — 0
+    public double fightChance(LivingEntity threat) {
+        if (this.isBaby() || threat == null) return 0;
+        if (threat instanceof Creeper || threat instanceof EnderMan || threat instanceof net.minecraft.world.entity.npc.Villager) return 0;
+        if (threat instanceof Player p && (trustOf(p) >= CowTrust.FRIEND_FROM || p.isCreative() || p.isSpectator())) return 0;
+        // на гравця — лише якщо він щойно (10 с) бив цю корову; просто підійшов — тікає, як раніше
+        if (threat instanceof Player p && !(p.getUUID().equals(lastHitBy) && this.tickCount - lastPlayerHitTick < FIGHT_PLAYER_HIT_TICKS)) return 0;
+        if (this.getHealth() <= this.getMaxHealth() * FIGHT_HEALTH_MIN) return 0;
+        double c = isBull() ? FIGHT_CHANCE_BULL : FIGHT_CHANCE_COW;
+        c += FIGHT_AGGRESSION * (character.fraction(Trait.AGGRESSION) - 0.5);
+        c += FIGHT_BRAVERY * (character.fraction(Trait.BRAVERY) - 0.5);
+        c -= FIGHT_FEARFULNESS * (character.fraction(Trait.FEARFULNESS) - 0.5);
+        return Math.max(FIGHT_MIN, Math.min(FIGHT_MAX, c));
+    }
+
+    // Удар лобом (по зомбі, скелету, павуку, гравцю): сила за геном, бик удвічі сильніше й відкидає далі
+    public void ram(LivingEntity target) {
+        float damage = (float) (CowTrust.ATTACK_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
+        this.lookAt(target, 30F, 30F);
+        this.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+        if (!target.hurt(this.damageSources().mobAttack(this), damage)) return;
+        target.knockback(CowTrust.ATTACK_KNOCKBACK * (isBull() ? BULL_KNOCKBACK : 1.0), this.getX() - target.getX(), this.getZ() - target.getZ());
+        if (target instanceof Player) target.hurtMarked = true;
+        this.playSound(SoundEvents.COW_HURT, 1.0F, isBull() ? 0.6F : 0.9F);
+    }
+
+    // Бик на 15% швидший (міняється, лише коли змінилось, — бик виріс)
+    private static final UUID BULL_SPEED_ID = UUID.fromString("3c2b1a09-8f7e-4d6c-9b5a-4f3e2d1c0b9a");
+    private boolean bullSpeedApplied = false;
+
+    private void updateBullSpeed() {
+        boolean bull = isBull();
+        if (bull == bullSpeedApplied) return;
+        var inst = this.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (inst == null) return;
+        inst.removeModifier(BULL_SPEED_ID);
+        if (bull) inst.addTransientModifier(new AttributeModifier(BULL_SPEED_ID, "Bull speed", BULL_SPEED, AttributeModifier.Operation.MULTIPLY_BASE));
+        bullSpeedApplied = bull;
+    }
+
     // ===================== ЗІТКНЕННЯ КОРІВ =====================
 
     private int lastBumpTick = -1000;
@@ -1554,7 +1617,7 @@ public class HungryCow extends Cow {
 
     // Хвицнути корову, що в неї врізалась
     public void kickCow(HungryCow target) {
-        float damage = (float) (KICK_COW_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH));
+        float damage = (float) (KICK_COW_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
         this.lookAt(target, 30F, 30F);
         if (!target.hurt(this.damageSources().mobAttack(this), damage)) return;
         target.knockback(KICK_COW_KNOCKBACK, this.getX() - target.getX(), this.getZ() - target.getZ());
