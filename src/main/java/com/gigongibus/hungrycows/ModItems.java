@@ -17,6 +17,10 @@ public class ModItems {
     public static final RegistryObject<Item> BRAIN_STICK =
             HungryCowsMod.ITEMS.register("brain_stick", () -> new Item(new Item.Properties().stacksTo(1)));
 
+    // Теля від мандрівного торговця (етап 10): у інвентарі одразу стає телям біля гравця
+    public static final RegistryObject<Item> CALF_TICKET =
+            HungryCowsMod.ITEMS.register("calf_ticket", () -> new CalfTicketItem(new Item.Properties().stacksTo(1)));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }

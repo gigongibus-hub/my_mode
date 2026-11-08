@@ -18,7 +18,8 @@ public class GroomGoal extends Goal {
     private static final double CHANCE = 0.15;           // шанс × (0,5 + товариськість)
     private static final double MOTHER_CHANCE = 0.4;     // мати з телям поруч — 40%
     private static final double RANGE = 8;               // кого вилизувати — до 8 блоків
-    private static final double REACH = 1.8;             // лиже ближче 1,8 бл.
+    private static final double REACH = 1.8;
+    private static final double KIN_NEAR = 3;            // своє теля вилизує, лише коли воно ближче 3 бл.             // лиже ближче 1,8 бл.
     private static final int LICK_TICKS = 100;           // лиже 5 с
     private static final int MAX_WALK = 200;             // іде до неї щонайдовше 10 с
     private static final int CALM_FEAR = 10, CALM_HUNGER = 40;
@@ -54,6 +55,8 @@ public class GroomGoal extends Goal {
         boolean family = false;
         for (HungryCow o : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(RANGE), o -> o != cow && calm(o))) {
             boolean kin = cow.isMotherOf(o) || o.isMotherOf(cow);
+            // мати не ходить вилизувати теля — лише коли воно саме поруч (теля ходить за матір'ю, а не навпаки — Fij)
+            if (cow.isMotherOf(o) && cow.distanceToSqr(o) > KIN_NEAR * KIN_NEAR) continue;
             double w = (kin ? 3 : 1) * (1 + BOND_PICK * Math.max(0, cow.touch.bond(o))) * (0.5 + cow.getRandom().nextDouble());
             if (w > bestW) { bestW = w; best = o; family = kin; }
         }

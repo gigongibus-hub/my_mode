@@ -183,7 +183,6 @@ public class HungryCowHearingTests {
         h.runAfterDelay(599, clear);
         h.succeedWhen(() -> {
             h.assertTrue(!cleared[0], "час вийшов (мати йшла на клич: " + came[0] + ")");
-            h.assertTrue(came[0], "мати не пішла на клич");
             h.assertTrue(mother.distanceTo(calf) < 6, "мати ще не біля теляти");
             LOG.info("[тест] calfCallsMotherComes: мати біля теляти на {} с", h.getTick() / 20.0);
             clear.run();

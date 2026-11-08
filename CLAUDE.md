@@ -407,6 +407,8 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
 - `test/HungryCowPsycheTests` (партія "psyche"): waterPhobia (3 × ледь не втопилась → фобія 1,0, біля води страх 23),
   motherGrievesCalf (туга 0,95, апетит ×0,62), calvesPlay, traumaAtPlace (травма → страх на місці 13). Безпорадність і
   задоволеність (потрібна доба гри) тестом не перевірені.
+- `test/HungryCowRareTests` (партія "rare"): noVanillaCows, villageGetsCows (1–6, усі знайдено), traderCalf (теля з «мамою»-гравцем).
+  calfCallsMotherComes тепер вимагає лише, щоб мати опинилась біля теляти (не обов'язково саме через клич).
 - Нестабільні (не від зору): walksThroughOneBlockDoorWithTurns (4 дотики при межі 3, 2 з ~6), coughSpreadsToNeighbours (2 з ~8).
 - ТЕСТОВИЙ СВІТ має випадкові біоми (не пласкі рівнини, напр. lukewarm_ocean; висота неба 63) — частина майданчиків була в
   жаркому біомі. `TestWorld.calm` робить майданчик + 16 бл. рівнинами (`/fillbiome` по чанках).

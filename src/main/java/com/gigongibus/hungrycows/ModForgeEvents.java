@@ -30,7 +30,10 @@ public class ModForgeEvents {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int TEST_LABOR_IN_SECONDS = 10;  // команда /hungrycows birth: через скільки секунд почнуться пологи
-    public static final int ZOMBIE_TARGET_PRIORITY = 4;  // у зомбі: 2 гравець, 3 селянин і залізний голем, 4 корова, 5 черепаха
+    public static final int ZOMBIE_TARGET_PRIORITY = 4;
+    public static final boolean REMOVE_VANILLA_COWS = true;   // етап 10: ванільних корів прибрати повністю
+    public static final int CALF_PRICE = 30;                  // теля у мандрівного торговця — 30 смарагдів
+    public static final int CALF_TRADES = 1;                  // продає одне (рідкісна пропозиція)  // у зомбі: 2 гравець, 3 селянин і залізний голем, 4 корова, 5 черепаха
 
     // Список «на кого нападати» (Mob.targetSelector) закритий, тому беремо його через рефлексію.
     // "f_21346_" — внутрішня назва поля targetSelector у Forge 1.20.1. Якщо поле не знайдеться,
@@ -56,6 +59,11 @@ public class ModForgeEvents {
     @SubscribeEvent
     public static void onEntityJoin(EntityJoinLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
+        // етап 10: ванільних корів немає зовсім (не з'являються й зникають зі старих світів); грибні корови лишаються
+        if (event.getEntity().getType() == net.minecraft.world.entity.EntityType.COW && REMOVE_VANILLA_COWS) {
+            event.setCanceled(true);
+            return;
+        }
         if (event.getEntity() instanceof Zombie zombie && !(zombie instanceof ZombifiedPiglin)) {
             GoalSelector targets = targetSelector(zombie);
             if (targets != null) {
@@ -212,9 +220,24 @@ public class ModForgeEvents {
         event.getSound().unwrapKey().ifPresent(k -> CowHearing.onSound(event.getLevel(), k.location().toString(), e.position().add(0, e.getBbHeight() / 2, 0), e, event.getOriginalVolume()));
     }
 
+    // етап 10: нове село — корови для нього
+    @SubscribeEvent
+    public static void onChunkLoad(net.minecraftforge.event.level.ChunkEvent.Load event) {
+        if (event.isNewChunk() && event.getLevel() instanceof ServerLevel level) VillageCows.onNewChunk(level, event.getChunk());
+    }
+
+    // етап 10: мандрівний торговець іноді продає теля
+    @SubscribeEvent
+    public static void onWandererTrades(net.minecraftforge.event.village.WandererTradesEvent event) {
+        event.getRareTrades().add((trader, random) -> new net.minecraft.world.item.trading.MerchantOffer(
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD, CALF_PRICE),
+                new net.minecraft.world.item.ItemStack(ModItems.CALF_TICKET.get()), CALF_TRADES, 10, 0.05F));
+    }
+
     @SubscribeEvent
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
+            VillageCows.tick(level);
             Regrowth.tick(level);
             if (level.getGameTime() % CowSmell.TRAIL_EVERY == 0) CowSmell.recordTrails(level);   // сліди запаху
         }
