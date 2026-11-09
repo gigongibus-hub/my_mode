@@ -74,7 +74,8 @@ public class HungryCowTouchTests {
     }
 
     // 2. Мати й теля поруч, спокійні — вилизують одна одну (дружба росте)
-    @GameTest(template = "arena", batch = "touch", timeoutTicks = 2400)
+    // 5 хв: вилизування тепер рідше (25% раз на 15 с, Fij: «надто часто») — за 2 хв інколи жодного разу
+    @GameTest(template = "arena", batch = "touch", timeoutTicks = 6000)
     public static void motherAndCalfGroom(GameTestHelper h) {
         HungryCow mother = cow(h, new BlockPos(6, 2, 7));
         HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(8, 2, 7));
@@ -83,9 +84,9 @@ public class HungryCowTouchTests {
         boolean[] cleared = { false };
         Runnable clear = () -> { cleared[0] = true; mother.discard(); calf.discard(); };
         h.onEachTick(() -> { mother.hunger = 0; calf.hunger = 0; mother.fear = 0; calf.fear = 0; });
-        h.runAfterDelay(2399, clear);
+        h.runAfterDelay(5999, clear);
         h.succeedWhen(() -> {
-            h.assertTrue(!cleared[0], "за 2 хв не вилизали одна одну");
+            h.assertTrue(!cleared[0], "за 5 хв не вилизали одна одну");
             h.assertTrue(mother.touch.bond(calf) > 0 && calf.touch.bond(mother) > 0, "ще не вилизували");
             LOG.info("[тест] motherAndCalfGroom: вилизали на {} с, дружба {} / {}", h.getTick() / 20.0,
                     Math.round(mother.touch.bond(calf)), Math.round(calf.touch.bond(mother)));
