@@ -359,4 +359,23 @@ public class HungryCowHayTests {
             });
         });
     }
+
+    // 10. Скріншот Fij «у всі боки і вниз»: вода проходить лише крізь сіно, що торкається джерела; сусіднє сіно — сухе
+    @GameTest(template = "platform", batch = "hay_water", timeoutTicks = 200)
+    public static void waterPassesOnlyOneHay(GameTestHelper h) {
+        BlockPos src = new BlockPos(2, 2, 4), h1 = new BlockPos(3, 2, 4), h2 = new BlockPos(4, 2, 4), h3 = new BlockPos(3, 2, 5),
+                h4 = new BlockPos(5, 2, 4), h5 = new BlockPos(4, 3, 4);
+        for (BlockPos p : new BlockPos[] { h1, h2, h3, h4, h5 }) h.setBlock(p, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(src, net.minecraft.world.level.block.Blocks.WATER);
+        h.runAfterDelay(60, () -> {
+            boolean w1 = h.getBlockState(h1).getValue(CowHayBlock.WATERLOGGED);
+            int others = 0;
+            for (BlockPos p : new BlockPos[] { h2, h3, h4, h5 }) if (h.getBlockState(p).getValue(CowHayBlock.WATERLOGGED)) others++;
+            LOG.info("[тест] waterPassesOnlyOneHay: сіно біля джерела з водою {}, інших з водою {} з 4", w1, others);
+            for (BlockPos p : new BlockPos[] { src, h1, h2, h3, h4, h5 }) h.setBlock(p, net.minecraft.world.level.block.Blocks.AIR);
+            h.assertTrue(w1, "сіно біля джерела не пропустило воду");
+            h.assertTrue(others == 0, "вода пішла далі крізь сусіднє сіно: " + others);
+            h.succeed();
+        });
+    }
 }

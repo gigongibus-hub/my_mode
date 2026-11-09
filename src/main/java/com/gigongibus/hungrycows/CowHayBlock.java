@@ -111,7 +111,6 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
 
     // вода крізь сіно (Fij, варіант Б): сіно «живиться» водою — тоді всередині вода, і вона витікає з усіх боків
     public static final BooleanProperty WATERLOGGED = net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED;
-    public static final int FEED_CLUSTER_MAX = 64;         // скільки сусідніх блоків сіна передають воду далі (купа)
     // для води сіно трохи менше за блок (усі грані відкриті) — вода проходить; для корів, гравців, снарядів — повний блок
     private static final net.minecraft.world.phys.shapes.VoxelShape WATER_SEES = net.minecraft.world.level.block.Block.box(0.02, 0.02, 0.02, 15.98, 15.98, 15.98);
 
@@ -193,9 +192,12 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         return level.getFluidState(p).is(net.minecraft.tags.FluidTags.WATER) && !(level.getBlockState(p).getBlock() instanceof CowHayBlock);
     }
 
-    /** Чи «живить» воду цей блок сіна: поруч джерело води або вода згори (сюди ж — вода, що тече зверху вниз) */
+    /**
+     * Чи «живить» воду цей блок сіна: торкається будь-яким боком справжнього ДЖЕРЕЛА води (не з сіна).
+     * Потічки (і ті, що витікають із сіна) не живлять — інакше сіно передавало воду далі без кінця (Fij, скріншоти:
+     * стовп угору, потім «у всі боки і вниз»).
+     */
     private static boolean fedHere(Level level, BlockPos pos) {
-        if (realWater(level, pos.above())) return true;
         for (Direction d : Direction.values()) {
             BlockPos n = pos.relative(d);
             if (realWater(level, n) && level.getFluidState(n).isSource()) return true;
@@ -204,45 +206,18 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     }
 
     /**
-     * Вода крізь сіно: блок сіна «живиться», якщо поруч джерело води чи вода згори; від нього вода йде крізь сусіднє сіно
-     * лише вниз і вбік (не вгору). У таких блоках вода — витікає звичайними потічками, поки живлення є; немає — зникає.
+     * Вода крізь сіно: вода проходить ЛИШЕ крізь той блок сіна, що торкається джерела (стінка сіна в 1 блок), і витікає з нього
+     * звичайними потічками. Далі сіно воду не передає. Джерело прибрали — вода в сіні зникає. Перевіряє цей блок і сусідні.
      */
     public static void updateWater(Level level, BlockPos start) {
-        if (level.isClientSide || !(level.getBlockState(start).getBlock() instanceof CowHayBlock)) return;
-        List<BlockPos> cluster = new ArrayList<>();
-        Set<BlockPos> seen = new HashSet<>();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        seen.add(start.immutable());
-        queue.add(start.immutable());
-        while (!queue.isEmpty() && cluster.size() < FEED_CLUSTER_MAX) {
-            BlockPos c = queue.poll();
-            cluster.add(c);
-            for (Direction d : Direction.values()) {
-                BlockPos n = c.relative(d);
-                if (!seen.contains(n) && level.getBlockState(n).getBlock() instanceof CowHayBlock) {
-                    seen.add(n.immutable());
-                    queue.add(n.immutable());
-                }
-            }
-        }
-        // вода йде крізь сіно лише ВНИЗ і ВБІК, ніколи вгору (Fij, скріншот: стовп сіна — вода «вилазила» на верхівку й лилась звідти)
-        Set<BlockPos> inCluster = new HashSet<>(cluster);
-        Set<BlockPos> fed = new HashSet<>();
-        ArrayDeque<BlockPos> wave = new ArrayDeque<>();
-        for (BlockPos p : cluster) {
-            if (fedHere(level, p)) { fed.add(p); wave.add(p); }
-        }
-        while (!wave.isEmpty()) {
-            BlockPos c = wave.poll();
-            for (Direction d : Direction.values()) {
-                if (d == Direction.UP) continue;
-                BlockPos n = c.relative(d);
-                if (inCluster.contains(n) && fed.add(n)) wave.add(n);
-            }
-        }
-        for (BlockPos p : cluster) {
+        if (level.isClientSide) return;
+        List<BlockPos> around = new ArrayList<>();
+        around.add(start.immutable());
+        for (Direction d : Direction.values()) around.add(start.relative(d).immutable());
+        for (BlockPos p : around) {
             BlockState s = level.getBlockState(p);
-            boolean wet = fed.contains(p);
+            if (!(s.getBlock() instanceof CowHayBlock)) continue;
+            boolean wet = fedHere(level, p);
             if (s.getValue(WATERLOGGED) != wet) {
                 level.setBlock(p, s.setValue(WATERLOGGED, wet), 3);
                 if (wet) level.scheduleTick(p, net.minecraft.world.level.material.Fluids.WATER, net.minecraft.world.level.material.Fluids.WATER.getTickDelay(level));
