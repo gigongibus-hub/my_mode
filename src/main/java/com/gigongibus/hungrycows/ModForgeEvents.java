@@ -250,6 +250,8 @@ public class ModForgeEvents {
             Regrowth.blockChanged(level, event.getPos());
             // слух: звук ламання гра грає лише в гравця (не на сервері) — корови «чують» саму подію
             CowHearing.onSound(level, event.getState().getSoundType().getBreakSound().getLocation().toString(), Vec3.atCenterOf(event.getPos()), event.getPlayer());
+            // трава мотикою чи ножицями (не присівши) — пучок свіжої трави (Fij)
+            if (GrassHarvest.harvest(level, event.getPos(), event.getState(), event.getPlayer())) event.setCanceled(true);
         }
     }
 

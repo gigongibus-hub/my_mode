@@ -210,4 +210,46 @@ public class HungryCowHayTests {
             clear.run();
         });
     }
+
+    // 6. Трава мотикою чи ножицями — пучок свіжої трави; присівши з ножицями — звичайне ламання. Пучок з рук −10, пшениця −5
+    @GameTest(template = "platform", batch = "hay", timeoutTicks = 20)
+    public static void grassBundlesAndFeeding(GameTestHelper h) {
+        var level = h.getLevel();
+        var player = FakePlayerFactory.getMinecraft(level);
+        BlockPos g1 = h.absolutePos(new BlockPos(2, 2, 2)), g2 = h.absolutePos(new BlockPos(4, 2, 2));
+        level.setBlockAndUpdate(g1.below(), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState());
+        level.setBlockAndUpdate(g2.below(), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState());
+        level.setBlockAndUpdate(g1, net.minecraft.world.level.block.Blocks.GRASS.defaultBlockState());
+        level.setBlockAndUpdate(g2, net.minecraft.world.level.block.Blocks.GRASS.defaultBlockState());
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_HOE));
+        player.setShiftKeyDown(false);
+        boolean hoe = com.gigongibus.hungrycows.GrassHarvest.harvest(level, g1, level.getBlockState(g1), player);
+        int bundles = 0;
+        for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, new AABB(g1).inflate(2))) if (e.getItem().is(ModBlocks.HAY_BUNDLE.get())) bundles += e.getItem().getCount();
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.SHEARS));
+        player.setShiftKeyDown(true);
+        boolean sneakShears = com.gigongibus.hungrycows.GrassHarvest.harvest(level, g2, level.getBlockState(g2), player);
+        player.setShiftKeyDown(false);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(6, 2, 6));
+        cow.setAge(0);
+        cow.setNoAi(true);
+        cow.hunger = 50;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModBlocks.HAY_BUNDLE.get()));
+        cow.mobInteract(player, InteractionHand.MAIN_HAND);
+        int afterBundle = cow.hunger;
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT));
+        cow.mobInteract(player, InteractionHand.MAIN_HAND);
+        int afterWheat = cow.hunger;
+        LOG.info("[тест] grassBundlesAndFeeding: мотика {} ({} пучків), присівши з ножицями {}, голод 50 -> {} (пучок) -> {} (пшениця)",
+                hoe, bundles, sneakShears, afterBundle, afterWheat);
+        cow.discard();
+        level.getEntitiesOfClass(ItemEntity.class, new AABB(g1).inflate(6)).forEach(ItemEntity::discard);
+        level.setBlockAndUpdate(g2, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        level.setBlockAndUpdate(g1.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+        level.setBlockAndUpdate(g2.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+        h.assertTrue(hoe && bundles == 1 && level.getBlockState(g1).isAir(), "мотика не дала пучок свіжої трави");
+        h.assertFalse(sneakShears, "присівши з ножицями — має ламатись як звичайно");
+        h.assertTrue(afterBundle == 40 && afterWheat == 35, "пучок −10 / пшениця −5 не так: " + afterBundle + " / " + afterWheat);
+        h.succeed();
+    }
 }

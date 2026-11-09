@@ -58,7 +58,15 @@ public class CowFood {
 
     private static final Map<Item, CowFood> TABLE = new HashMap<>();
 
+    // Пучок свіжої трави (сіно мода) — предмет мода, тож не в статичній таблиці (вона заповнюється раніше за реєстрацію)
+    public static final int BUNDLE_FOOD = 10;   // пучок свіжої трави знімає 10 голоду (Fij)
+    private static CowFood bundle;
+
     public static CowFood get(Item item) {
+        if (item == ModBlocks.HAY_BUNDLE.get()) {
+            if (bundle == null) bundle = new CowFood(BUNDLE_FOOD);
+            return bundle;
+        }
         return TABLE.get(item);
     }
 
@@ -69,6 +77,7 @@ public class CowFood {
     }
 
     static {
+        food(Items.WHEAT, 5);        // пшениця з рук — 5 (Fij)
         food(Items.HAY_BLOCK, 30);   // блок сіна (було 10): основний корм у хліві
 
         // квіти

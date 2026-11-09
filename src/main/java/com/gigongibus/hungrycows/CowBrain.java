@@ -98,7 +98,7 @@ public class CowBrain {
         WARY("стерегтися", Gene.BRAIN_WARY),
         MATE("шукати пару", Gene.BRAIN_MATE),
         FAMILY("до теляти/матері", Gene.BRAIN_FAMILY),
-        RUMINATE("ремигати", Gene.BRAIN_RUMINATE),
+        RUMINATE("жує жуйку", Gene.BRAIN_RUMINATE),
         CURIOUS("цікавитися", Gene.BRAIN_CURIOUS),
         DRINK("пити", Gene.BRAIN_DRINK),
         // етап 8: нові дії

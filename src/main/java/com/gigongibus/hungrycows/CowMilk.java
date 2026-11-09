@@ -49,6 +49,7 @@ public class CowMilk {
             Map.entry(Items.AZURE_BLUET, "bluet"));
 
     public static String dietGroup(Item item) {
+        if (item == ModBlocks.HAY_BUNDLE.get()) return "grass";   // пучок свіжої трави — це трава
         return DIET_GROUP.get(item);
     }
 

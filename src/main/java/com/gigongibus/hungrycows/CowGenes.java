@@ -131,7 +131,7 @@ public class CowGenes {
         BRAIN_WARY(Group.BRAIN, "схильність стерегтися"),
         BRAIN_MATE(Group.BRAIN, "схильність шукати пару"),
         BRAIN_FAMILY(Group.BRAIN, "схильність до рідних"),
-        BRAIN_RUMINATE(Group.BRAIN, "схильність ремигати"),
+        BRAIN_RUMINATE(Group.BRAIN, "схильність жувати жуйку"),
         BRAIN_CURIOUS(Group.BRAIN, "схильність цікавитися"),
         BRAIN_DRINK(Group.BRAIN, "схильність пити"),
         // ---- тіло, додано пізніше (у кінці, щоб не зсунути інші) ----
