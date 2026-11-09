@@ -252,4 +252,41 @@ public class HungryCowHayTests {
         h.assertTrue(afterBundle == 40 && afterWheat == 35, "пучок −10 / пшениця −5 не так: " + afterBundle + " / " + afterWheat);
         h.succeed();
     }
+
+    // 7. Вода будь-яким боком: 1 хв — мокре, ще 2 хв — гниле/пліснява; біля вогнища мокре сохне за 30 с; сухе без води не гниє
+    @GameTest(template = "platform", batch = "hay", timeoutTicks = 20)
+    public static void hayWaterRotAndFireDry(GameTestHelper h) {
+        var level = h.getLevel();
+        level.setWeatherParameters(6000, 0, false, false);
+        RandomSource r = always();
+        BlockPos wet = h.absolutePos(new BlockPos(2, 3, 2)), dry = h.absolutePos(new BlockPos(6, 3, 6)), keep = h.absolutePos(new BlockPos(2, 3, 6));
+        // мокне: вода збоку
+        level.setBlockAndUpdate(wet, hay(Stage.DRY, Cond.CLEAN, true));
+        level.setBlockAndUpdate(wet.east(), net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+        CowHayBlock.check(level.getBlockState(wet), level, wet, r, 30);
+        Cond after30 = level.getBlockState(wet).getValue(CowHayBlock.COND);
+        CowHayBlock.check(level.getBlockState(wet), level, wet, r, 30);
+        Cond after60 = level.getBlockState(wet).getValue(CowHayBlock.COND);
+        CowHayBlock.check(level.getBlockState(wet), level, wet, r, 120);
+        Cond after180 = level.getBlockState(wet).getValue(CowHayBlock.COND);
+        // сохне біля запаленого вогнища
+        level.setBlockAndUpdate(dry, hay(Stage.DRY, Cond.WET, true));
+        level.setBlockAndUpdate(dry.east(), net.minecraft.world.level.block.Blocks.CAMPFIRE.defaultBlockState());
+        CowHayBlock.check(level.getBlockState(dry), level, dry, r, 30);
+        Cond fireDried = level.getBlockState(dry).getValue(CowHayBlock.COND);
+        // суха без води: 200 випадкових тіків з «кубиком, що завжди випадає» — не гниє
+        BlockState k = hay(Stage.DRY, Cond.CLEAN, true);
+        level.setBlockAndUpdate(keep, k);
+        for (int i = 0; i < 200; i++) k = CowHayBlock.age(k, level, keep, r);
+        for (int i = 0; i < 10; i++) CowHayBlock.check(k, level, keep, r, 60);
+        Cond kept = level.getBlockState(keep).getValue(CowHayBlock.COND);
+        LOG.info("[тест] hayWaterRotAndFireDry: вода 30 с {}, 60 с {}, 180 с {}; біля вогнища {}; суха без води {} ({})",
+                after30, after60, after180, fireDried, k.getValue(CowHayBlock.COND), kept);
+        for (BlockPos p : new BlockPos[] { wet, wet.east(), dry, dry.east(), keep }) level.setBlockAndUpdate(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        h.assertTrue(after30 == Cond.CLEAN && after60 == Cond.WET, "не намокло за 1 хв (30 с: " + after30 + ", 60 с: " + after60 + ")");
+        h.assertTrue(after180 == Cond.ROTTEN || after180.moldy(), "мокре не зіпсувалось ще за 2 хв: " + after180);
+        h.assertTrue(fireDried == Cond.CLEAN, "біля вогнища не висохло: " + fireDried);
+        h.assertTrue(k.getValue(CowHayBlock.COND) == Cond.CLEAN && kept == Cond.CLEAN, "суха без води зіпсувалась");
+        h.succeed();
+    }
 }

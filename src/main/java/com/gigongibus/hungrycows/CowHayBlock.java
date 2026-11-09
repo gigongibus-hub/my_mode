@@ -49,12 +49,14 @@ public class CowHayBlock extends HayBlock {
     public static final int HAY_PILE_MIN = 4;              // ... хіба що в купі з 4+ блоків сіна (сусідство гранями)
     public static final int DECAY_WHEAT = 9;               // розпалось — 9 пшениці (свіже — 9 пучків свіжої трави)
     // шанси за один випадковий тік (≈ раз на 68 с) — ПРОПОЗИЦІЯ Claude, Fij може змінити
-    public static final double RAIN_WET = 0.5;             // під дощем без даху: чисте → мокре
-    public static final double RAIN_DIRT = 0.15;           // мокре під дощем → трохи брудне
+    // вода, дощ і вогонь (Fij, 9.11) — точні часи, перевірка раз на 5 с
+    public static final int CHECK_SECONDS = 5;             // сіно перевіряє воду/дощ/вогонь раз на 5 с
+    public static final int WET_AFTER_SECONDS = 60;        // торкається води (будь-яким боком) чи під дощем 1 хв → мокре
+    public static final int ROT_AFTER_WET_SECONDS = 120;   // мокре ще 2 хв → гниле (або пліснява)
+    public static final int DRY_NEAR_FIRE_SECONDS = 30;    // біля вогню чи лави 30 с → висохло (мокре знову чисте)
+    public static final int FIRE_RADIUS = 2;               // «біля вогню» — вогонь/лава/вогнище не далі 2 бл. (Fij: «приблизно за блок»)
     public static final double RAIN_MORE_DIRT = 0.10;      // трохи брудне під дощем → дуже брудне
-    public static final double DRY_IN_SUN = 0.5;           // мокре висихає на сонці ...
-    public static final double DRY_IN_SHADE = 0.2;         // ... і під дахом повільніше
-    public static final double MOLD_ON_WET = 0.25;         // мокре висохло — з шансом 25% пліснява (Fij)
+    public static final double MOLD_ON_WET = 0.25;         // мокре зіпсувалось — з шансом 25% пліснява (Fij), інакше гниле
     public static final double MOLD_SPREAD_WET = 0.5;      // пліснява заражає сусіда: мокрого швидко ...
     public static final double MOLD_SPREAD_DRY = 0.1;      // ... сухого повільно
     public static final double AGE_ROOF_FRESH = 0.10;      // під навісом: свіже → підсохле
@@ -62,9 +64,7 @@ public class CowHayBlock extends HayBlock {
     public static final double AGE_OPEN_FRESH = 0.05;      // надворі сохне повільніше (а гниє швидше)
     public static final double AGE_OPEN_WILTED = 0.03;
     public static final double OVERDRY_IN_SUN = 0.10;      // сухе на сонці → пересохле
-    public static final double[] ROT = { 0.02, 0.012, 0.004, 0.002 };   // гниття за стадією (свіже гниє найшвидше)
-    public static final double ROT_OPEN = 2.0;             // без даху гниє вдвічі швидше
-    public static final double ROT_WET = 3.0;              // мокре — втричі
+    // гниття — лише від вологи (Fij: суху, що не мокла, зберігати безкінечно)
     public static final double FUNGUS = 0.05;              // гниле свіже → зірочник, гниле сухе → вогняний гриб (правило Fij)
     // бруд від корів (Fij: де ходять і лежать — брудніше, у кутку — чистіше)
     public static final int COW_DIRT_SECONDS = 120;        // 2 хв корови на блоці (лежить — удвічі швидше) → на щабель брудніше
@@ -133,29 +133,109 @@ public class CowHayBlock extends HayBlock {
         return true;
     }
 
-    // ---------- зв'язування і розпад ----------
+    // ---------- зв'язування, розпад, вода, вогонь (запланований тік раз на 5 с) ----------
 
     @Override
     public void onPlace(BlockState state, Level level, BlockPos pos, BlockState old, boolean moving) {
         super.onPlace(state, level, pos, old, moving);
-        scheduleDecay(state, level, pos);
+        schedule(level, pos);
     }
 
     @Override
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos from, boolean moving) {
         super.neighborChanged(state, level, pos, block, from, moving);
-        scheduleDecay(state, level, pos);   // купа зменшилась нижче 4 — відлік 5 хв знову
+        schedule(level, pos);
     }
 
-    private void scheduleDecay(BlockState state, Level level, BlockPos pos) {
-        if (level.isClientSide || state.getValue(BOUND)) return;
-        if (pileSize(level, pos, HAY_PILE_MIN) >= HAY_PILE_MIN) return;
-        if (!level.getBlockTicks().hasScheduledTick(pos, this)) level.scheduleTick(pos, this, UNBOUND_DECAY_SECONDS * 20);
+    private void schedule(Level level, BlockPos pos) {
+        if (!level.isClientSide && !level.getBlockTicks().hasScheduledTick(pos, this)) level.scheduleTick(pos, this, CHECK_SECONDS * 20);
     }
 
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        decayIfLoose(state, level, pos);
+        if (check(state, level, pos, random, CHECK_SECONDS)) return;   // розпалось — блока вже немає
+        schedule(level, pos);
+    }
+
+    /** Лічильники секунд для кожного блока сіна: [незв'язане поза купою, вологість, біля вогню]. Не зберігаються (після перезаходу — з нуля). */
+    private static final Map<Level, Map<Long, int[]>> TIMERS = new java.util.WeakHashMap<>();
+
+    private static int[] timers(Level level, BlockPos pos) {
+        return TIMERS.computeIfAbsent(level, l -> new HashMap<>()).computeIfAbsent(pos.asLong(), k -> new int[3]);
+    }
+
+    /** Чи торкається вода будь-якого боку (і зверху, і знизу) */
+    public static boolean touchesWater(Level level, BlockPos pos) {
+        for (Direction d : Direction.values()) {
+            if (level.getFluidState(pos.relative(d)).is(net.minecraft.tags.FluidTags.WATER)) return true;
+        }
+        return false;
+    }
+
+    /** Вогонь, лава чи запалене вогнище поруч (до FIRE_RADIUS) */
+    public static boolean nearFire(Level level, BlockPos pos) {
+        for (BlockPos p : BlockPos.betweenClosed(pos.offset(-FIRE_RADIUS, -FIRE_RADIUS, -FIRE_RADIUS), pos.offset(FIRE_RADIUS, FIRE_RADIUS, FIRE_RADIUS))) {
+            BlockState b = level.getBlockState(p);
+            if (b.is(net.minecraft.tags.BlockTags.FIRE) || level.getFluidState(p).is(net.minecraft.tags.FluidTags.LAVA)) return true;
+            if (b.is(net.minecraft.tags.BlockTags.CAMPFIRES) && b.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Що сталося за `seconds` секунд: розпад незв'язаного, намокання від води/дощу (1 хв), гниття мокрого (ще 2 хв),
+     * висихання біля вогню (30 с). Повертає true, якщо блок розпався.
+     */
+    public static boolean check(BlockState state, ServerLevel level, BlockPos pos, RandomSource r, int seconds) {
+        int[] t = timers(level, pos);
+        // 1) незв'язане поза купою з 4+ — 5 хв, потім розпадається
+        if (!state.getValue(BOUND) && pileSize(level, pos, HAY_PILE_MIN) < HAY_PILE_MIN) {
+            t[0] += seconds;
+            if (t[0] >= UNBOUND_DECAY_SECONDS) {
+                TIMERS.get(level).remove(pos.asLong());
+                return decayIfLoose(state, level, pos);
+            }
+        } else {
+            t[0] = 0;
+        }
+        Cond c = state.getValue(COND);
+        if (c.rotten()) return false;
+        boolean water = touchesWater(level, pos) || rainedOn(level, pos);
+        // 2) біля вогню — сохне (вогонь сильніший за воду поруч, хіба що сіно у воді)
+        if (nearFire(level, pos) && !touchesWater(level, pos)) {
+            t[1] = 0;
+            if (c == Cond.WET) {
+                t[2] += seconds;
+                if (t[2] >= DRY_NEAR_FIRE_SECONDS) {
+                    t[2] = 0;
+                    level.setBlockAndUpdate(pos, state.setValue(COND, Cond.CLEAN));
+                }
+            }
+            return false;
+        }
+        t[2] = 0;
+        // 3) вода чи дощ: 1 хв — мокре; мокре ще 2 хв — гниле (25% — пліснява)
+        if (water || c == Cond.WET) {
+            t[1] += seconds;
+            if (c != Cond.WET && t[1] >= WET_AFTER_SECONDS && c.cleanLike()) {
+                level.setBlockAndUpdate(pos, state.setValue(COND, Cond.WET));
+            } else if (t[1] >= WET_AFTER_SECONDS + ROT_AFTER_WET_SECONDS) {
+                t[1] = 0;
+                Cond spoiled = r.nextDouble() < MOLD_ON_WET ? (c.dirty() ? Cond.MOLD_DIRT : Cond.MOLD) : Cond.ROTTEN;
+                if (c.moldy()) spoiled = Cond.ROTTEN;
+                level.setBlockAndUpdate(pos, state.setValue(COND, spoiled));
+            }
+        } else {
+            t[1] = 0;   // висохло, поки не встигло намокнути
+        }
+        return false;
+    }
+
+    /** Мокре сіно: секунд до гниття (для книги/тестів), -1 — не мокне */
+    public static int wetSeconds(Level level, BlockPos pos) {
+        Map<Long, int[]> m = TIMERS.get(level);
+        int[] t = m == null ? null : m.get(pos.asLong());
+        return t == null ? 0 : t[1];
     }
 
     /** Незв'язане й не в купі — розпадається на 9 пшениці. Повертає true, якщо розпалось. */
@@ -245,21 +325,9 @@ public class CowHayBlock extends HayBlock {
             if (stage == Stage.DRY && r.nextDouble() < FUNGUS) return s.setValue(COND, Cond.FIRE_FUNGUS);
             return s;
         }
-        if (c.rotten()) return s;
-        // гниття: термін придатності за стадією
-        double rot = ROT[stage.ordinal()] * (roof ? 1 : ROT_OPEN) * (c == Cond.WET ? ROT_WET : 1);
-        if (r.nextDouble() < rot) return s.setValue(COND, Cond.ROTTEN);
-        // дощ і висихання
-        if (c == Cond.WET) {
-            if (rain) return r.nextDouble() < RAIN_DIRT ? s.setValue(COND, Cond.SLIGHTLY_DIRTY) : s;
-            if (r.nextDouble() < (sun ? DRY_IN_SUN : DRY_IN_SHADE)) {
-                if (r.nextDouble() < MOLD_ON_WET) return s.setValue(COND, Cond.MOLD);
-                return s.setValue(COND, r.nextBoolean() ? Cond.SLIGHTLY_DIRTY : Cond.CLEAN);
-            }
-            return s;
-        }
+        if (c.rotten() || c == Cond.WET) return s;   // мокре не сохне само (лише біля вогню) — див. check()
+        // гниття тут більше немає: сіно, що не мокло, зберігається безкінечно (Fij)
         if (rain) {
-            if (c.cleanLike() && r.nextDouble() < RAIN_WET) return s.setValue(COND, Cond.WET);
             if (c == Cond.SLIGHTLY_DIRTY && r.nextDouble() < RAIN_MORE_DIRT) return s.setValue(COND, Cond.VERY_DIRTY);
             if (c == Cond.MOLD && r.nextDouble() < RAIN_MORE_DIRT) return s.setValue(COND, Cond.MOLD_DIRT);
             return s;
