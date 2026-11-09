@@ -289,4 +289,42 @@ public class HungryCowHayTests {
         h.assertTrue(k.getValue(CowHayBlock.COND) == Cond.CLEAN && kept == Cond.CLEAN, "суха без води зіпсувалась");
         h.succeed();
     }
+
+    // 8. Вода крізь сіно (Fij, варіант Б): джерело над сіном — вода проходить крізь сіно й тече з боків; прибрали джерело — висихає.
+    //    Сіно лишається твердим: свиня стоїть на ньому, не провалюється
+    private static final int WATER_TIMEOUT = 300;
+
+    @GameTest(template = "platform", batch = "hay_water", timeoutTicks = WATER_TIMEOUT)
+    public static void waterFlowsThroughHay(GameTestHelper h) {
+        var level = h.getLevel();
+        BlockPos hayPos = new BlockPos(4, 2, 4), source = hayPos.above(), side = hayPos.east(), stand = new BlockPos(2, 2, 6);
+        h.setBlock(hayPos, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(stand, hay(Stage.DRY, Cond.CLEAN, true));
+        Pig pig = h.spawn(EntityType.PIG, stand.above());
+        pig.setNoAi(true);
+        h.setBlock(source, net.minecraft.world.level.block.Blocks.WATER);
+        int[] flowedAt = { -1 }, driedAt = { -1 };
+        boolean[] removed = { false };
+        h.onEachTick(() -> {
+            boolean inside = h.getBlockState(hayPos).getBlock() instanceof CowHayBlock && h.getBlockState(hayPos).getValue(CowHayBlock.WATERLOGGED);
+            boolean out = level.getFluidState(h.absolutePos(side)).is(net.minecraft.tags.FluidTags.WATER);
+            if (flowedAt[0] < 0 && inside && out) {
+                flowedAt[0] = (int) h.getTick();
+                h.setBlock(source, net.minecraft.world.level.block.Blocks.AIR);   // прибрати джерело
+                removed[0] = true;
+            }
+            if (removed[0] && driedAt[0] < 0 && !inside && !out) driedAt[0] = (int) h.getTick();
+        });
+        h.succeedWhen(() -> {
+            h.assertTrue(flowedAt[0] >= 0, "вода не пройшла крізь сіно");
+            h.assertTrue(driedAt[0] >= 0, "після джерела вода в сіні не висохла");
+            double top = h.absolutePos(stand).getY() + 1.0;
+            LOG.info("[тест] waterFlowsThroughHay: протекла на {} с, висохла на {} с, свиня y {} (верх сіна {})",
+                    flowedAt[0] / 20.0, driedAt[0] / 20.0, String.format("%.3f", pig.getY()), top);
+            h.assertTrue(pig.getY() > top - 0.01, "свиня провалилась у сіно");
+            pig.discard();
+            h.setBlock(hayPos, net.minecraft.world.level.block.Blocks.AIR);
+            h.setBlock(stand, net.minecraft.world.level.block.Blocks.AIR);
+        });
+    }
 }

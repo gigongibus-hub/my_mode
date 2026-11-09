@@ -1,1058 +1,2114 @@
 {
  "variants": {
-  "axis=x,bound=false,condition=clean,stage=fresh": {
+  "axis=x,bound=false,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=clean,stage=fresh": {
+  "axis=x,bound=false,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_loose"
   },
-  "axis=z,bound=false,condition=clean,stage=fresh": {
+  "axis=y,bound=false,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_loose"
+  },
+  "axis=z,bound=false,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=clean,stage=fresh": {
+  "axis=z,bound=false,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=clean,stage=fresh": {
+  "axis=x,bound=true,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_bound"
   },
-  "axis=z,bound=true,condition=clean,stage=fresh": {
+  "axis=y,bound=true,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_bound"
+  },
+  "axis=z,bound=true,condition=clean,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_clean_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=slightly_dirty,stage=fresh": {
+  "axis=z,bound=true,condition=clean,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_clean_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=slightly_dirty,stage=fresh": {
+  "axis=x,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_loose"
   },
-  "axis=z,bound=false,condition=slightly_dirty,stage=fresh": {
+  "axis=y,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_loose"
+  },
+  "axis=z,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=slightly_dirty,stage=fresh": {
+  "axis=z,bound=false,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=slightly_dirty,stage=fresh": {
+  "axis=x,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_bound"
   },
-  "axis=z,bound=true,condition=slightly_dirty,stage=fresh": {
+  "axis=y,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_bound"
+  },
+  "axis=z,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_slightly_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=very_dirty,stage=fresh": {
+  "axis=z,bound=true,condition=slightly_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=very_dirty,stage=fresh": {
+  "axis=x,bound=false,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_loose"
   },
-  "axis=z,bound=false,condition=very_dirty,stage=fresh": {
+  "axis=y,bound=false,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_loose"
+  },
+  "axis=z,bound=false,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=very_dirty,stage=fresh": {
+  "axis=z,bound=false,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=very_dirty,stage=fresh": {
+  "axis=x,bound=true,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_bound"
   },
-  "axis=z,bound=true,condition=very_dirty,stage=fresh": {
+  "axis=y,bound=true,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_bound"
+  },
+  "axis=z,bound=true,condition=very_dirty,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_very_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold_dirt,stage=fresh": {
+  "axis=z,bound=true,condition=very_dirty,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_very_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold_dirt,stage=fresh": {
+  "axis=x,bound=false,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_loose"
   },
-  "axis=z,bound=false,condition=mold_dirt,stage=fresh": {
+  "axis=y,bound=false,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_loose"
+  },
+  "axis=z,bound=false,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold_dirt,stage=fresh": {
+  "axis=z,bound=false,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold_dirt,stage=fresh": {
+  "axis=x,bound=true,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_bound"
   },
-  "axis=z,bound=true,condition=mold_dirt,stage=fresh": {
+  "axis=y,bound=true,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_bound"
+  },
+  "axis=z,bound=true,condition=mold_dirt,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_dirt_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold,stage=fresh": {
+  "axis=z,bound=true,condition=mold_dirt,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_dirt_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold,stage=fresh": {
+  "axis=x,bound=false,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_loose"
   },
-  "axis=z,bound=false,condition=mold,stage=fresh": {
+  "axis=y,bound=false,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_loose"
+  },
+  "axis=z,bound=false,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold,stage=fresh": {
+  "axis=z,bound=false,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold,stage=fresh": {
+  "axis=x,bound=true,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_bound"
   },
-  "axis=z,bound=true,condition=mold,stage=fresh": {
+  "axis=y,bound=true,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_bound"
+  },
+  "axis=z,bound=true,condition=mold,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_mold_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=rotten,stage=fresh": {
+  "axis=z,bound=true,condition=mold,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_mold_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=rotten,stage=fresh": {
+  "axis=x,bound=false,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_loose"
   },
-  "axis=z,bound=false,condition=rotten,stage=fresh": {
+  "axis=y,bound=false,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_loose"
+  },
+  "axis=z,bound=false,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=rotten,stage=fresh": {
+  "axis=z,bound=false,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=rotten,stage=fresh": {
+  "axis=x,bound=true,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_bound"
   },
-  "axis=z,bound=true,condition=rotten,stage=fresh": {
+  "axis=y,bound=true,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_bound"
+  },
+  "axis=z,bound=true,condition=rotten,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_rotten_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=wet,stage=fresh": {
+  "axis=z,bound=true,condition=rotten,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_rotten_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=wet,stage=fresh": {
+  "axis=x,bound=false,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_loose"
   },
-  "axis=z,bound=false,condition=wet,stage=fresh": {
+  "axis=y,bound=false,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_loose"
+  },
+  "axis=z,bound=false,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=wet,stage=fresh": {
+  "axis=z,bound=false,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=wet,stage=fresh": {
+  "axis=x,bound=true,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_bound"
   },
-  "axis=z,bound=true,condition=wet,stage=fresh": {
+  "axis=y,bound=true,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_bound"
+  },
+  "axis=z,bound=true,condition=wet,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_wet_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=star_fungus,stage=fresh": {
+  "axis=z,bound=true,condition=wet,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_wet_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=star_fungus,stage=fresh": {
+  "axis=x,bound=false,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_loose"
   },
-  "axis=z,bound=false,condition=star_fungus,stage=fresh": {
+  "axis=y,bound=false,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_loose"
+  },
+  "axis=z,bound=false,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=star_fungus,stage=fresh": {
+  "axis=z,bound=false,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=star_fungus,stage=fresh": {
+  "axis=x,bound=true,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_bound"
   },
-  "axis=z,bound=true,condition=star_fungus,stage=fresh": {
+  "axis=y,bound=true,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_bound"
+  },
+  "axis=z,bound=true,condition=star_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_star_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=fire_fungus,stage=fresh": {
+  "axis=z,bound=true,condition=star_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_star_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=fire_fungus,stage=fresh": {
+  "axis=x,bound=false,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_loose"
   },
-  "axis=z,bound=false,condition=fire_fungus,stage=fresh": {
+  "axis=y,bound=false,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_loose"
+  },
+  "axis=z,bound=false,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=fire_fungus,stage=fresh": {
+  "axis=z,bound=false,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=fire_fungus,stage=fresh": {
+  "axis=x,bound=true,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_bound"
   },
-  "axis=z,bound=true,condition=fire_fungus,stage=fresh": {
+  "axis=y,bound=true,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_bound"
+  },
+  "axis=z,bound=true,condition=fire_fungus,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_fire_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=apple,stage=fresh": {
+  "axis=z,bound=true,condition=fire_fungus,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_fire_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=apple,stage=fresh": {
+  "axis=x,bound=false,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_loose"
   },
-  "axis=z,bound=false,condition=apple,stage=fresh": {
+  "axis=y,bound=false,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_loose"
+  },
+  "axis=z,bound=false,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=apple,stage=fresh": {
+  "axis=z,bound=false,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=apple,stage=fresh": {
+  "axis=x,bound=true,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_bound"
   },
-  "axis=z,bound=true,condition=apple,stage=fresh": {
+  "axis=y,bound=true,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_bound"
+  },
+  "axis=z,bound=true,condition=apple,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_apple_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=carrot,stage=fresh": {
+  "axis=z,bound=true,condition=apple,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_apple_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=carrot,stage=fresh": {
+  "axis=x,bound=false,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_loose"
   },
-  "axis=z,bound=false,condition=carrot,stage=fresh": {
+  "axis=y,bound=false,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_loose"
+  },
+  "axis=z,bound=false,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=carrot,stage=fresh": {
+  "axis=z,bound=false,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=carrot,stage=fresh": {
+  "axis=x,bound=true,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_bound"
   },
-  "axis=z,bound=true,condition=carrot,stage=fresh": {
+  "axis=y,bound=true,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_bound"
+  },
+  "axis=z,bound=true,condition=carrot,stage=fresh,waterlogged=false": {
    "model": "hungrycows:block/hay/fresh_carrot_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=clean,stage=wilted": {
+  "axis=z,bound=true,condition=carrot,stage=fresh,waterlogged=true": {
+   "model": "hungrycows:block/hay/fresh_carrot_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=clean,stage=wilted": {
+  "axis=x,bound=false,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_loose"
   },
-  "axis=z,bound=false,condition=clean,stage=wilted": {
+  "axis=y,bound=false,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_loose"
+  },
+  "axis=z,bound=false,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=clean,stage=wilted": {
+  "axis=z,bound=false,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=clean,stage=wilted": {
+  "axis=x,bound=true,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_bound"
   },
-  "axis=z,bound=true,condition=clean,stage=wilted": {
+  "axis=y,bound=true,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_bound"
+  },
+  "axis=z,bound=true,condition=clean,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_clean_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=slightly_dirty,stage=wilted": {
+  "axis=z,bound=true,condition=clean,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_clean_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=slightly_dirty,stage=wilted": {
+  "axis=x,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_loose"
   },
-  "axis=z,bound=false,condition=slightly_dirty,stage=wilted": {
+  "axis=y,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_loose"
+  },
+  "axis=z,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=slightly_dirty,stage=wilted": {
+  "axis=z,bound=false,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=slightly_dirty,stage=wilted": {
+  "axis=x,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_bound"
   },
-  "axis=z,bound=true,condition=slightly_dirty,stage=wilted": {
+  "axis=y,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_bound"
+  },
+  "axis=z,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_slightly_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=very_dirty,stage=wilted": {
+  "axis=z,bound=true,condition=slightly_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=very_dirty,stage=wilted": {
+  "axis=x,bound=false,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_loose"
   },
-  "axis=z,bound=false,condition=very_dirty,stage=wilted": {
+  "axis=y,bound=false,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_loose"
+  },
+  "axis=z,bound=false,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=very_dirty,stage=wilted": {
+  "axis=z,bound=false,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=very_dirty,stage=wilted": {
+  "axis=x,bound=true,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_bound"
   },
-  "axis=z,bound=true,condition=very_dirty,stage=wilted": {
+  "axis=y,bound=true,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_bound"
+  },
+  "axis=z,bound=true,condition=very_dirty,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_very_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold_dirt,stage=wilted": {
+  "axis=z,bound=true,condition=very_dirty,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_very_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold_dirt,stage=wilted": {
+  "axis=x,bound=false,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_loose"
   },
-  "axis=z,bound=false,condition=mold_dirt,stage=wilted": {
+  "axis=y,bound=false,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_loose"
+  },
+  "axis=z,bound=false,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold_dirt,stage=wilted": {
+  "axis=z,bound=false,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold_dirt,stage=wilted": {
+  "axis=x,bound=true,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_bound"
   },
-  "axis=z,bound=true,condition=mold_dirt,stage=wilted": {
+  "axis=y,bound=true,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_bound"
+  },
+  "axis=z,bound=true,condition=mold_dirt,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_dirt_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold,stage=wilted": {
+  "axis=z,bound=true,condition=mold_dirt,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_dirt_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold,stage=wilted": {
+  "axis=x,bound=false,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_loose"
   },
-  "axis=z,bound=false,condition=mold,stage=wilted": {
+  "axis=y,bound=false,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_loose"
+  },
+  "axis=z,bound=false,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold,stage=wilted": {
+  "axis=z,bound=false,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold,stage=wilted": {
+  "axis=x,bound=true,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_bound"
   },
-  "axis=z,bound=true,condition=mold,stage=wilted": {
+  "axis=y,bound=true,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_bound"
+  },
+  "axis=z,bound=true,condition=mold,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_mold_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=rotten,stage=wilted": {
+  "axis=z,bound=true,condition=mold,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_mold_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=rotten,stage=wilted": {
+  "axis=x,bound=false,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_loose"
   },
-  "axis=z,bound=false,condition=rotten,stage=wilted": {
+  "axis=y,bound=false,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_loose"
+  },
+  "axis=z,bound=false,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=rotten,stage=wilted": {
+  "axis=z,bound=false,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=rotten,stage=wilted": {
+  "axis=x,bound=true,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_bound"
   },
-  "axis=z,bound=true,condition=rotten,stage=wilted": {
+  "axis=y,bound=true,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_bound"
+  },
+  "axis=z,bound=true,condition=rotten,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_rotten_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=wet,stage=wilted": {
+  "axis=z,bound=true,condition=rotten,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_rotten_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=wet,stage=wilted": {
+  "axis=x,bound=false,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_loose"
   },
-  "axis=z,bound=false,condition=wet,stage=wilted": {
+  "axis=y,bound=false,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_loose"
+  },
+  "axis=z,bound=false,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=wet,stage=wilted": {
+  "axis=z,bound=false,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=wet,stage=wilted": {
+  "axis=x,bound=true,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_bound"
   },
-  "axis=z,bound=true,condition=wet,stage=wilted": {
+  "axis=y,bound=true,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_bound"
+  },
+  "axis=z,bound=true,condition=wet,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_wet_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=star_fungus,stage=wilted": {
+  "axis=z,bound=true,condition=wet,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_wet_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=star_fungus,stage=wilted": {
+  "axis=x,bound=false,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_loose"
   },
-  "axis=z,bound=false,condition=star_fungus,stage=wilted": {
+  "axis=y,bound=false,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_loose"
+  },
+  "axis=z,bound=false,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=star_fungus,stage=wilted": {
+  "axis=z,bound=false,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=star_fungus,stage=wilted": {
+  "axis=x,bound=true,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_bound"
   },
-  "axis=z,bound=true,condition=star_fungus,stage=wilted": {
+  "axis=y,bound=true,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_bound"
+  },
+  "axis=z,bound=true,condition=star_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_star_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=fire_fungus,stage=wilted": {
+  "axis=z,bound=true,condition=star_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_star_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=fire_fungus,stage=wilted": {
+  "axis=x,bound=false,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_loose"
   },
-  "axis=z,bound=false,condition=fire_fungus,stage=wilted": {
+  "axis=y,bound=false,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_loose"
+  },
+  "axis=z,bound=false,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=fire_fungus,stage=wilted": {
+  "axis=z,bound=false,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=fire_fungus,stage=wilted": {
+  "axis=x,bound=true,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_bound"
   },
-  "axis=z,bound=true,condition=fire_fungus,stage=wilted": {
+  "axis=y,bound=true,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_bound"
+  },
+  "axis=z,bound=true,condition=fire_fungus,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_fire_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=apple,stage=wilted": {
+  "axis=z,bound=true,condition=fire_fungus,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_fire_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=apple,stage=wilted": {
+  "axis=x,bound=false,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_loose"
   },
-  "axis=z,bound=false,condition=apple,stage=wilted": {
+  "axis=y,bound=false,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_loose"
+  },
+  "axis=z,bound=false,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=apple,stage=wilted": {
+  "axis=z,bound=false,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=apple,stage=wilted": {
+  "axis=x,bound=true,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_bound"
   },
-  "axis=z,bound=true,condition=apple,stage=wilted": {
+  "axis=y,bound=true,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_bound"
+  },
+  "axis=z,bound=true,condition=apple,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_apple_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=carrot,stage=wilted": {
+  "axis=z,bound=true,condition=apple,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_apple_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=carrot,stage=wilted": {
+  "axis=x,bound=false,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_loose"
   },
-  "axis=z,bound=false,condition=carrot,stage=wilted": {
+  "axis=y,bound=false,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_loose"
+  },
+  "axis=z,bound=false,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=carrot,stage=wilted": {
+  "axis=z,bound=false,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=carrot,stage=wilted": {
+  "axis=x,bound=true,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_bound"
   },
-  "axis=z,bound=true,condition=carrot,stage=wilted": {
+  "axis=y,bound=true,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_bound"
+  },
+  "axis=z,bound=true,condition=carrot,stage=wilted,waterlogged=false": {
    "model": "hungrycows:block/hay/wilted_carrot_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=clean,stage=dry": {
+  "axis=z,bound=true,condition=carrot,stage=wilted,waterlogged=true": {
+   "model": "hungrycows:block/hay/wilted_carrot_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=clean,stage=dry": {
+  "axis=x,bound=false,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_loose"
   },
-  "axis=z,bound=false,condition=clean,stage=dry": {
+  "axis=y,bound=false,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_loose"
+  },
+  "axis=z,bound=false,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=clean,stage=dry": {
+  "axis=z,bound=false,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=clean,stage=dry": {
+  "axis=x,bound=true,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_bound"
   },
-  "axis=z,bound=true,condition=clean,stage=dry": {
+  "axis=y,bound=true,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_bound"
+  },
+  "axis=z,bound=true,condition=clean,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_clean_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=slightly_dirty,stage=dry": {
+  "axis=z,bound=true,condition=clean,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_clean_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=slightly_dirty,stage=dry": {
+  "axis=x,bound=false,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_loose"
   },
-  "axis=z,bound=false,condition=slightly_dirty,stage=dry": {
+  "axis=y,bound=false,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_loose"
+  },
+  "axis=z,bound=false,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=slightly_dirty,stage=dry": {
+  "axis=z,bound=false,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=slightly_dirty,stage=dry": {
+  "axis=x,bound=true,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_bound"
   },
-  "axis=z,bound=true,condition=slightly_dirty,stage=dry": {
+  "axis=y,bound=true,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_bound"
+  },
+  "axis=z,bound=true,condition=slightly_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_slightly_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=very_dirty,stage=dry": {
+  "axis=z,bound=true,condition=slightly_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_slightly_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=very_dirty,stage=dry": {
+  "axis=x,bound=false,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_loose"
   },
-  "axis=z,bound=false,condition=very_dirty,stage=dry": {
+  "axis=y,bound=false,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_loose"
+  },
+  "axis=z,bound=false,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=very_dirty,stage=dry": {
+  "axis=z,bound=false,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=very_dirty,stage=dry": {
+  "axis=x,bound=true,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_bound"
   },
-  "axis=z,bound=true,condition=very_dirty,stage=dry": {
+  "axis=y,bound=true,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_bound"
+  },
+  "axis=z,bound=true,condition=very_dirty,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_very_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold_dirt,stage=dry": {
+  "axis=z,bound=true,condition=very_dirty,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_very_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold_dirt,stage=dry": {
+  "axis=x,bound=false,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_loose"
   },
-  "axis=z,bound=false,condition=mold_dirt,stage=dry": {
+  "axis=y,bound=false,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_loose"
+  },
+  "axis=z,bound=false,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold_dirt,stage=dry": {
+  "axis=z,bound=false,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold_dirt,stage=dry": {
+  "axis=x,bound=true,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_bound"
   },
-  "axis=z,bound=true,condition=mold_dirt,stage=dry": {
+  "axis=y,bound=true,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_bound"
+  },
+  "axis=z,bound=true,condition=mold_dirt,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_dirt_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold,stage=dry": {
+  "axis=z,bound=true,condition=mold_dirt,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_dirt_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold,stage=dry": {
+  "axis=x,bound=false,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_loose"
   },
-  "axis=z,bound=false,condition=mold,stage=dry": {
+  "axis=y,bound=false,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_loose"
+  },
+  "axis=z,bound=false,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold,stage=dry": {
+  "axis=z,bound=false,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold,stage=dry": {
+  "axis=x,bound=true,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_bound"
   },
-  "axis=z,bound=true,condition=mold,stage=dry": {
+  "axis=y,bound=true,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_bound"
+  },
+  "axis=z,bound=true,condition=mold,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_mold_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=rotten,stage=dry": {
+  "axis=z,bound=true,condition=mold,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_mold_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=rotten,stage=dry": {
+  "axis=x,bound=false,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_loose"
   },
-  "axis=z,bound=false,condition=rotten,stage=dry": {
+  "axis=y,bound=false,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_loose"
+  },
+  "axis=z,bound=false,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=rotten,stage=dry": {
+  "axis=z,bound=false,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=rotten,stage=dry": {
+  "axis=x,bound=true,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_bound"
   },
-  "axis=z,bound=true,condition=rotten,stage=dry": {
+  "axis=y,bound=true,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_bound"
+  },
+  "axis=z,bound=true,condition=rotten,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_rotten_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=wet,stage=dry": {
+  "axis=z,bound=true,condition=rotten,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_rotten_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=wet,stage=dry": {
+  "axis=x,bound=false,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_loose"
   },
-  "axis=z,bound=false,condition=wet,stage=dry": {
+  "axis=y,bound=false,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_loose"
+  },
+  "axis=z,bound=false,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=wet,stage=dry": {
+  "axis=z,bound=false,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=wet,stage=dry": {
+  "axis=x,bound=true,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_bound"
   },
-  "axis=z,bound=true,condition=wet,stage=dry": {
+  "axis=y,bound=true,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_bound"
+  },
+  "axis=z,bound=true,condition=wet,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_wet_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=star_fungus,stage=dry": {
+  "axis=z,bound=true,condition=wet,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_wet_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=star_fungus,stage=dry": {
+  "axis=x,bound=false,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_loose"
   },
-  "axis=z,bound=false,condition=star_fungus,stage=dry": {
+  "axis=y,bound=false,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_loose"
+  },
+  "axis=z,bound=false,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=star_fungus,stage=dry": {
+  "axis=z,bound=false,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=star_fungus,stage=dry": {
+  "axis=x,bound=true,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_bound"
   },
-  "axis=z,bound=true,condition=star_fungus,stage=dry": {
+  "axis=y,bound=true,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_bound"
+  },
+  "axis=z,bound=true,condition=star_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_star_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=fire_fungus,stage=dry": {
+  "axis=z,bound=true,condition=star_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_star_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=fire_fungus,stage=dry": {
+  "axis=x,bound=false,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_loose"
   },
-  "axis=z,bound=false,condition=fire_fungus,stage=dry": {
+  "axis=y,bound=false,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_loose"
+  },
+  "axis=z,bound=false,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=fire_fungus,stage=dry": {
+  "axis=z,bound=false,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=fire_fungus,stage=dry": {
+  "axis=x,bound=true,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_bound"
   },
-  "axis=z,bound=true,condition=fire_fungus,stage=dry": {
+  "axis=y,bound=true,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_bound"
+  },
+  "axis=z,bound=true,condition=fire_fungus,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_fire_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=apple,stage=dry": {
+  "axis=z,bound=true,condition=fire_fungus,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_fire_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=apple,stage=dry": {
+  "axis=x,bound=false,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_loose"
   },
-  "axis=z,bound=false,condition=apple,stage=dry": {
+  "axis=y,bound=false,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_loose"
+  },
+  "axis=z,bound=false,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=apple,stage=dry": {
+  "axis=z,bound=false,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=apple,stage=dry": {
+  "axis=x,bound=true,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_bound"
   },
-  "axis=z,bound=true,condition=apple,stage=dry": {
+  "axis=y,bound=true,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_bound"
+  },
+  "axis=z,bound=true,condition=apple,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_apple_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=carrot,stage=dry": {
+  "axis=z,bound=true,condition=apple,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_apple_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=carrot,stage=dry": {
+  "axis=x,bound=false,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_loose"
   },
-  "axis=z,bound=false,condition=carrot,stage=dry": {
+  "axis=y,bound=false,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_loose"
+  },
+  "axis=z,bound=false,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=carrot,stage=dry": {
+  "axis=z,bound=false,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=carrot,stage=dry": {
+  "axis=x,bound=true,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_bound"
   },
-  "axis=z,bound=true,condition=carrot,stage=dry": {
+  "axis=y,bound=true,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_bound"
+  },
+  "axis=z,bound=true,condition=carrot,stage=dry,waterlogged=false": {
    "model": "hungrycows:block/hay/dry_carrot_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=clean,stage=overdried": {
+  "axis=z,bound=true,condition=carrot,stage=dry,waterlogged=true": {
+   "model": "hungrycows:block/hay/dry_carrot_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=clean,stage=overdried": {
+  "axis=x,bound=false,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_loose"
   },
-  "axis=z,bound=false,condition=clean,stage=overdried": {
+  "axis=y,bound=false,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_loose"
+  },
+  "axis=z,bound=false,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=clean,stage=overdried": {
+  "axis=z,bound=false,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=clean,stage=overdried": {
+  "axis=x,bound=true,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_bound"
   },
-  "axis=z,bound=true,condition=clean,stage=overdried": {
+  "axis=y,bound=true,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_bound"
+  },
+  "axis=z,bound=true,condition=clean,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_clean_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=slightly_dirty,stage=overdried": {
+  "axis=z,bound=true,condition=clean,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_clean_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=slightly_dirty,stage=overdried": {
+  "axis=x,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_loose"
   },
-  "axis=z,bound=false,condition=slightly_dirty,stage=overdried": {
+  "axis=y,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_loose"
+  },
+  "axis=z,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=slightly_dirty,stage=overdried": {
+  "axis=z,bound=false,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=slightly_dirty,stage=overdried": {
+  "axis=x,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_bound"
   },
-  "axis=z,bound=true,condition=slightly_dirty,stage=overdried": {
+  "axis=y,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_bound"
+  },
+  "axis=z,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_slightly_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=very_dirty,stage=overdried": {
+  "axis=z,bound=true,condition=slightly_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=very_dirty,stage=overdried": {
+  "axis=x,bound=false,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_loose"
   },
-  "axis=z,bound=false,condition=very_dirty,stage=overdried": {
+  "axis=y,bound=false,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_loose"
+  },
+  "axis=z,bound=false,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=very_dirty,stage=overdried": {
+  "axis=z,bound=false,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=very_dirty,stage=overdried": {
+  "axis=x,bound=true,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_bound"
   },
-  "axis=z,bound=true,condition=very_dirty,stage=overdried": {
+  "axis=y,bound=true,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_bound"
+  },
+  "axis=z,bound=true,condition=very_dirty,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_very_dirty_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold_dirt,stage=overdried": {
+  "axis=z,bound=true,condition=very_dirty,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_very_dirty_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold_dirt,stage=overdried": {
+  "axis=x,bound=false,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_loose"
   },
-  "axis=z,bound=false,condition=mold_dirt,stage=overdried": {
+  "axis=y,bound=false,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_loose"
+  },
+  "axis=z,bound=false,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold_dirt,stage=overdried": {
+  "axis=z,bound=false,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold_dirt,stage=overdried": {
+  "axis=x,bound=true,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_bound"
   },
-  "axis=z,bound=true,condition=mold_dirt,stage=overdried": {
+  "axis=y,bound=true,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_bound"
+  },
+  "axis=z,bound=true,condition=mold_dirt,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_dirt_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=mold,stage=overdried": {
+  "axis=z,bound=true,condition=mold_dirt,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_dirt_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=mold,stage=overdried": {
+  "axis=x,bound=false,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_loose"
   },
-  "axis=z,bound=false,condition=mold,stage=overdried": {
+  "axis=y,bound=false,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_loose"
+  },
+  "axis=z,bound=false,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=mold,stage=overdried": {
+  "axis=z,bound=false,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=mold,stage=overdried": {
+  "axis=x,bound=true,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_bound"
   },
-  "axis=z,bound=true,condition=mold,stage=overdried": {
+  "axis=y,bound=true,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_bound"
+  },
+  "axis=z,bound=true,condition=mold,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_mold_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=rotten,stage=overdried": {
+  "axis=z,bound=true,condition=mold,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_mold_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=rotten,stage=overdried": {
+  "axis=x,bound=false,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_loose"
   },
-  "axis=z,bound=false,condition=rotten,stage=overdried": {
+  "axis=y,bound=false,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_loose"
+  },
+  "axis=z,bound=false,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=rotten,stage=overdried": {
+  "axis=z,bound=false,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=rotten,stage=overdried": {
+  "axis=x,bound=true,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_bound"
   },
-  "axis=z,bound=true,condition=rotten,stage=overdried": {
+  "axis=y,bound=true,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_bound"
+  },
+  "axis=z,bound=true,condition=rotten,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_rotten_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=wet,stage=overdried": {
+  "axis=z,bound=true,condition=rotten,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_rotten_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=wet,stage=overdried": {
+  "axis=x,bound=false,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_loose"
   },
-  "axis=z,bound=false,condition=wet,stage=overdried": {
+  "axis=y,bound=false,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_loose"
+  },
+  "axis=z,bound=false,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=wet,stage=overdried": {
+  "axis=z,bound=false,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=wet,stage=overdried": {
+  "axis=x,bound=true,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_bound"
   },
-  "axis=z,bound=true,condition=wet,stage=overdried": {
+  "axis=y,bound=true,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_bound"
+  },
+  "axis=z,bound=true,condition=wet,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_wet_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=star_fungus,stage=overdried": {
+  "axis=z,bound=true,condition=wet,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_wet_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=star_fungus,stage=overdried": {
+  "axis=x,bound=false,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_loose"
   },
-  "axis=z,bound=false,condition=star_fungus,stage=overdried": {
+  "axis=y,bound=false,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_loose"
+  },
+  "axis=z,bound=false,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=star_fungus,stage=overdried": {
+  "axis=z,bound=false,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=star_fungus,stage=overdried": {
+  "axis=x,bound=true,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_bound"
   },
-  "axis=z,bound=true,condition=star_fungus,stage=overdried": {
+  "axis=y,bound=true,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_bound"
+  },
+  "axis=z,bound=true,condition=star_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_star_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=fire_fungus,stage=overdried": {
+  "axis=z,bound=true,condition=star_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_star_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=fire_fungus,stage=overdried": {
+  "axis=x,bound=false,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_loose"
   },
-  "axis=z,bound=false,condition=fire_fungus,stage=overdried": {
+  "axis=y,bound=false,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_loose"
+  },
+  "axis=z,bound=false,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=fire_fungus,stage=overdried": {
+  "axis=z,bound=false,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=fire_fungus,stage=overdried": {
+  "axis=x,bound=true,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_bound"
   },
-  "axis=z,bound=true,condition=fire_fungus,stage=overdried": {
+  "axis=y,bound=true,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_bound"
+  },
+  "axis=z,bound=true,condition=fire_fungus,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_fire_fungus_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=apple,stage=overdried": {
+  "axis=z,bound=true,condition=fire_fungus,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_fire_fungus_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=apple,stage=overdried": {
+  "axis=x,bound=false,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_loose"
   },
-  "axis=z,bound=false,condition=apple,stage=overdried": {
+  "axis=y,bound=false,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_loose"
+  },
+  "axis=z,bound=false,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=apple,stage=overdried": {
+  "axis=z,bound=false,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=apple,stage=overdried": {
+  "axis=x,bound=true,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_bound"
   },
-  "axis=z,bound=true,condition=apple,stage=overdried": {
+  "axis=y,bound=true,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_bound"
+  },
+  "axis=z,bound=true,condition=apple,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_apple_bound_horizontal",
    "x": 90
   },
-  "axis=x,bound=false,condition=carrot,stage=overdried": {
+  "axis=z,bound=true,condition=apple,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_apple_bound_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=false,condition=carrot,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_carrot_loose_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=false,condition=carrot,stage=overdried": {
+  "axis=x,bound=false,condition=carrot,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_carrot_loose_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=false,condition=carrot,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_carrot_loose"
   },
-  "axis=z,bound=false,condition=carrot,stage=overdried": {
+  "axis=y,bound=false,condition=carrot,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_carrot_loose"
+  },
+  "axis=z,bound=false,condition=carrot,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_carrot_loose_horizontal",
    "x": 90
   },
-  "axis=x,bound=true,condition=carrot,stage=overdried": {
+  "axis=z,bound=false,condition=carrot,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_carrot_loose_horizontal",
+   "x": 90
+  },
+  "axis=x,bound=true,condition=carrot,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_carrot_bound_horizontal",
    "x": 90,
    "y": 90
   },
-  "axis=y,bound=true,condition=carrot,stage=overdried": {
+  "axis=x,bound=true,condition=carrot,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_carrot_bound_horizontal",
+   "x": 90,
+   "y": 90
+  },
+  "axis=y,bound=true,condition=carrot,stage=overdried,waterlogged=false": {
    "model": "hungrycows:block/hay/overdried_carrot_bound"
   },
-  "axis=z,bound=true,condition=carrot,stage=overdried": {
+  "axis=y,bound=true,condition=carrot,stage=overdried,waterlogged=true": {
+   "model": "hungrycows:block/hay/overdried_carrot_bound"
+  },
+  "axis=z,bound=true,condition=carrot,stage=overdried,waterlogged=false": {
+   "model": "hungrycows:block/hay/overdried_carrot_bound_horizontal",
+   "x": 90
+  },
+  "axis=z,bound=true,condition=carrot,stage=overdried,waterlogged=true": {
    "model": "hungrycows:block/hay/overdried_carrot_bound_horizontal",
    "x": 90
   }

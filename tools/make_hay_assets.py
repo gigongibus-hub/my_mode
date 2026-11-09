@@ -37,8 +37,8 @@ for st in STAGES:
             for suffix, parent in (('', 'minecraft:block/cube_column'), ('_horizontal', 'minecraft:block/cube_column_horizontal')):
                 with open(f'{R}/models/block/hay/{name}{suffix}.json', 'w') as f:
                     json.dump({'parent': parent, 'textures': tex}, f)
-            for axis in ('x', 'y', 'z'):
-                key = f'axis={axis},bound={str(bound).lower()},condition={c},stage={st}'
+            for axis, wl in [(a, w) for a in ('x', 'y', 'z') for w in ('false', 'true')]:   # вода всередині вигляду не міняє
+                key = f'axis={axis},bound={str(bound).lower()},condition={c},stage={st},waterlogged={wl}'
                 if axis == 'y':
                     v = {'model': f'hungrycows:block/hay/{name}'}
                 elif axis == 'x':

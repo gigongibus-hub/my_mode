@@ -42,7 +42,7 @@ import java.util.Set;
  * Усе, що змінюється з часом, — випадкові тіки блока (у середньому раз на ~68 с; дешево для гри), лише розпад — точний таймер.
  * Ванільний блок сіна лишається як був.
  */
-public class CowHayBlock extends HayBlock {
+public class CowHayBlock extends HayBlock implements net.minecraft.world.level.block.LiquidBlockContainer {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     // зв'язування й розпад (Fij)
     public static final int UNBOUND_DECAY_SECONDS = 300;   // незв'язане розпадається через 5 хв ...
@@ -109,19 +109,131 @@ public class CowHayBlock extends HayBlock {
         public boolean avoided() { return moldy() || rotten(); }
     }
 
+    // вода крізь сіно (Fij, варіант Б): сіно «живиться» водою — тоді всередині вода, і вона витікає з усіх боків
+    public static final BooleanProperty WATERLOGGED = net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED;
+    public static final int FEED_CLUSTER_MAX = 64;         // скільки сусідніх блоків сіна передають воду далі (купа)
+    // для води сіно трохи менше за блок (усі грані відкриті) — вода проходить; для корів, гравців, снарядів — повний блок
+    private static final net.minecraft.world.phys.shapes.VoxelShape WATER_SEES = net.minecraft.world.level.block.Block.box(0.02, 0.02, 0.02, 15.98, 15.98, 15.98);
+
     public static final EnumProperty<Stage> STAGE = EnumProperty.create("stage", Stage.class);
     public static final EnumProperty<Cond> COND = EnumProperty.create("condition", Cond.class);
     public static final BooleanProperty BOUND = BooleanProperty.create("bound");
 
     public CowHayBlock(Properties properties) {
         super(properties);
-        this.registerDefaultState(this.defaultBlockState().setValue(STAGE, Stage.FRESH).setValue(COND, Cond.CLEAN).setValue(BOUND, false));
+        this.registerDefaultState(this.defaultBlockState().setValue(STAGE, Stage.FRESH).setValue(COND, Cond.CLEAN).setValue(BOUND, false).setValue(WATERLOGGED, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);   // вісь, як у ванільного сіна
-        builder.add(STAGE, COND, BOUND);
+        builder.add(STAGE, COND, BOUND, WATERLOGGED);
+    }
+
+    // ---------- вода крізь сіно ----------
+
+    @Override
+    public net.minecraft.world.phys.shapes.VoxelShape getCollisionShape(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos,
+                                                                        net.minecraft.world.phys.shapes.CollisionContext ctx) {
+        // «порожній» контекст — так питає вода (і ще дехто); істоти й снаряди питають зі своїм контекстом — для них повний блок
+        return ctx == net.minecraft.world.phys.shapes.CollisionContext.empty() ? WATER_SEES : net.minecraft.world.phys.shapes.Shapes.block();
+    }
+
+    @Override
+    public net.minecraft.world.phys.shapes.VoxelShape getBlockSupportShape(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        return net.minecraft.world.phys.shapes.Shapes.block();   // на сіно можна ставити смолоскипи, на ньому з'являються моби — як завжди
+    }
+
+    @Override
+    public boolean isPathfindable(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos,
+                                  net.minecraft.world.level.pathfinder.PathComputationType type) {
+        return false;   // корови не йдуть крізь сіно
+    }
+
+    @Override
+    public net.minecraft.world.level.pathfinder.BlockPathTypes getBlockPathType(BlockState state, net.minecraft.world.level.BlockGetter level, BlockPos pos,
+                                                                               @javax.annotation.Nullable net.minecraft.world.entity.Mob mob) {
+        return net.minecraft.world.level.pathfinder.BlockPathTypes.BLOCKED;   // і не «пливуть» у ньому, навіть коли в ньому вода
+    }
+
+    @Override
+    public net.minecraft.world.level.material.FluidState getFluidState(BlockState state) {
+        return state.getValue(WATERLOGGED) ? net.minecraft.world.level.material.Fluids.WATER.getSource(false) : super.getFluidState(state);
+    }
+
+    // вода сама в сіно не заходить — сіно саме вирішує, чи воно «живиться» (feed)
+    @Override
+    public boolean canPlaceLiquid(net.minecraft.world.level.BlockGetter level, BlockPos pos, BlockState state, net.minecraft.world.level.material.Fluid fluid) {
+        return false;
+    }
+
+    @Override
+    public boolean placeLiquid(net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockState state, net.minecraft.world.level.material.FluidState fluid) {
+        return false;
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, Direction dir, BlockState other, net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockPos otherPos) {
+        if (state.getValue(WATERLOGGED)) {
+            level.scheduleTick(pos, net.minecraft.world.level.material.Fluids.WATER, net.minecraft.world.level.material.Fluids.WATER.getTickDelay(level));
+        }
+        return super.updateShape(state, dir, other, level, pos, otherPos);
+    }
+
+    // гравець зламав сіно з водою всередині — лишається повітря, а не нове джерело води
+    @Override
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player, boolean willHarvest,
+                                       net.minecraft.world.level.material.FluidState fluid) {
+        this.playerWillDestroy(level, pos, state, player);
+        return level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), level.isClientSide ? 11 : 3);
+    }
+
+    /** Вода не з сіна (звичайна вода у світі) */
+    private static boolean realWater(Level level, BlockPos p) {
+        return level.getFluidState(p).is(net.minecraft.tags.FluidTags.WATER) && !(level.getBlockState(p).getBlock() instanceof CowHayBlock);
+    }
+
+    /** Чи «живить» воду цей блок сіна: поруч джерело води або вода згори (сюди ж — вода, що тече зверху вниз) */
+    private static boolean fedHere(Level level, BlockPos pos) {
+        if (realWater(level, pos.above())) return true;
+        for (Direction d : Direction.values()) {
+            BlockPos n = pos.relative(d);
+            if (realWater(level, n) && level.getFluidState(n).isSource()) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Вода крізь сіно: купа сіна (з'єднана гранями, до 64) «живиться», якщо хоч один її блок має поруч джерело води чи воду згори.
+     * Тоді в усій купі вода — і вона витікає звичайними потічками з усіх боків, поки живлення є; немає — вода в сіні зникає.
+     */
+    public static void updateWater(Level level, BlockPos start) {
+        if (level.isClientSide || !(level.getBlockState(start).getBlock() instanceof CowHayBlock)) return;
+        List<BlockPos> cluster = new ArrayList<>();
+        Set<BlockPos> seen = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        seen.add(start.immutable());
+        queue.add(start.immutable());
+        boolean fed = false;
+        while (!queue.isEmpty() && cluster.size() < FEED_CLUSTER_MAX) {
+            BlockPos c = queue.poll();
+            cluster.add(c);
+            if (!fed && fedHere(level, c)) fed = true;
+            for (Direction d : Direction.values()) {
+                BlockPos n = c.relative(d);
+                if (!seen.contains(n) && level.getBlockState(n).getBlock() instanceof CowHayBlock) {
+                    seen.add(n.immutable());
+                    queue.add(n.immutable());
+                }
+            }
+        }
+        for (BlockPos p : cluster) {
+            BlockState s = level.getBlockState(p);
+            if (s.getValue(WATERLOGGED) != fed) {
+                level.setBlock(p, s.setValue(WATERLOGGED, fed), 3);
+                if (fed) level.scheduleTick(p, net.minecraft.world.level.material.Fluids.WATER, net.minecraft.world.level.material.Fluids.WATER.getTickDelay(level));
+            }
+        }
     }
 
     public static int light(BlockState s) {
@@ -145,6 +257,9 @@ public class CowHayBlock extends HayBlock {
     public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos from, boolean moving) {
         super.neighborChanged(state, level, pos, block, from, moving);
         schedule(level, pos);
+        // вода поруч з'явилась/зникла — одразу перевірити, чи сіно «живиться» (вода тече без затримки)
+        if (!level.isClientSide && (state.getValue(WATERLOGGED) || level.getFluidState(from).is(net.minecraft.tags.FluidTags.WATER)
+                || level.getFluidState(pos.above()).is(net.minecraft.tags.FluidTags.WATER))) updateWater(level, pos);
     }
 
     private void schedule(Level level, BlockPos pos) {
@@ -153,6 +268,8 @@ public class CowHayBlock extends HayBlock {
 
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        updateWater(level, pos);
+        state = level.getBlockState(pos);
         if (check(state, level, pos, random, CHECK_SECONDS)) return;   // розпалось — блока вже немає
         schedule(level, pos);
     }
@@ -200,7 +317,7 @@ public class CowHayBlock extends HayBlock {
         }
         Cond c = state.getValue(COND);
         if (c.rotten()) return false;
-        boolean water = touchesWater(level, pos) || rainedOn(level, pos);
+        boolean water = touchesWater(level, pos) || rainedOn(level, pos) || state.getValue(WATERLOGGED);   // вода всередині — теж мокне
         // 2) біля вогню — сохне (вогонь сильніший за воду поруч, хіба що сіно у воді)
         if (nearFire(level, pos) && !touchesWater(level, pos)) {
             t[1] = 0;
