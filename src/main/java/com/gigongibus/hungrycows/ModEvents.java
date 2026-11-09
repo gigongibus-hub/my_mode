@@ -33,6 +33,7 @@ public class ModEvents {
             event.accept(ModItems.COW_BOOK);
             event.accept(ModItems.BRAIN_STICK);
             event.accept(ModItems.NEEDLE);
+            event.accept(ModItems.MORTAR);
         }
         // молоко кожної якості (поки для тестів)
         if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {

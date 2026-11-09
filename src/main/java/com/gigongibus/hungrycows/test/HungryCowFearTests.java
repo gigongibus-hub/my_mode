@@ -325,4 +325,28 @@ public class HungryCowFearTests {
         h.assertTrue(left.is(com.gigongibus.hungrycows.ModItems.NEEDLE.get()), "голка не повернулась чистою");
         h.succeed();
     }
+
+    // 7. Крок 3: ступка + пісок душ → 9 щіпок; ступка лишається зношеною на 1, на 34-й раз ламається
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 20)
+    public static void mortarMakesPinches(GameTestHelper h) {
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player p, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+        };
+        net.minecraft.world.inventory.TransientCraftingContainer grid = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        net.minecraft.world.item.ItemStack mortar = new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.MORTAR.get());
+        grid.setItem(1, mortar);
+        grid.setItem(5, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SOUL_SAND));
+        var recipe = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, grid, h.getLevel());
+        h.assertTrue(recipe.isPresent(), "рецепт щіпок не знайдено");
+        net.minecraft.world.item.ItemStack out = recipe.get().assemble(grid, h.getLevel().registryAccess());
+        net.minecraft.world.item.ItemStack left = recipe.get().getRemainingItems(grid).get(1);
+        mortar.setDamageValue(com.gigongibus.hungrycows.MortarItem.USES - 1);   // останнє використання
+        net.minecraft.world.item.ItemStack lastLeft = recipe.get().getRemainingItems(grid).get(1);
+        LOG.info("[тест] mortarMakesPinches: {} x{}, ступка після: знос {}, останній раз: {}", out.getItem(), out.getCount(), left.getDamageValue(), lastLeft.isEmpty() ? "зламалась" : "ціла");
+        h.assertTrue(out.is(com.gigongibus.hungrycows.ModItems.SOUL_SAND_PINCH.get()) && out.getCount() == 9, "не 9 щіпок");
+        h.assertTrue(left.is(com.gigongibus.hungrycows.ModItems.MORTAR.get()) && left.getDamageValue() == 1, "ступка не лишилась зношеною на 1");
+        h.assertTrue(lastLeft.isEmpty(), "ступка не зламалась після 34 разів");
+        h.succeed();
+    }
 }

@@ -31,6 +31,12 @@ public class ModItems {
     public static final RegistryObject<Item> BLOODY_PAPER =
             HungryCowsMod.ITEMS.register("bloody_paper", () -> new BloodNeedleItem(new Item.Properties().stacksTo(1)));
 
+    // крок 3: ступка з товкачиком (діорит; 34 використання — Fij) і щіпка піску душ (ступка + пісок душ → 9 щіпок)
+    public static final RegistryObject<Item> MORTAR =
+            HungryCowsMod.ITEMS.register("mortar", () -> new MortarItem(new Item.Properties().durability(MortarItem.USES)));
+    public static final RegistryObject<Item> SOUL_SAND_PINCH =
+            HungryCowsMod.ITEMS.register("soul_sand_pinch", () -> new Item(new Item.Properties()));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }
