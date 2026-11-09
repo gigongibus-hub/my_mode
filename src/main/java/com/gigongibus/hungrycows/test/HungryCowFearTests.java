@@ -255,4 +255,27 @@ public class HungryCowFearTests {
                 .thenSucceed();
         h.runAfterDelay(HIT_TIMEOUT - 1, () -> removePlayer(h, p));
     }
+
+    // 4. Сильний удар гравця (від 2 сердець) — фобія до нього з одного разу; слабкий — ні (Fij)
+    @GameTest(template = ARENA, batch = "phobia", timeoutTicks = 40)
+    public static void strongHitMakesPhobia(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow strong = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        HungryCow weak = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(10, 2, 7));
+        strong.setAge(0);
+        weak.setAge(0);
+        TestPlayer p = makePlayer(h);
+        String name = p.getName().getString();
+        strong.hurt(strong.damageSources().playerAttack(p), 5.0F);
+        weak.hurt(weak.damageSources().playerAttack(p), 1.0F);
+        double ps = strong.psyche.phobia(name), pw = weak.psyche.phobia(name);
+        LOG.info("[тест] strongHitMakesPhobia: удар 5 -> фобія {}, удар 1 -> фобія {}", ps, pw);
+        strong.discard();
+        weak.discard();
+        removePlayer(h, p);
+        h.assertTrue(ps >= 0.99, "сильний удар не дав фобії (" + ps + ")");
+        h.assertTrue(pw < 0.5, "слабкий удар дав фобію (" + pw + ")");
+        h.succeed();
+    }
 }

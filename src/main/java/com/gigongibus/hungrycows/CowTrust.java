@@ -19,8 +19,8 @@ public class CowTrust {
 
     // ================= ТЕСТОВІ ПЕРЕМИКАЧІ =================
     // Для звичайної гри: TEST_MULTIPLIER = 1 і ONE_FEED_PER_DAY = true
-    public static final int TEST_MULTIPLIER = 25;        // множник змін довіри (годування, удар, вбивство)
-    public static final boolean ONE_FEED_PER_DAY = false; // true = довіру дає лише перше годування за ігрову добу
+    public static final int TEST_MULTIPLIER = 1;         // множник змін довіри (годування, удар, вбивство)
+    public static final boolean ONE_FEED_PER_DAY = true;  // true = довіру дає лише перше годування за ігрову добу
 
     // ================= ШКАЛА =================
     public static final int MIN = -100;

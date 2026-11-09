@@ -186,8 +186,8 @@ public class HungryCow extends Cow {
     public static final float TALL_PLANT_HEAL = 5.0F;    // висока трава: скільки лікує
     public static final int MOSS_BLOCK_FOOD = 10;        // моховий блок: скільки голоду знімає
 
-    public static final float CHOKE_MULTIPLIER = 100.0F; // множник шансу подавитися: 100 = завжди (для тестів), 1 = звичайно
-    public static final float CHOKE_TEST_CHANCE = 0.5F;  // тест: однаковий шанс подавитися для всієї такої їжі (0.5 = 50%);
+    public static final float CHOKE_MULTIPLIER = 1.0F;   // множник шансу подавитися: 100 = завжди (для тестів), 1 = звичайно
+    public static final float CHOKE_TEST_CHANCE = 0.0F;  // тест: однаковий шанс подавитися для всієї такої їжі (0.5 = 50%);
                                                          // 0 = шанс із CowFood × CHOKE_MULTIPLIER
     public static final float CHOKE_DAMAGE = 1.0F;       // урон від подавлення кожні 4 секунди
     public static final int CHOKE_SLOWNESS = 1;          // сповільнення: 0 = I, 1 = II
@@ -239,7 +239,7 @@ public class HungryCow extends Cow {
     private static final UUID SPEED_GENE_ID = UUID.fromString("a8f3d2c4-5e71-4b0a-9c2d-1e6f7a8b9c30");
     private static final UUID KNOCKBACK_GENE_ID = UUID.fromString("c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f");
 
-    public static final boolean DEBUG_MESSAGES = true;   // писати в чат про подавлення, довіру, напади та пологи
+    public static final boolean DEBUG_MESSAGES = false;  // писати в чат про подавлення, довіру, напади та пологи
 
     public int hunger = 0;
     public int thirst = 0;                          // спрага (ідея 10)
@@ -1846,6 +1846,7 @@ public class HungryCow extends Cow {
                 // спогад: удар від гравця — «вдарили», від моба — «напали»
                 episodes.remember(source.getEntity() instanceof Player ? CowEpisodes.Kind.HIT : CowEpisodes.Kind.ATTACK,
                         source.getEntity() instanceof Player pl ? pl.getName().getString() : CowSmell.keyOf(source.getEntity()));
+                if (source.getEntity() instanceof Player pl) psyche.onStrongHit(pl, amount);
                 smell.learn(source.getEntity(), CowSmell.LEARN_HURT);
                 hearing.onBad();   // звуки перед ударом стають неприємними
             }
@@ -1897,7 +1898,7 @@ public class HungryCow extends Cow {
             CowSmell.addBlood(this.level(), this.position(), this.getUUID());   // мертва корова пахне тривогою
             Component msg = Component.literal("Корова померла від: " + source.getMsgId()
                     + " | голод " + hunger + " | втома " + fatigue + " | страх " + fear);
-            this.level().players().forEach(p -> p.sendSystemMessage(msg));
+            if (DEBUG_MESSAGES) this.level().players().forEach(p -> p.sendSystemMessage(msg));
             Entity killerEntity = source.getEntity();
             if (killerEntity instanceof Player killer) {
                 punishWitnesses(killer);

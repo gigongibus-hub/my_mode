@@ -45,7 +45,7 @@ public class SeekGrassGoal extends Goal {
     private static final int MAX_REACHABLE_COMPARED = 3;  // скільки досяжних варіантів порівнювати
     private static final int MAX_SMELL_CHECKS = 30;       // нюх: скільки найближчих невидимих блоків їжі «понюхати»
     private static final int MAX_SIGHT_CHECKS = 80;       // зір: скільки блоків їжі перевіряти «чи видно» за один пошук (найближчі)
-    private static final boolean DEBUG = true;            // писати в чат, коли їжа недосяжна
+    private static final boolean DEBUG = false;           // писати в чат, коли їжа недосяжна
 
     // Апетит до квіток: чим більше число, тим частіше корова обирає цей вид
     private static final Map<Block, Integer> FLOWER_APPETITE = new HashMap<>();
@@ -333,8 +333,10 @@ public class SeekGrassGoal extends Goal {
                 cow.eatFood(food, item);
             }
         }
-        Component msg = Component.literal("Корова з'їла: ").append(block.getName());
-        cow.level().players().forEach(p -> p.sendSystemMessage(msg));
+        if (HungryCow.DEBUG_MESSAGES) {   // реліз: не писати в чат про кожну травинку
+            Component msg = Component.literal("Корова з'їла: ").append(block.getName());
+            cow.level().players().forEach(p -> p.sendSystemMessage(msg));
+        }
     }
 
     private Kind classify(BlockState state) {

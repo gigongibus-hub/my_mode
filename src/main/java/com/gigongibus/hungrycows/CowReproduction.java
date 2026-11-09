@@ -26,7 +26,7 @@ public class CowReproduction {
     public static final float FREEMARTIN_CHANCE = 0.9F;   // двійнята бик + телиця: телиця безплідна з шансом 90%
     public static final int LABOR_TICKS = 200;            // пологи (10 сек)
     public static final float LABOR_DAMAGE = 2.0F;        // скільки HP мати втрачає за пологи (не смертельно)
-    public static final float CALF_DEATH_CHANCE = 0.5F;   // шанс, що теля народиться мертвим (50% для тестів, у готовому моді 0.02F)
+    public static final float CALF_DEATH_CHANCE = 0.02F;  // шанс, що теля народиться мертвим 2% (для тестів було 50%)
     public static final int BREED_COOLDOWN_TICKS = 6000;  // пауза перед наступним розмноженням (5 хв)
 
     // ================= СКІЛЬКИ ТЕЛЯТ =================

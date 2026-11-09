@@ -41,6 +41,7 @@ public class CowPsyche {
     public static final int PHOBIA_EVENTS = 3;              // 3 погані події з тим самим — фобія
     public static final double PHOBIA_HEAL_PER_DAY = 0.02;  // минає дуже повільно (≈ 50 діб)
     public static final int PHOBIA_FEAR = 10;               // бачить/у тому — страх +10 (раз на 5 с)
+    public static final float PHOBIA_HIT_DAMAGE = 4.0F;     // гравець ударив одразу на 4+ (2 серця) — фобія з одного разу (Fij)
     // безпорадність
     public static final double WELL_AVG_DAYS = 1;           // середнє самопочуття за ~добу
     public static final double HELPLESS_BELOW = -30;        // середнє нижче −30 — безпорадність росте
@@ -118,6 +119,15 @@ public class CowPsyche {
             cow.status("тужить за " + e.who);
         }
         if (e.kind == CowEpisodes.Kind.TASTY || e.kind == CowEpisodes.Kind.PETTED) stimulate(0.1);
+    }
+
+    // Сильний удар гравця (урон від PHOBIA_HIT_DAMAGE) — фобія до цього гравця одразу, без 3 подій (Fij: «думаю так»)
+    public void onStrongHit(Player player, float damage) {
+        if (player == null || damage < PHOBIA_HIT_DAMAGE) return;
+        String who = player.getName().getString();
+        if (phobias.getOrDefault(who, 0.0) >= 0.99) return;
+        phobias.put(who, 1.0);
+        cow.tell(cow.family.name + " тепер боїться: " + who + " (фобія від сильного удару)");
     }
 
     // Щось нове й цікаве (досліджувала, різна їжа, пасовище, вилизування) — менше нудно
