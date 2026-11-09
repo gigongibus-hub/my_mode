@@ -12,5 +12,8 @@
   "item.hungrycows.bloody_paper": "Папір з кров'ю",
   "item.hungrycows.mortar": "Ступка з товкачиком",
   "item.hungrycows.soul_sand_pinch": "Щіпка піску душ",
-  "item.hungrycows.cow_reader": "Корововед"
+  "item.hungrycows.cow_reader": "Корововед",
+  "block.hungrycows.hay": "Сіно",
+  "item.hungrycows.hay_bundle": "Пучок свіжої трави",
+  "effect.hungrycows.mushroom_rage": "Грибна лють"
 }

@@ -83,6 +83,12 @@ public class HungryCow extends Cow {
     public static final int NIGHT_EAT_AT = 40;           // уночі голод 40+ — встає й іде їсти (Fij: раніше лише з 60 і гинули)
     public static final int NIGHT_DRINK_AT = 45;         // спрага 45+ — іде пити, навіть уночі зі сну
     public static final double SLEEP_NEEDS = 0.5;        // уві сні голод і спрага ростуть удвічі повільніше (Fij)
+    public static final double HUNGER_EFFECT_MULTIPLIER = 2.0; // ефект «Голод» (брудне сіно): голод росте вдвічі швидше (Fij)
+    // «Грибна лють» (план Fij): вогняний гриб — 1 доба люті, потім жар. ЛЮТЬ: рекомендації Claude, Fij ще не підтвердив
+    public static final int MUSHROOM_RAGE_SECONDS = 1200;  // 1 ігрова доба
+    public static final double RAGE_RADIUS = 8;            // б'є всіх навколо місця, де з'їла, у радіусі 8 бл.
+    public static final int FEVER_SECONDS = 300;           // потім 5 хв «горить зсередини» ...
+    public static final double FEVER_HEAT_PER_SECOND = 1.5; // ... перегрівання +1,5/с (вода охолоджує, як від спеки)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
     public static final int FATIGUE_EVERY_SECONDS = 10;  // втома росте на 1 раз на стільки секунд
     // ================= ОБМІН РЕЧОВИН І ВТОМА (6б) =================
@@ -283,6 +289,8 @@ public class HungryCow extends Cow {
     public String stateLabel() {
         if (this.tickCount < statusUntil && !statusText.isEmpty()) return capital(statusText);
         if (heat.unconscious) return "Без тями";
+        if (rageCenter != null && this.hasEffect(ModEffects.MUSHROOM_RAGE.get())) return "Грибна лють";
+        if (feverLeft > 0) return "Жар від гриба";
         if (sleeping) return "Спить";
         if (psyche.grief > 0.3) return "Тужить";
         if (psyche.stereotypy >= CowPsyche.STEREO_FROM) return "Нудьгує";
@@ -309,6 +317,8 @@ public class HungryCow extends Cow {
     public final CowTouch touch = new CowTouch(this);
     public final CowPsyche psyche = new CowPsyche(this);                // психологічні стани (етап 9)
     public final CowEpisodes episodes = new CowEpisodes(this);          // спогади й корисні місця (етап 6)                   // дотик (план Fij, етап 5)                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
+    public BlockPos rageCenter = null;   // де з'їла вогняний гриб (лють б'є навколо цього місця)
+    public int feverLeft = 0;           // секунд жару після люті
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -769,7 +779,8 @@ public class HungryCow extends Cow {
             dehydrateTimer = 0;
         }
         // голод: ген × обмін речовин (вагітність, молоко, біг, відпочинок)
-        hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() * sleepK / HUNGER_EVERY_SECONDS;
+        hungerCarry += gene(CowGenes.Gene.HUNGER_RATE) * metabolism() * sleepK / HUNGER_EVERY_SECONDS
+                * (this.hasEffect(MobEffects.HUNGER) ? HUNGER_EFFECT_MULTIPLIER : 1.0);   // брудне сіно: ефект «Голод»
         while (hungerCarry >= 1.0) {
             hungerCarry -= 1.0;
             hunger += TIME_SPEED;
@@ -809,7 +820,8 @@ public class HungryCow extends Cow {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new UnconsciousGoal(this));           // без тями від спеки: лежить, не рухається
         this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
-        this.goalSelector.addGoal(1, new LaborGoal(this));                 // пологи: стоїть на місці
+        this.goalSelector.addGoal(1, new LaborGoal(this));
+        this.goalSelector.addGoal(1, new com.gigongibus.hungrycows.ai.MushroomRageGoal(this));   // грибна лють: б'є всіх біля місця                 // пологи: стоїть на місці
         this.goalSelector.addGoal(2, new DefendCalfGoal(this));
         confront = new com.gigongibus.hungrycows.ai.ConfrontGoal(this);
         this.goalSelector.addGoal(2, confront);                                // бодає гравця: біг, теля, кут, ватажок, подруга; бик попереджає            // б'є того, хто вдарив теля
@@ -921,6 +933,17 @@ public class HungryCow extends Cow {
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
+            // сіно мода під ногами: корова його брудить (лежить — удвічі швидше)
+            CowHayBlock.trample(this.level(), this.getBlockPosBelowThatAffectsMyMovement(), sleeping ? 2 : 1);
+            // грибна лють скінчилась — жар зсередини (перегрівання росте, вода охолоджує)
+            if (rageCenter != null && !this.hasEffect(ModEffects.MUSHROOM_RAGE.get())) {
+                rageCenter = null;
+                feverLeft = FEVER_SECONDS;
+            }
+            if (feverLeft > 0) {
+                feverLeft--;
+                if (!this.isInWater()) heat.heat = Math.min(100, heat.heat + FEVER_HEAT_PER_SECOND);
+            }
             if (toxinLeft > 0) {
                 this.hurt(this.damageSources().magic(), toxinDamage);
                 toxinLeft--;
@@ -1489,6 +1512,33 @@ public class HungryCow extends Cow {
     }
 
     // Їжа з таблиці CowFood: з руки гравця або з землі
+    // Сіно мода: поживність і ефекти за стадією й станом (таблиця Fij у CowHayBlock)
+    public void eatHay(net.minecraft.world.level.block.state.BlockState s) {
+        onAte();
+        CowHayBlock.Cond c = s.getValue(CowHayBlock.COND);
+        hunger = Math.max(0, hunger - (int) Math.round(CowHayBlock.nutrition(s) * gene(CowGenes.Gene.GRASS_DIGEST)));
+        milk.recordDiet(Items.HAY_BLOCK);
+        chem.onEat();
+        memory.rememberMeal(Items.HAY_BLOCK);   // для смаку й відрази це «сіно»
+        switch (c) {
+            case SLIGHTLY_DIRTY -> addEffect(new MobEffectInstance(MobEffects.HUNGER, CowHayBlock.HUNGER_SLIGHT_SECONDS * 20));
+            case VERY_DIRTY -> addEffect(new MobEffectInstance(MobEffects.HUNGER, CowHayBlock.HUNGER_VERY_SECONDS * 20));
+            case MOLD -> addEffect(new MobEffectInstance(MobEffects.POISON, CowHayBlock.POISON_MOLD_SECONDS * 20));
+            case MOLD_DIRT -> {
+                addEffect(new MobEffectInstance(MobEffects.POISON, CowHayBlock.POISON_MOLD_SECONDS * 20));
+                addEffect(new MobEffectInstance(MobEffects.HUNGER, CowHayBlock.HUNGER_MOLD_DIRT_SECONDS * 20));
+            }
+            default -> { }
+        }
+        if (c.rotten()) addEffect(new MobEffectInstance(MobEffects.WITHER, CowHayBlock.WITHER_ROTTEN_SECONDS * 20));
+        if (c == CowHayBlock.Cond.FIRE_FUNGUS) {
+            addEffect(new MobEffectInstance(ModEffects.MUSHROOM_RAGE.get(), MUSHROOM_RAGE_SECONDS * 20));
+            rageCenter = this.blockPosition();
+            tell(family.name + " з'їла вогняний гриб: грибна лють!");
+        }
+        tell(family.name + " з'їла сіно (" + CowHayBlock.describe(s.getValue(CowHayBlock.STAGE).id, c.id, null) + ")");
+    }
+
     public void eatFood(CowFood food, Item item) {
         onAte();
         // лічильники скидаються раз на ігрову добу
@@ -1764,8 +1814,17 @@ public class HungryCow extends Cow {
     }
 
     // Удар лобом (по зомбі, скелету, павуку, гравцю): сила за геном, бик удвічі сильніше й відкидає далі
+    /** Блок під ногами (підлога): сіно, камінь… */
+    public BlockPos floorPos() {
+        return this.getBlockPosBelowThatAffectsMyMovement();
+    }
+
+    public float ramDamage() {
+        return (float) (CowTrust.ATTACK_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
+    }
+
     public void ram(LivingEntity target) {
-        float damage = (float) (CowTrust.ATTACK_DAMAGE * gene(CowGenes.Gene.KICK_STRENGTH) * (isBull() ? BULL_DAMAGE : 1.0));
+        float damage = ramDamage();
         this.lookAt(target, 30F, 30F);
         this.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         if (!target.hurt(this.damageSources().mobAttack(this), damage)) return;
@@ -1958,6 +2017,8 @@ public class HungryCow extends Cow {
         tag.put("FoodCounts", foodCounts);
         tag.putLong("FoodDay", foodDay);
         tag.putInt("ToxinLeft", toxinLeft);
+        if (rageCenter != null) tag.putLong("RageCenter", rageCenter.asLong());
+        tag.putInt("FeverLeft", feverLeft);
         tag.putFloat("ToxinDamage", toxinDamage);
         tag.putInt("DyingLeft", dyingLeft);
         tag.put("Trust", trust.save());
@@ -1994,6 +2055,8 @@ public class HungryCow extends Cow {
         choking = tag.getBoolean("Choking");
         foodCounts = tag.getCompound("FoodCounts");
         foodDay = tag.contains("FoodDay") ? tag.getLong("FoodDay") : -1;
+        rageCenter = tag.contains("RageCenter") ? BlockPos.of(tag.getLong("RageCenter")) : null;
+        feverLeft = tag.getInt("FeverLeft");
         toxinLeft = tag.getInt("ToxinLeft");
         toxinDamage = tag.getFloat("ToxinDamage");
         dyingLeft = tag.getInt("DyingLeft");

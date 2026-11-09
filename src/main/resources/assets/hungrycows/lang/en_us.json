@@ -12,5 +12,8 @@
   "item.hungrycows.bloody_paper": "Bloody Paper",
   "item.hungrycows.mortar": "Mortar and Pestle",
   "item.hungrycows.soul_sand_pinch": "Pinch of Soul Sand",
-  "item.hungrycows.cow_reader": "Cow Reader"
+  "item.hungrycows.cow_reader": "Cow Reader",
+  "block.hungrycows.hay": "Hay",
+  "item.hungrycows.hay_bundle": "Bundle of Fresh Grass",
+  "effect.hungrycows.mushroom_rage": "Mushroom Rage"
 }

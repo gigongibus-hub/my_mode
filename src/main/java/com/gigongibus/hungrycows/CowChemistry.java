@@ -121,6 +121,7 @@ public class CowChemistry {
     // ---------- раз на секунду ----------
 
     public void secondTick() {
+        if (!cow.sleeping) floor = Math.max(0, floor - 1);   // встала — зручність підлоги поступово забувається
         // адреналін: стрибає до рівня страху, потім спадає
         double adrBase = ADRENALINE_BASE * g(Gene.ADRENALINE_BASE);
         if (cow.fear > adrenaline) adrenaline = cow.fear;
@@ -340,8 +341,18 @@ public class CowChemistry {
     public int feelMotherhood() { return (int) Math.round(clamp((prolactin + oxytocin) / 2.0)); }
     public int feelUnwell() { return (int) Math.round(clamp((temperature - TEMP_NORMAL) * 40)); }
 
+    // Комфорт підлоги, де лежить (сіно мода — найзручніше; згасає, коли встала: −1 за секунду)
+    private double floor = 0;
+    public static final double FLOOR_WEIGHT = 0.4;   // підлога 45 (пересохле сіно) → +18 до комфорту
+
+    public void floorComfort(int value) {
+        floor = value;
+    }
+
+    public double floorLevel() { return floor; }
+
     public int feelComfort() {
-        return (int) Math.round(clamp(50 + (dopamine - DOPAMINE_BASE) * 0.5 + (oxytocin - OXYTOCIN_BASE) * 0.5
+        return (int) Math.round(clamp(50 + floor * FLOOR_WEIGHT + (dopamine - DOPAMINE_BASE) * 0.5 + (oxytocin - OXYTOCIN_BASE) * 0.5
                 - (cortisol - CORTISOL_BASE) * 0.6 - feltPain() * 0.5 - loneliness() * 0.3));
     }
 

@@ -78,6 +78,14 @@ public final class CowBook {
         out.add("Втома: " + cow.fatigue + " (відпочиває за відчуттям з " + HungryCow.TIRED_AT + ")");
         out.add("Страх: " + cow.fear + " (тікає за відчуттям з " + cow.scaredAt() + ")");
         out.add(cow.heat.line());
+        {
+            BlockPos floor = cow.floorPos();
+            net.minecraft.world.level.block.state.BlockState fs = cow.level().getBlockState(floor);
+            String what = fs.getBlock() instanceof CowHayBlock
+                    ? "сіно (" + CowHayBlock.describe(fs.getValue(CowHayBlock.STAGE).id, fs.getValue(CowHayBlock.COND).id, null) + ")"
+                    : fs.getBlock().getName().getString();
+            out.add("Під ногами: " + what + ", зручність " + CowHayBlock.comfort(cow.level(), floor));
+        }
         out.add(cow.disease.line());
         if (cow.choking) out.add("ПОДАВИЛАСЯ! Вдар її, щоб урятувати");
         if (cow.isBaby()) out.add("Теля п'є лише молоко");

@@ -318,6 +318,9 @@ public class SeekGrassGoal extends Goal {
             cow.memory.rememberMeal(block.asItem());
             cow.hunger = Math.max(0, cow.hunger - grassFood(tall ? HungryCow.TALL_PLANT_FOOD : HungryCow.PLANT_FOOD));
             cow.heal(tall ? HungryCow.TALL_PLANT_HEAL : HungryCow.PLANT_HEAL);
+        } else if (block instanceof com.gigongibus.hungrycows.CowHayBlock) {
+            cow.level().destroyBlock(target, false);
+            cow.eatHay(state);   // сіно мода: поживність і ефекти за станом
         } else {
             // кавун, гарбуз, сіно, квіти: за таблицею CowFood
             Item item = block.asItem();
@@ -339,9 +342,16 @@ public class SeekGrassGoal extends Goal {
         }
     }
 
+    // Для смаку й відрази сіно мода — це «сіно»
+    private static Item foodItem(Block b) {
+        return b instanceof com.gigongibus.hungrycows.CowHayBlock ? net.minecraft.world.item.Items.HAY_BLOCK : b.asItem();
+    }
+
     private Kind classify(BlockState state) {
         Block b = state.getBlock();
         if (b == Blocks.MELON || b == Blocks.PUMPKIN || b == Blocks.HAY_BLOCK) return Kind.PLACED;
+        // сіно мода: пліснява й гниле — лише коли голодує (як черемша)
+        if (b instanceof com.gigongibus.hungrycows.CowHayBlock) return state.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).avoided() ? Kind.DESPERATE : Kind.PLACED;
         if (b == Blocks.GRASS || b == Blocks.TALL_GRASS) return Kind.PLANT;
         if (b == Blocks.GRASS_BLOCK) return Kind.GRASS_BLOCK;
         if (b == Blocks.MOSS_BLOCK) return Kind.MOSS_BLOCK;
@@ -361,6 +371,7 @@ public class SeekGrassGoal extends Goal {
         if (b == Blocks.GRASS) return HungryCow.PLANT_FOOD;
         if (b == Blocks.GRASS_BLOCK) return HungryCow.GRASS_BLOCK_FOOD;
         if (b == Blocks.MOSS_BLOCK) return HungryCow.MOSS_BLOCK_FOOD;
+        if (b instanceof com.gigongibus.hungrycows.CowHayBlock) return com.gigongibus.hungrycows.CowHayBlock.nutrition(state);
         CowFood f = CowFood.get(b.asItem());
         return f != null ? f.hunger : 10;
     }
@@ -369,13 +380,13 @@ public class SeekGrassGoal extends Goal {
     private double score(Candidate c, double distance) {
         double bonus = c.kind == Kind.PLACED ? PLACED_BONUS : 0;
         // пам'ять: відраза до цієї їжі й те, яке це місце (добре чи там били)
-        double memory = -CowMemory.AVERSION_SCORE * cow.memory.aversion(c.block.asItem())
+        double memory = -CowMemory.AVERSION_SCORE * cow.memory.aversion(foodItem(c.block))
                 + CowMemory.PLACE_SCORE * cow.memory.placeValue(c.pos);
         // ідея 9: вдень корова охочіше пасеться в полі (над травою видно небо)
         BlockPos stand = (c.kind == Kind.GRASS_BLOCK || c.kind == Kind.MOSS_BLOCK) ? c.pos.above() : c.pos;
         double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
         double plant = (c.block == Blocks.GRASS || c.block == Blocks.TALL_GRASS) ? PLANT_BONUS : 0;
-        double taste = com.gigongibus.hungrycows.CowTaste.SCORE * cow.taste.tastiness(c.block.asItem());   // смак, набридання
+        double taste = com.gigongibus.hungrycows.CowTaste.SCORE * cow.taste.tastiness(foodItem(c.block));   // смак, набридання
         return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste + socialScore(c.pos);
     }
 
@@ -548,11 +559,15 @@ public class SeekGrassGoal extends Goal {
             if (state.isAir()) continue;
             Kind k = classify(state);
             if (k == Kind.NONE) continue;
-            if (state.is(Blocks.HAY_BLOCK) && !feedHay(p)) continue;   // сіно-підлогу під ногами не їсть
+            boolean modHay = state.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock;
+            if ((state.is(Blocks.HAY_BLOCK) || modHay) && !feedHay(p)) continue;   // сіно-підлогу під ногами не їсть
+            if (modHay && !com.gigongibus.hungrycows.CowHayBlock.safeFor(state, cow)) continue;   // слабка гниле не їсть
+            // пліснява й гниле: здорова не їсть зовсім, лише та, що голодує (план Fij)
+            if (modHay && state.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).avoided() && cow.hunger < HungryCow.STARVE_AT) continue;
             if (k == Kind.GRASS_BLOCK) grassBlocks++;
             if (unreachable.contains(p)) continue;
             // відраза: цю їжу сама не їсть (хіба що голодує)
-            if (cow.hunger < HungryCow.STARVE_AT && cow.memory.avoids(state.getBlock().asItem())) continue;
+            if (cow.hunger < HungryCow.STARVE_AT && cow.memory.avoids(foodItem(state.getBlock()))) continue;
             Candidate c = new Candidate(p.immutable(), k, p.distSqr(origin), nutrition(state), state.getBlock());
             if (k == Kind.FLOWER) flowers.add(c);
             else if (k == Kind.DESPERATE) desperate.add(c);

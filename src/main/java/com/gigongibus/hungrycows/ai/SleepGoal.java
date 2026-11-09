@@ -49,6 +49,7 @@ public class SleepGoal extends Goal {
     private static final int SEEK_TICKS = 600;           // без місця для сну шукає 30 с ...
     private static final int RESEEK_TICKS = 1200;        // ... і, якщо не знайшла, ще раз через 1 хв
     private static final double STAY_NEAR_LEADER = 6;    // під час пошуку тримається не далі 6 блоків від ватажка
+    private static final int COMFORT_STEP = 15;          // сіно: +1 до «глибини» місця за кожні 15 комфорту підлоги
     private static final int RECOVER_EVERY_TICKS = 20;   // втома −2 щосекунди сну
     private static final int RECOVER = 2;
     // ================= СЛУХ УВІ СНІ =================
@@ -396,6 +397,7 @@ public class SleepGoal extends Goal {
         cow.resting = true;
         cow.sleepClaim = claimed != null ? claimed : cow.blockPosition();
         if (ticks % RECOVER_EVERY_TICKS == 0) cow.fatigue = Math.max(0, cow.fatigue - RECOVER);
+        if (ticks % 20 == 0) cow.chem.floorComfort(com.gigongibus.hungrycows.CowHayBlock.comfort(cow.level(), cow.floorPos()));
         if (ticks % LISTEN_EVERY == 0) listen();
     }
 
@@ -411,6 +413,11 @@ public class SleepGoal extends Goal {
             }
         }
         return d;
+    }
+
+    // Зручна підлога (сіно, особливо пересохле й купою — «матрац») трохи переважує: +1 за кожні 15 комфорту
+    private int comfortBonus(BlockPos p) {
+        return com.gigongibus.hungrycows.CowHayBlock.comfort(cow.level(), p.below()) / COMFORT_STEP;
     }
 
     // Чи займає це місце інша корова (уже спить там або йде туди)
@@ -488,6 +495,9 @@ public class SleepGoal extends Goal {
         java.util.List<BlockPos> spots = new java.util.ArrayList<>();
         for (BlockPos p : BlockPos.betweenClosed(base.offset(-SPOT_RADIUS, -1, -SPOT_RADIUS), base.offset(SPOT_RADIUS, 1, SPOT_RADIUS))) {
             if (!CowHome.standable(cow.level(), p)) continue;
+            net.minecraft.world.level.block.state.BlockState floorState = cow.level().getBlockState(p.below());
+            if (floorState.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
+                    && floorState.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).avoided()) continue;   // на пліснявому/гнилому сіні не спить
             boolean inside = building ? interior.contains(p) || (interior.isEmpty() && CowHome.shelterScore(cow.level(), p) > 0)
                     : CowHome.shaded(cow.level(), p);
             if (!inside) continue;
@@ -500,7 +510,7 @@ public class SleepGoal extends Goal {
         spots.sort((x, y) -> {
             int n = Boolean.compare(!nearOther(x), !nearOther(y));   // спершу поруч зі стадом (не далі SLEEP_NEAR)
             if (n != 0) return n;
-            int c = Integer.compare(depth(y, building), depth(x, building));   // глибше — раніше
+            int c = Integer.compare(depth(y, building) + comfortBonus(y), depth(x, building) + comfortBonus(x));   // глибше й зручніше — раніше
             return c != 0 ? c : Double.compare(x.distSqr(me), y.distSqr(me));
         });
         boolean canCheck = (cow.onGround() || cow.isInWater()) && nearBase(base);

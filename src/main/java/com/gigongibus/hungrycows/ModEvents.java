@@ -25,6 +25,18 @@ public class ModEvents {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
             event.accept(ModBlocks.SALT_LICK_ITEM);   // соляний лизунець
         }
+        // сіно мода: звичайне + приклади кожної стадії й стану (щоб Fij міг перевірити в творчому)
+        if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
+            event.accept(ModBlocks.HAY_ITEM);
+            event.accept(ModBlocks.HAY_BUNDLE);
+            net.minecraft.world.level.block.state.BlockState hay = ModBlocks.HAY.get().defaultBlockState().setValue(CowHayBlock.BOUND, true);
+            for (CowHayBlock.Stage st : CowHayBlock.Stage.values()) event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st)));
+            for (CowHayBlock.Cond c : CowHayBlock.Cond.values()) {
+                if (c == CowHayBlock.Cond.CLEAN) continue;
+                CowHayBlock.Stage st = c == CowHayBlock.Cond.FIRE_FUNGUS ? CowHayBlock.Stage.DRY : CowHayBlock.Stage.FRESH;
+                event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st).setValue(CowHayBlock.COND, c)));
+            }
+        }
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModEntities.HUNGRY_COW_SPAWN_EGG);
         }

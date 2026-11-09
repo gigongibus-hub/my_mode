@@ -313,7 +313,7 @@ public class CowSmell {
                 if (smoke == null && reaches(Vec3.atCenterOf(p), 1.0, p.immutable())) smoke = p.immutable();
             } else if (s.is(BlockTags.FLOWERS) && p.distSqr(o) < 16) {
                 flowersNear++;
-            } else if (s.is(Blocks.HAY_BLOCK) && !hayNear && reaches(Vec3.atCenterOf(p), 1.0, p.immutable())) {
+            } else if ((s.is(Blocks.HAY_BLOCK) || s.getBlock() instanceof CowHayBlock && !s.getValue(CowHayBlock.COND).avoided()) && !hayNear && reaches(Vec3.atCenterOf(p), 1.0, p.immutable())) {
                 hayNear = true;
             }
         }
