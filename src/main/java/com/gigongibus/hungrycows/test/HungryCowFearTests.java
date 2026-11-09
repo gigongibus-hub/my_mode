@@ -349,4 +349,44 @@ public class HungryCowFearTests {
         h.assertTrue(lastLeft.isEmpty(), "ступка не зламалась після 34 разів");
         h.succeed();
     }
+
+    // 8. Крок 4: укол → папір → «Корововед» (8 щіпок навколо паперу) зі знімком корови; ПКМ по тій самій корові — оновлює
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 40)
+    public static void cowReaderChain(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        cow.setAge(0);
+        TestPlayer p = makePlayer(h);
+        net.minecraft.world.item.ItemStack needle = com.gigongibus.hungrycows.BloodNeedleItem.prick(cow, p);
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player pl, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player pl) { return true; }
+        };
+        var rm = h.getLevel().getRecipeManager();
+        var type = net.minecraft.world.item.crafting.RecipeType.CRAFTING;
+        net.minecraft.world.inventory.TransientCraftingContainer g1 = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        g1.setItem(0, needle);
+        g1.setItem(1, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAPER));
+        net.minecraft.world.item.ItemStack paper = rm.getRecipeFor(type, g1, h.getLevel()).get().assemble(g1, h.getLevel().registryAccess());
+        net.minecraft.world.inventory.TransientCraftingContainer g2 = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        for (int i = 0; i < 9; i++) g2.setItem(i, i == 4 ? paper : new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.SOUL_SAND_PINCH.get()));
+        var r2 = rm.getRecipeFor(type, g2, h.getLevel());
+        h.assertTrue(r2.isPresent(), "рецепт Корововеда не знайдено");
+        net.minecraft.world.item.ItemStack reader = r2.get().assemble(g2, h.getLevel().registryAccess());
+        int lines = reader.hasTag() ? reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).size() : 0;
+        String first = lines > 0 ? reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0) : "";
+        // оновлення: змінимо ім'я корови й ПКМ Корововедом
+        String old = cow.family.name;
+        cow.family.name = "Оновлена";
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, reader);
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        String after = reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0);
+        LOG.info("[тест] cowReaderChain: {} рядків, перший «{}» (корова {}), після оновлення «{}»", lines, first, old, after);
+        cow.discard();
+        removePlayer(h, p);
+        h.assertTrue(reader.is(com.gigongibus.hungrycows.ModItems.COW_READER.get()) && lines > 20 && first.equals("#" + old), "Корововед без знімка корови");
+        h.assertTrue(after.equals("#Оновлена"), "ПКМ по корові не оновив Корововед");
+        h.succeed();
+    }
 }

@@ -22,6 +22,34 @@ public final class CowBook {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenCowBookPacket(pages(player, cow)));
     }
 
+    // «Корововед» (духовний документ, Fij): лише головне — ім'я, вік, стать, масть, молоко, родовід, характер, гени
+    public static List<String> essentials(HungryCow cow) {
+        List<String> out = new ArrayList<>();
+        boolean female = cow.repro.isFemale();
+        out.add("#" + cow.family.name);
+        out.add("Стать: " + (female ? "самка" : "бик"));
+        out.add("Вік: " + (cow.isBaby() ? "теля" : "доросла"));
+        out.add(cow.aging.line());
+        out.add("Масть: " + cow.genes.coatName());
+        out.add("#Молоко");
+        if (!female) out.add("Бик: молока не дає");
+        else {
+            String milk = cow.milk.label();
+            out.add(milk != null ? milk + " з " + cow.milk.max() : "Молока немає (лише після пологів)");
+            out.add("Якість: " + cow.milk.quality().letter + " — " + cow.milk.quality().description);
+            out.add("Раціон з останніх пологів: " + cow.milk.dietText());
+        }
+        out.add("#Родовід");
+        out.addAll(cow.family.familyLines());
+        out.addAll(cow.inbreeding.lines());
+        out.add("#Характер");
+        for (CowCharacter.Trait trait : CowCharacter.Trait.values()) out.add(trait.title + ": " + cow.character.get(trait));
+        out.add("#Гени");
+        out.add("Число = середнє двох копій. 50 — як у звичайної корови.");
+        out.addAll(cow.genes.lines());
+        return out;
+    }
+
     static List<String> pages(Player reader, HungryCow cow) {
         List<String> out = new ArrayList<>();
         boolean female = cow.repro.isFemale();

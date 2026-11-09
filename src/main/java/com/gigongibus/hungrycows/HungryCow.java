@@ -1385,6 +1385,11 @@ public class HungryCow extends Cow {
             if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) CowBook.open(serverPlayer, this);
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
+        // «Корововед»: ПКМ по тій самій корові — оновити знімок; по іншій — підказка
+        if (stack.is(ModItems.COW_READER.get())) {
+            if (server) CowReaderItem.refresh(stack, this, player);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         // голка: уколоти корову — голка з її кров'ю (урону немає; корова лякається, довіра трохи падає)
         if (stack.is(ModItems.NEEDLE.get())) {
             if (server) player.setItemInHand(hand, BloodNeedleItem.prick(this, player));

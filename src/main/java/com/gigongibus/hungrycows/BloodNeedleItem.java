@@ -24,7 +24,7 @@ public class BloodNeedleItem extends Item {
     public static final int PRICK_FEAR = 15;      // укол — страх +15 (урону немає, Fij)
     public static final int PRICK_TRUST = -3;     // ... і довіра до гравця −3 (Fij: «трохи знижується»)
 
-    public static final String TAG_ID = "CowId", TAG_NAME = "CowName";
+    public static final String TAG_ID = "CowId", TAG_NAME = "CowName", TAG_PAGES = "CowPages", TAG_DAY = "CowDay";
 
     public BloodNeedleItem(Properties properties) {
         super(properties);
@@ -39,7 +39,17 @@ public class BloodNeedleItem extends Item {
         CompoundTag tag = bloody.getOrCreateTag();
         tag.putUUID(TAG_ID, cow.getUUID());
         tag.putString(TAG_NAME, cow.family.name);
+        writeSnapshot(tag, cow);   // знімок «Корововеда» береться в момент уколу (оновлюється ПКМ «Корововедом» по корові)
         return bloody;
+    }
+
+    // Знімок корови: рядки «головного» і день, коли знято
+    public static void writeSnapshot(CompoundTag tag, HungryCow cow) {
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (String line : CowBook.essentials(cow)) list.add(net.minecraft.nbt.StringTag.valueOf(line));
+        tag.put(TAG_PAGES, list);
+        tag.putLong(TAG_DAY, cow.level().getDayTime() / 24000L);
+        tag.putString(TAG_NAME, cow.family.name);
     }
 
     @Override

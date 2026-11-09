@@ -24,6 +24,8 @@ public class BloodPaperRecipe extends CustomRecipe {
             DeferredRegister.create(ForgeRegistries.RECIPE_SERIALIZERS, HungryCowsMod.MODID);
     public static final RegistryObject<RecipeSerializer<BloodPaperRecipe>> SERIALIZER =
             SERIALIZERS.register("blood_paper", () -> new SimpleCraftingRecipeSerializer<>(BloodPaperRecipe::new));
+    public static final RegistryObject<RecipeSerializer<CowReaderRecipe>> READER_SERIALIZER =
+            SERIALIZERS.register("cow_reader", () -> new SimpleCraftingRecipeSerializer<>(CowReaderRecipe::new));
 
     public BloodPaperRecipe(ResourceLocation id, CraftingBookCategory category) {
         super(id, category);

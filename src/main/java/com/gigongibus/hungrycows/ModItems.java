@@ -37,6 +37,10 @@ public class ModItems {
     public static final RegistryObject<Item> SOUL_SAND_PINCH =
             HungryCowsMod.ITEMS.register("soul_sand_pinch", () -> new Item(new Item.Properties()));
 
+    // крок 4: «Корововед» (8 щіпок піску душ навколо паперу з кров'ю) — головне про корову, чия кров
+    public static final RegistryObject<Item> COW_READER =
+            HungryCowsMod.ITEMS.register("cow_reader", () -> new CowReaderItem(new Item.Properties().stacksTo(1)));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }
