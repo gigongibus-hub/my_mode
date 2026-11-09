@@ -204,8 +204,8 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     }
 
     /**
-     * Вода крізь сіно: купа сіна (з'єднана гранями, до 64) «живиться», якщо хоч один її блок має поруч джерело води чи воду згори.
-     * Тоді в усій купі вода — і вона витікає звичайними потічками з усіх боків, поки живлення є; немає — вода в сіні зникає.
+     * Вода крізь сіно: блок сіна «живиться», якщо поруч джерело води чи вода згори; від нього вода йде крізь сусіднє сіно
+     * лише вниз і вбік (не вгору). У таких блоках вода — витікає звичайними потічками, поки живлення є; немає — зникає.
      */
     public static void updateWater(Level level, BlockPos start) {
         if (level.isClientSide || !(level.getBlockState(start).getBlock() instanceof CowHayBlock)) return;
@@ -214,11 +214,9 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         seen.add(start.immutable());
         queue.add(start.immutable());
-        boolean fed = false;
         while (!queue.isEmpty() && cluster.size() < FEED_CLUSTER_MAX) {
             BlockPos c = queue.poll();
             cluster.add(c);
-            if (!fed && fedHere(level, c)) fed = true;
             for (Direction d : Direction.values()) {
                 BlockPos n = c.relative(d);
                 if (!seen.contains(n) && level.getBlockState(n).getBlock() instanceof CowHayBlock) {
@@ -227,11 +225,27 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
                 }
             }
         }
+        // вода йде крізь сіно лише ВНИЗ і ВБІК, ніколи вгору (Fij, скріншот: стовп сіна — вода «вилазила» на верхівку й лилась звідти)
+        Set<BlockPos> inCluster = new HashSet<>(cluster);
+        Set<BlockPos> fed = new HashSet<>();
+        ArrayDeque<BlockPos> wave = new ArrayDeque<>();
+        for (BlockPos p : cluster) {
+            if (fedHere(level, p)) { fed.add(p); wave.add(p); }
+        }
+        while (!wave.isEmpty()) {
+            BlockPos c = wave.poll();
+            for (Direction d : Direction.values()) {
+                if (d == Direction.UP) continue;
+                BlockPos n = c.relative(d);
+                if (inCluster.contains(n) && fed.add(n)) wave.add(n);
+            }
+        }
         for (BlockPos p : cluster) {
             BlockState s = level.getBlockState(p);
-            if (s.getValue(WATERLOGGED) != fed) {
-                level.setBlock(p, s.setValue(WATERLOGGED, fed), 3);
-                if (fed) level.scheduleTick(p, net.minecraft.world.level.material.Fluids.WATER, net.minecraft.world.level.material.Fluids.WATER.getTickDelay(level));
+            boolean wet = fed.contains(p);
+            if (s.getValue(WATERLOGGED) != wet) {
+                level.setBlock(p, s.setValue(WATERLOGGED, wet), 3);
+                if (wet) level.scheduleTick(p, net.minecraft.world.level.material.Fluids.WATER, net.minecraft.world.level.material.Fluids.WATER.getTickDelay(level));
             }
         }
     }

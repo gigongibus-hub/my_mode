@@ -255,6 +255,19 @@ public class ModForgeEvents {
         }
     }
 
+    // Вода крізь сіно: сіно з водою гра вважає «джерелом». Біля нього НЕ можна народитися новому джерелу (вода між двома
+    // такими блоками сіна стала б вічним джерелом і живила б сіно далі, навіть коли справжнє джерело прибрали)
+    @SubscribeEvent
+    public static void onFluidSource(BlockEvent.CreateFluidSourceEvent event) {
+        for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+            net.minecraft.world.level.block.state.BlockState n = event.getLevel().getBlockState(event.getPos().relative(d));
+            if (n.getBlock() instanceof CowHayBlock && n.getValue(CowHayBlock.WATERLOGGED)) {
+                event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+                return;
+            }
+        }
+    }
+
     // Гравець поставив блок: теж скасовує відростання на цьому місці
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {

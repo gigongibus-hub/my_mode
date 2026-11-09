@@ -243,6 +243,7 @@ public class HungryCowHayTests {
         LOG.info("[тест] grassBundlesAndFeeding: мотика {} ({} пучків), присівши з ножицями {}, голод 50 -> {} (пучок) -> {} (пшениця)",
                 hoe, bundles, sneakShears, afterBundle, afterWheat);
         cow.discard();
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);   // тестовий гравець спільний — не лишати йому предметів
         level.getEntitiesOfClass(ItemEntity.class, new AABB(g1).inflate(6)).forEach(ItemEntity::discard);
         level.setBlockAndUpdate(g2, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
         level.setBlockAndUpdate(g1.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
@@ -325,6 +326,37 @@ public class HungryCowHayTests {
             pig.discard();
             h.setBlock(hayPos, net.minecraft.world.level.block.Blocks.AIR);
             h.setBlock(stand, net.minecraft.world.level.block.Blocks.AIR);
+        });
+    }
+
+    // 9. Скріншот Fij: стовп сіна над сіном з водою — вода НЕ лізе вгору (лише вниз і вбік); кут купи не стає вічним джерелом
+    @GameTest(template = "platform", batch = "hay_water", timeoutTicks = 200)
+    public static void waterDoesNotClimbHay(GameTestHelper h) {
+        var level = h.getLevel();
+        BlockPos b0 = new BlockPos(3, 2, 3), b1 = b0.above(), b2 = b1.above(), corner = new BlockPos(4, 2, 4);
+        h.setBlock(b0, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(b1, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(b2, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(b0.east(), hay(Stage.DRY, Cond.CLEAN, true));    // кут: (4,2,3) і (3,2,4) — сіно, (4,2,4) — порожньо
+        h.setBlock(b0.south(), hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(b0.west(), net.minecraft.world.level.block.Blocks.WATER);   // джерело збоку внизу
+        h.runAfterDelay(60, () -> {
+            boolean bottom = h.getBlockState(b0).getValue(CowHayBlock.WATERLOGGED);
+            boolean mid = h.getBlockState(b1).getValue(CowHayBlock.WATERLOGGED), top = h.getBlockState(b2).getValue(CowHayBlock.WATERLOGGED);
+            boolean cornerSource = level.getFluidState(h.absolutePos(corner)).isSource();
+            h.setBlock(b0.west(), net.minecraft.world.level.block.Blocks.AIR);   // прибрати джерело
+            h.runAfterDelay(60, () -> {
+                boolean stillWet = h.getBlockState(b0).getValue(CowHayBlock.WATERLOGGED);
+                boolean water = level.getFluidState(h.absolutePos(corner)).is(net.minecraft.tags.FluidTags.WATER);
+                LOG.info("[тест] waterDoesNotClimbHay: низ {}, вище {} / {}, у куті джерело {}; після прибирання вода в сіні {}, у куті {}",
+                        bottom, mid, top, cornerSource, stillWet, water);
+                for (BlockPos p : new BlockPos[] { b0, b1, b2, b0.east(), b0.south(), corner }) h.setBlock(p, net.minecraft.world.level.block.Blocks.AIR);
+                h.assertTrue(bottom, "нижнє сіно біля джерела не пропустило воду");
+                h.assertFalse(mid || top, "вода полізла вгору стовпом сіна");
+                h.assertFalse(cornerSource, "у куті купи з'явилось нове джерело");
+                h.assertFalse(stillWet || water, "після прибирання джерела вода лишилась");
+                h.succeed();
+            });
         });
     }
 }
