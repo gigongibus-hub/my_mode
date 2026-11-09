@@ -37,7 +37,7 @@ import java.util.Set;
  *  - стадія (stage): свіже → підсохле → сухе → пересохле (висушене на сонці, для сну);
  *  - стан (condition): чисте, трохи брудне, дуже брудне, пліснява з брудом, пліснява, гниле, мокре,
  *    зірочник (гниле свіже), вогняний гриб (гниле сухе), з яблуком, з морквою;
- *  - нитки (bound): зв'язане (ПКМ павутиною) не розпадається; незв'язане через 5 хв розпадається на 9 пшениці,
+ *  - нитки (bound): зв'язане (ПКМ ниткою або павутиною) не розпадається; незв'язане через 5 хв розпадається на 9 пшениці,
  *    якщо воно не в купі з 4+ блоків сіна.
  * Усе, що змінюється з часом, — випадкові тіки блока (у середньому раз на ~68 с; дешево для гри), лише розпад — точний таймер.
  * Ванільний блок сіна лишається як був.
@@ -47,7 +47,7 @@ public class CowHayBlock extends HayBlock {
     // зв'язування й розпад (Fij)
     public static final int UNBOUND_DECAY_SECONDS = 300;   // незв'язане розпадається через 5 хв ...
     public static final int HAY_PILE_MIN = 4;              // ... хіба що в купі з 4+ блоків сіна (сусідство гранями)
-    public static final int DECAY_WHEAT = 9;               // розпалось — 9 пшениці
+    public static final int DECAY_WHEAT = 9;               // розпалось — 9 пшениці (свіже — 9 пучків свіжої трави)
     // шанси за один випадковий тік (≈ раз на 68 с) — ПРОПОЗИЦІЯ Claude, Fij може змінити
     public static final double RAIN_WET = 0.5;             // під дощем без даху: чисте → мокре
     public static final double RAIN_DIRT = 0.15;           // мокре під дощем → трохи брудне
@@ -163,7 +163,9 @@ public class CowHayBlock extends HayBlock {
         if (!(state.getBlock() instanceof CowHayBlock) || state.getValue(BOUND)) return false;
         if (pileSize(level, pos, HAY_PILE_MIN) >= HAY_PILE_MIN) return false;
         level.removeBlock(pos, false);
-        Block.popResource(level, pos, new ItemStack(Items.WHEAT, DECAY_WHEAT));
+        Block.popResource(level, pos, state.getValue(STAGE) == Stage.FRESH
+                ? new ItemStack(ModBlocks.HAY_BUNDLE.get(), DECAY_WHEAT)    // свіже — 9 пучків свіжої трави (Fij)
+                : new ItemStack(Items.WHEAT, DECAY_WHEAT));
         level.playSound(null, pos, SoundEvents.GRASS_BREAK, SoundSource.BLOCKS, 1.0F, 1.0F);
         return true;
     }
@@ -186,12 +188,17 @@ public class CowHayBlock extends HayBlock {
         return seen.size();
     }
 
-    // ПКМ: павутиною — зв'язати; яблуком/морквою по свіжому чистому — сіно з фруктами/овочами
+    // ПКМ: ниткою чи павутиною — зв'язати; яблуком/морквою по свіжому чистому — сіно з фруктами/овочами
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         ItemStack stack = player.getItemInHand(hand);
         BlockState next = null;
-        if (stack.is(Items.COBWEB) && !state.getValue(BOUND)) next = state.setValue(BOUND, true);
+        boolean tie = stack.is(Items.STRING) || stack.is(Items.COBWEB);   // нитка (Fij) або павутина
+        if (tie && state.getValue(BOUND)) {
+            if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.literal("Сіно вже зв'язане"), true);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (tie) next = state.setValue(BOUND, true);
         else if (state.getValue(STAGE) == Stage.FRESH && state.getValue(COND) == Cond.CLEAN && stack.is(Items.APPLE)) next = state.setValue(COND, Cond.APPLE);
         else if (state.getValue(STAGE) == Stage.FRESH && state.getValue(COND) == Cond.CLEAN && stack.is(Items.CARROT)) next = state.setValue(COND, Cond.CARROT);
         if (next == null) return InteractionResult.PASS;
@@ -375,6 +382,17 @@ public class CowHayBlock extends HayBlock {
         bs.putString("bound", String.valueOf(s.getValue(BOUND)));
         st.getOrCreateTag().put("BlockStateTag", bs);
         return st;
+    }
+
+    /** Номер вигляду предмета (як у tools/make_hay_assets.py): (стадія × 11 + стан) × 2 + нитки; без тегу — 0 (свіже чисте) */
+    public static int variant(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains("BlockStateTag")) return 0;
+        CompoundTag bs = tag.getCompound("BlockStateTag");
+        int st = 0, c = 0;
+        for (Stage s : Stage.values()) if (s.id.equals(bs.getString("stage"))) st = s.ordinal();
+        for (Cond x : Cond.values()) if (x.id.equals(bs.getString("condition"))) c = x.ordinal();
+        return (st * Cond.values().length + c) * 2 + ("true".equals(bs.getString("bound")) ? 1 : 0);
     }
 
     /** «Сухе, трохи брудне, зв'язане» — для назви предмета й книги */

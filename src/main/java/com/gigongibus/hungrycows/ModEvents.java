@@ -25,17 +25,14 @@ public class ModEvents {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
             event.accept(ModBlocks.SALT_LICK_ITEM);   // соляний лизунець
         }
-        // сіно мода: звичайне + приклади кожної стадії й стану (щоб Fij міг перевірити в творчому)
+        // сіно мода (Fij): лише 4 стадії — з нитками й без; і пучок свіжої трави
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
-            event.accept(ModBlocks.HAY_ITEM);
-            event.accept(ModBlocks.HAY_BUNDLE);
-            net.minecraft.world.level.block.state.BlockState hay = ModBlocks.HAY.get().defaultBlockState().setValue(CowHayBlock.BOUND, true);
-            for (CowHayBlock.Stage st : CowHayBlock.Stage.values()) event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st)));
-            for (CowHayBlock.Cond c : CowHayBlock.Cond.values()) {
-                if (c == CowHayBlock.Cond.CLEAN) continue;
-                CowHayBlock.Stage st = c == CowHayBlock.Cond.FIRE_FUNGUS ? CowHayBlock.Stage.DRY : CowHayBlock.Stage.FRESH;
-                event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st).setValue(CowHayBlock.COND, c)));
+            net.minecraft.world.level.block.state.BlockState hay = ModBlocks.HAY.get().defaultBlockState();
+            for (CowHayBlock.Stage st : CowHayBlock.Stage.values()) {
+                event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st).setValue(CowHayBlock.BOUND, true)));
+                event.accept(CowHayBlock.stackOf(hay.setValue(CowHayBlock.STAGE, st).setValue(CowHayBlock.BOUND, false)));
             }
+            event.accept(ModBlocks.HAY_BUNDLE);
         }
         if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
             event.accept(ModEntities.HUNGRY_COW_SPAWN_EGG);
@@ -60,6 +57,14 @@ public class ModEvents {
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.HUNGRY_COW.get(), com.gigongibus.hungrycows.client.HungryCowRenderer::new);
+        }
+
+        // Предмет «Сіно» виглядає так, як блок, що з нього поставиться (стадія, стан, нитки) — інакше всі були однакові (Fij)
+        @SubscribeEvent
+        public static void clientSetup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+            event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(ModBlocks.HAY_ITEM.get(),
+                    new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "variant"),
+                    (stack, level, entity, seed) -> CowHayBlock.variant(stack) * 0.01F + 0.001F));
         }
     }
 }

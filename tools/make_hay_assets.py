@@ -48,8 +48,18 @@ for st in STAGES:
                 variants[key] = v
 with open(R + '/blockstates/hay.json', 'w') as f:
     json.dump({'variants': variants}, f, indent=1)
+# предмет: свій вигляд для кожного стану (властивість hungrycows:variant = індекс / 100, CowHayBlock.variant)
+overrides = []
+for si, st in enumerate(STAGES):
+    for ci, c in enumerate(CONDS):
+        for bi, bound in enumerate((False, True)):
+            idx = (si * len(CONDS) + ci) * 2 + bi
+            if idx == 0:
+                continue
+            overrides.append({'predicate': {'hungrycows:variant': round(idx * 0.01, 2)},
+                              'model': f'hungrycows:block/hay/{st}_{c}_{"bound" if bound else "loose"}'})
 with open(R + '/models/item/hay.json', 'w') as f:
-    json.dump({'parent': 'hungrycows:block/hay/fresh_clean_loose'}, f)
+    json.dump({'parent': 'hungrycows:block/hay/fresh_clean_loose', 'overrides': overrides}, f, indent=1)
 with open(R + '/models/item/hay_bundle.json', 'w') as f:
     json.dump({'parent': 'minecraft:item/generated', 'textures': {'layer0': 'hungrycows:item/hay_bundle'}}, f)
 print('станів', len(variants), 'моделей', len(os.listdir(R + '/models/block/hay')))

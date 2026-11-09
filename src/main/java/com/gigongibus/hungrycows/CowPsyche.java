@@ -51,6 +51,7 @@ public class CowPsyche {
     public static final int GRIEF_MOO_EVERY = 45;           // мукає раз на ~45 с
     // стереотипії
     public static final double STEREO_RISE_PER_DAY = 1.0, STEREO_FALL_PER_DAY = 2.0;
+    public static final double LICK_FENCE_REACH = 2.0;      // «лиже паркан» — паркан не далі 2 бл.
     public static final double STEREO_FROM = 0.6;           // з 0,6 — видно (крутить язиком, лиже паркан, хитається)
     public static final int CROWD_COWS = 4, CROWD_RADIUS = 3;   // тісно: 4+ корови ближче 3 бл.
     public static final double BORED_STIM = 0.2;            // нудно: «стимуляція» (нове, різна їжа, пасовище, вилизування) нижче 0,2
@@ -200,7 +201,8 @@ public class CowPsyche {
         int close = cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CROWD_RADIUS), c -> c != cow).size();
         boolean bad = stimulation < BORED_STIM || close >= CROWD_COWS || cow.chem.isLonely();
         stereotypy = bad ? Math.min(1, stereotypy + STEREO_RISE_PER_DAY * perSec) : Math.max(0, stereotypy - STEREO_FALL_PER_DAY * perSec);
-        if (stereotypy >= STEREO_FROM && cow.getNavigation().isDone() && seconds % 8 == 0) doStereotypy();
+        if (stereotypy >= STEREO_FROM && cow.getNavigation().isDone() && cow.getDeltaMovement().horizontalDistanceSqr() < 0.0004
+                && seconds % 8 == 0) doStereotypy();   // лише коли стоїть (не йде за гравцем)
     }
 
     private boolean sees(String who) {
@@ -223,16 +225,15 @@ public class CowPsyche {
 
     // Повторювана дія без мети (поки без анімацій — погляд/поворот і напис)
     private void doStereotypy() {
-        if (stereoKind.isEmpty()) {
-            boolean fence = cow.touch.findScratchPost() != null;
+        // «лиже паркан» — лише коли паркан справді поруч (Fij: лизала, хоча паркану поруч не було, бо вид вибирався раз назавжди)
+        BlockPos post = cow.touch.findScratchPost();
+        boolean fence = post != null && post.distToCenterSqr(cow.position()) <= LICK_FENCE_REACH * LICK_FENCE_REACH;
+        if (stereoKind.isEmpty() || (stereoKind.equals("лиже паркан") && !fence)) {
             String[] kinds = fence ? new String[]{ "крутить язиком", "лиже паркан", "хитається" } : new String[]{ "крутить язиком", "хитається" };
             stereoKind = kinds[cow.getRandom().nextInt(kinds.length)];
         }
         switch (stereoKind) {
-            case "лиже паркан" -> {
-                BlockPos post = cow.touch.findScratchPost();
-                if (post != null) cow.getLookControl().setLookAt(post.getX() + 0.5, post.getY() + 0.5, post.getZ() + 0.5);
-            }
+            case "лиже паркан" -> cow.getLookControl().setLookAt(post.getX() + 0.5, post.getY() + 0.5, post.getZ() + 0.5);
             case "хитається" -> cow.setYBodyRot(cow.yBodyRot + (seconds % 16 < 8 ? 10 : -10));
             default -> cow.getLookControl().setLookAt(cow.getX() + cow.getLookAngle().x, cow.getEyeY() - 0.4, cow.getZ() + cow.getLookAngle().z);
         }

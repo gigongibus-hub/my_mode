@@ -1,1 +1,527 @@
-{"parent": "hungrycows:block/hay/fresh_clean_loose"}
+{
+ "parent": "hungrycows:block/hay/fresh_clean_loose",
+ "overrides": [
+  {
+   "predicate": {
+    "hungrycows:variant": 0.01
+   },
+   "model": "hungrycows:block/hay/fresh_clean_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.02
+   },
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.03
+   },
+   "model": "hungrycows:block/hay/fresh_slightly_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.04
+   },
+   "model": "hungrycows:block/hay/fresh_very_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.05
+   },
+   "model": "hungrycows:block/hay/fresh_very_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.06
+   },
+   "model": "hungrycows:block/hay/fresh_mold_dirt_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.07
+   },
+   "model": "hungrycows:block/hay/fresh_mold_dirt_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.08
+   },
+   "model": "hungrycows:block/hay/fresh_mold_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.09
+   },
+   "model": "hungrycows:block/hay/fresh_mold_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.1
+   },
+   "model": "hungrycows:block/hay/fresh_rotten_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.11
+   },
+   "model": "hungrycows:block/hay/fresh_rotten_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.12
+   },
+   "model": "hungrycows:block/hay/fresh_wet_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.13
+   },
+   "model": "hungrycows:block/hay/fresh_wet_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.14
+   },
+   "model": "hungrycows:block/hay/fresh_star_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.15
+   },
+   "model": "hungrycows:block/hay/fresh_star_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.16
+   },
+   "model": "hungrycows:block/hay/fresh_fire_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.17
+   },
+   "model": "hungrycows:block/hay/fresh_fire_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.18
+   },
+   "model": "hungrycows:block/hay/fresh_apple_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.19
+   },
+   "model": "hungrycows:block/hay/fresh_apple_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.2
+   },
+   "model": "hungrycows:block/hay/fresh_carrot_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.21
+   },
+   "model": "hungrycows:block/hay/fresh_carrot_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.22
+   },
+   "model": "hungrycows:block/hay/wilted_clean_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.23
+   },
+   "model": "hungrycows:block/hay/wilted_clean_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.24
+   },
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.25
+   },
+   "model": "hungrycows:block/hay/wilted_slightly_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.26
+   },
+   "model": "hungrycows:block/hay/wilted_very_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.27
+   },
+   "model": "hungrycows:block/hay/wilted_very_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.28
+   },
+   "model": "hungrycows:block/hay/wilted_mold_dirt_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.29
+   },
+   "model": "hungrycows:block/hay/wilted_mold_dirt_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.3
+   },
+   "model": "hungrycows:block/hay/wilted_mold_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.31
+   },
+   "model": "hungrycows:block/hay/wilted_mold_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.32
+   },
+   "model": "hungrycows:block/hay/wilted_rotten_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.33
+   },
+   "model": "hungrycows:block/hay/wilted_rotten_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.34
+   },
+   "model": "hungrycows:block/hay/wilted_wet_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.35
+   },
+   "model": "hungrycows:block/hay/wilted_wet_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.36
+   },
+   "model": "hungrycows:block/hay/wilted_star_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.37
+   },
+   "model": "hungrycows:block/hay/wilted_star_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.38
+   },
+   "model": "hungrycows:block/hay/wilted_fire_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.39
+   },
+   "model": "hungrycows:block/hay/wilted_fire_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.4
+   },
+   "model": "hungrycows:block/hay/wilted_apple_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.41
+   },
+   "model": "hungrycows:block/hay/wilted_apple_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.42
+   },
+   "model": "hungrycows:block/hay/wilted_carrot_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.43
+   },
+   "model": "hungrycows:block/hay/wilted_carrot_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.44
+   },
+   "model": "hungrycows:block/hay/dry_clean_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.45
+   },
+   "model": "hungrycows:block/hay/dry_clean_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.46
+   },
+   "model": "hungrycows:block/hay/dry_slightly_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.47
+   },
+   "model": "hungrycows:block/hay/dry_slightly_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.48
+   },
+   "model": "hungrycows:block/hay/dry_very_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.49
+   },
+   "model": "hungrycows:block/hay/dry_very_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.5
+   },
+   "model": "hungrycows:block/hay/dry_mold_dirt_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.51
+   },
+   "model": "hungrycows:block/hay/dry_mold_dirt_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.52
+   },
+   "model": "hungrycows:block/hay/dry_mold_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.53
+   },
+   "model": "hungrycows:block/hay/dry_mold_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.54
+   },
+   "model": "hungrycows:block/hay/dry_rotten_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.55
+   },
+   "model": "hungrycows:block/hay/dry_rotten_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.56
+   },
+   "model": "hungrycows:block/hay/dry_wet_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.57
+   },
+   "model": "hungrycows:block/hay/dry_wet_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.58
+   },
+   "model": "hungrycows:block/hay/dry_star_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.59
+   },
+   "model": "hungrycows:block/hay/dry_star_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.6
+   },
+   "model": "hungrycows:block/hay/dry_fire_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.61
+   },
+   "model": "hungrycows:block/hay/dry_fire_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.62
+   },
+   "model": "hungrycows:block/hay/dry_apple_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.63
+   },
+   "model": "hungrycows:block/hay/dry_apple_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.64
+   },
+   "model": "hungrycows:block/hay/dry_carrot_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.65
+   },
+   "model": "hungrycows:block/hay/dry_carrot_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.66
+   },
+   "model": "hungrycows:block/hay/overdried_clean_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.67
+   },
+   "model": "hungrycows:block/hay/overdried_clean_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.68
+   },
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.69
+   },
+   "model": "hungrycows:block/hay/overdried_slightly_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.7
+   },
+   "model": "hungrycows:block/hay/overdried_very_dirty_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.71
+   },
+   "model": "hungrycows:block/hay/overdried_very_dirty_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.72
+   },
+   "model": "hungrycows:block/hay/overdried_mold_dirt_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.73
+   },
+   "model": "hungrycows:block/hay/overdried_mold_dirt_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.74
+   },
+   "model": "hungrycows:block/hay/overdried_mold_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.75
+   },
+   "model": "hungrycows:block/hay/overdried_mold_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.76
+   },
+   "model": "hungrycows:block/hay/overdried_rotten_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.77
+   },
+   "model": "hungrycows:block/hay/overdried_rotten_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.78
+   },
+   "model": "hungrycows:block/hay/overdried_wet_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.79
+   },
+   "model": "hungrycows:block/hay/overdried_wet_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.8
+   },
+   "model": "hungrycows:block/hay/overdried_star_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.81
+   },
+   "model": "hungrycows:block/hay/overdried_star_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.82
+   },
+   "model": "hungrycows:block/hay/overdried_fire_fungus_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.83
+   },
+   "model": "hungrycows:block/hay/overdried_fire_fungus_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.84
+   },
+   "model": "hungrycows:block/hay/overdried_apple_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.85
+   },
+   "model": "hungrycows:block/hay/overdried_apple_bound"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.86
+   },
+   "model": "hungrycows:block/hay/overdried_carrot_loose"
+  },
+  {
+   "predicate": {
+    "hungrycows:variant": 0.87
+   },
+   "model": "hungrycows:block/hay/overdried_carrot_bound"
+  }
+ ]
+}

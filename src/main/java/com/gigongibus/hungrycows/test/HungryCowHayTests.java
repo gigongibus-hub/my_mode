@@ -53,7 +53,7 @@ public class HungryCowHayTests {
         };
     }
 
-    // 1. Незв'язане окреме розпадається на 9 пшениці; у купі з 4 — ні; павутина зв'язує
+    // 1. Свіже незв'язане окреме розпадається на 9 пучків свіжої трави; у купі з 4 — ні; нитка зв'язує
     @GameTest(template = "platform", batch = "hay", timeoutTicks = 20)
     public static void looseHayDecaysPileAndCobweb(GameTestHelper h) {
         var level = h.getLevel();
@@ -62,25 +62,29 @@ public class HungryCowHayTests {
         boolean scheduled = level.getBlockTicks().hasScheduledTick(lone, ModBlocks.HAY.get());
         boolean decayed = CowHayBlock.decayIfLoose(level.getBlockState(lone), level, lone);
         int wheat = 0;
-        for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, new AABB(lone).inflate(2))) if (e.getItem().is(Items.WHEAT)) wheat += e.getItem().getCount();
+        for (ItemEntity e : level.getEntitiesOfClass(ItemEntity.class, new AABB(lone).inflate(2))) if (e.getItem().is(ModBlocks.HAY_BUNDLE.get())) wheat += e.getItem().getCount();
         // купа 2×2
         BlockPos p0 = h.absolutePos(new BlockPos(5, 2, 5));
         for (BlockPos p : new BlockPos[] { p0, p0.east(), p0.south(), p0.east().south() }) level.setBlockAndUpdate(p, hay(Stage.FRESH, Cond.CLEAN, false));
         boolean pileDecayed = CowHayBlock.decayIfLoose(level.getBlockState(p0), level, p0);
         // павутина
         var player = FakePlayerFactory.getMinecraft(level);
-        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COBWEB));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STRING));   // нитка (Fij)
         BlockPos b = h.absolutePos(new BlockPos(2, 2, 6));
         level.setBlockAndUpdate(b, hay(Stage.FRESH, Cond.CLEAN, false));
         level.getBlockState(b).use(level, player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(b), Direction.UP, b, false));
         boolean bound = level.getBlockState(b).getValue(CowHayBlock.BOUND);
         boolean boundDecayed = CowHayBlock.decayIfLoose(level.getBlockState(b), level, b);
-        LOG.info("[тест] looseHayDecaysPileAndCobweb: відлік {}, окреме розпалось {} ({} пшениці), купа розпалась {}, павутина зв'язала {}, зв'язане розпалось {}",
+        LOG.info("[тест] looseHayDecaysPileAndCobweb: відлік {}, окреме розпалось {} ({} пучків), купа розпалась {}, нитка зв'язала {}, зв'язане розпалось {}",
                 scheduled, decayed, wheat, pileDecayed, bound, boundDecayed);
         level.getEntitiesOfClass(ItemEntity.class, new AABB(h.absolutePos(BlockPos.ZERO)).inflate(12)).forEach(ItemEntity::discard);
-        h.assertTrue(scheduled && decayed && wheat == 9, "окреме незв'язане не розпалось на 9 пшениці");
+        h.assertTrue(scheduled && decayed && wheat == 9, "окреме свіже незв'язане не розпалось на 9 пучків свіжої трави");
+        // вигляд предмета: різні стани — різні номери (інакше всі предмети однакові)
+        int v1 = CowHayBlock.variant(CowHayBlock.stackOf(hay(Stage.FRESH, Cond.CLEAN, false)));
+        int v2 = CowHayBlock.variant(CowHayBlock.stackOf(hay(Stage.OVERDRIED, Cond.CLEAN, true)));
+        h.assertTrue(v1 == 0 && v2 == (3 * 11) * 2 + 1, "номер вигляду предмета неправильний: " + v1 + " / " + v2);
         h.assertFalse(pileDecayed, "купа з 4 розпалась");
-        h.assertTrue(bound && !boundDecayed, "павутина не зв'язала / зв'язане розпалось");
+        h.assertTrue(bound && !boundDecayed, "нитка не зв'язала / зв'язане розпалось");
         h.succeed();
     }
 
