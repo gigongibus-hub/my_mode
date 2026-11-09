@@ -27,6 +27,10 @@ public class ModItems {
     public static final RegistryObject<Item> BLOODY_NEEDLE =
             HungryCowsMod.ITEMS.register("bloody_needle", () -> new BloodNeedleItem(new Item.Properties().stacksTo(1)));
 
+    // крок 2: папір з кров'ю (голка з кров'ю + папір; голка повертається чистою — BloodPaperRecipe)
+    public static final RegistryObject<Item> BLOODY_PAPER =
+            HungryCowsMod.ITEMS.register("bloody_paper", () -> new BloodNeedleItem(new Item.Properties().stacksTo(1)));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }

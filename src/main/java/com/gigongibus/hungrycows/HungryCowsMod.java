@@ -21,6 +21,7 @@ public class HungryCowsMod {
         ModItems.init();
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
+        BloodPaperRecipe.SERIALIZERS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
         ModNetwork.register();

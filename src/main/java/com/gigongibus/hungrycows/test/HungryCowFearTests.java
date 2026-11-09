@@ -302,4 +302,27 @@ public class HungryCowFearTests {
         h.assertTrue(ok, "укол голкою працює не так, як треба");
         h.succeed();
     }
+
+    // 6. Крок 2: голка з кров'ю + папір у верстаті → папір з кров'ю тієї самої корови, голка повертається чистою
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 20)
+    public static void bloodyPaperRecipe(GameTestHelper h) {
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player p, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+        };
+        net.minecraft.world.inventory.TransientCraftingContainer grid = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        net.minecraft.world.item.ItemStack needle = new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.BLOODY_NEEDLE.get());
+        needle.getOrCreateTag().putString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME, "Ромашка");
+        grid.setItem(0, needle);
+        grid.setItem(4, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAPER));
+        var recipe = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, grid, h.getLevel());
+        h.assertTrue(recipe.isPresent(), "рецепт паперу з кров'ю не знайдено");
+        net.minecraft.world.item.ItemStack out = recipe.get().assemble(grid, h.getLevel().registryAccess());
+        net.minecraft.world.item.ItemStack left = recipe.get().getRemainingItems(grid).get(0);
+        LOG.info("[тест] bloodyPaperRecipe: {} ({}), лишилось {}", out.getItem(), out.hasTag() ? out.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME) : "-", left.getItem());
+        h.assertTrue(out.is(com.gigongibus.hungrycows.ModItems.BLOODY_PAPER.get()) && out.hasTag()
+                && out.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME).equals("Ромашка"), "папір з кров'ю не той");
+        h.assertTrue(left.is(com.gigongibus.hungrycows.ModItems.NEEDLE.get()), "голка не повернулась чистою");
+        h.succeed();
+    }
 }
