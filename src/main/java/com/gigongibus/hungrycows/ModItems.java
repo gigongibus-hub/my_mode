@@ -21,6 +21,12 @@ public class ModItems {
     public static final RegistryObject<Item> CALF_TICKET =
             HungryCowsMod.ITEMS.register("calf_ticket", () -> new CalfTicketItem(new Item.Properties().stacksTo(1)));
 
+    // Духовний документ (ідея Fij), крок 1: голка (3 залізні самородки) і голка з кров'ю корови
+    public static final RegistryObject<Item> NEEDLE =
+            HungryCowsMod.ITEMS.register("needle", () -> new Item(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> BLOODY_NEEDLE =
+            HungryCowsMod.ITEMS.register("bloody_needle", () -> new BloodNeedleItem(new Item.Properties().stacksTo(1)));
+
     // викликається з головного класу, щоб предмети зареєструвалися вчасно
     static void init() {
     }

@@ -6,5 +6,7 @@
   "item.hungrycows.cow_book": "Корововедення",
   "item.hungrycows.brain_stick": "Палиця налагодження мозку",
   "block.hungrycows.salt_lick": "Соляний лизунець",
-  "item.hungrycows.calf_ticket": "Теля від мандрівного торговця"
+  "item.hungrycows.calf_ticket": "Теля від мандрівного торговця",
+  "item.hungrycows.needle": "Голка",
+  "item.hungrycows.bloody_needle": "Голка з кров'ю"
 }

@@ -6,5 +6,7 @@
   "item.hungrycows.cow_book": "Cow Husbandry",
   "item.hungrycows.brain_stick": "Brain Debug Stick",
   "block.hungrycows.salt_lick": "Salt Lick",
-  "item.hungrycows.calf_ticket": "Calf (from the wandering trader)"
+  "item.hungrycows.calf_ticket": "Calf (from the wandering trader)",
+  "item.hungrycows.needle": "Needle",
+  "item.hungrycows.bloody_needle": "Bloody Needle"
 }

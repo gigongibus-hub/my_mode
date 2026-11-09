@@ -278,4 +278,28 @@ public class HungryCowFearTests {
         h.assertTrue(pw < 0.5, "слабкий удар дав фобію (" + pw + ")");
         h.succeed();
     }
+
+    // 5. Голка (духовний документ, крок 1): укол — голка з кров'ю цієї корови, урону немає, страх росте, довіра падає
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 40)
+    public static void needlePricksCow(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        cow.setAge(0);
+        TestPlayer p = makePlayer(h);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.NEEDLE.get()));
+        float hp = cow.getHealth();
+        int fear = cow.fear, trust = cow.trust.get(p.getUUID());
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        net.minecraft.world.item.ItemStack got = p.getMainHandItem();
+        String name = got.hasTag() ? got.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME) : "";
+        LOG.info("[тест] needlePricksCow: {} ({}), здоров'я {} -> {}, страх {} -> {}, довіра {} -> {}", got.getItem(), name,
+                hp, cow.getHealth(), fear, cow.fear, trust, cow.trust.get(p.getUUID()));
+        boolean ok = got.is(com.gigongibus.hungrycows.ModItems.BLOODY_NEEDLE.get()) && name.equals(cow.family.name)
+                && cow.getHealth() >= hp && cow.fear > fear && cow.trust.get(p.getUUID()) < trust;
+        cow.discard();
+        removePlayer(h, p);
+        h.assertTrue(ok, "укол голкою працює не так, як треба");
+        h.succeed();
+    }
 }
