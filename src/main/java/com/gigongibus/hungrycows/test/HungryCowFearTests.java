@@ -382,11 +382,19 @@ public class HungryCowFearTests {
         p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, reader);
         cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
         String after = reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0);
-        LOG.info("[тест] cowReaderChain: {} рядків, перший «{}» (корова {}), після оновлення «{}»", lines, first, old, after);
+        // ще 5 оновлень можна (усього 6), сьоме — ні
+        for (int i = 0; i < 5; i++) cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        cow.family.name = "Сьоме";
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        String seventh = reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0);
+        int used = reader.getTag().getInt(com.gigongibus.hungrycows.CowReaderItem.TAG_REFRESHES);
+        LOG.info("[тест] cowReaderChain: {} рядків, перший «{}» (корова {}), після оновлення «{}», оновлень {}, після 7-ї спроби «{}»",
+                lines, first, old, after, used, seventh);
         cow.discard();
         removePlayer(h, p);
         h.assertTrue(reader.is(com.gigongibus.hungrycows.ModItems.COW_READER.get()) && lines > 20 && first.equals("#" + old), "Корововед без знімка корови");
         h.assertTrue(after.equals("#Оновлена"), "ПКМ по корові не оновив Корововед");
+        h.assertTrue(used == 6 && seventh.equals("#Оновлена"), "сьоме оновлення спрацювало (має бути лише 6)");
         h.succeed();
     }
 }

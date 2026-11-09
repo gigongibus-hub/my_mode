@@ -22,9 +22,14 @@ import java.util.List;
 /**
  * «Корововед» — духовний документ (ідея Fij, крок 4). Крафт: папір з кров'ю посередині + 8 щіпок піску душ навколо.
  * ПКМ у повітря — відкриває головне про корову, чия кров (ім'я, вік, стать, масть, молоко, родовід, характер, гени).
- * Це знімок на момент уколу голкою; «інколи потрібно оновлювати» (Fij) — ПКМ «Корововедом» по тій самій корові.
+ * Це знімок на момент уколу голкою; «інколи потрібно оновлювати» (Fij) — ПКМ «Корововедом» по тій самій корові,
+ * але лише 6 разів (Fij), далі — робити новий.
  */
 public class CowReaderItem extends Item {
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    public static final int MAX_REFRESHES = 6;   // оновити можна лише 6 разів, потім — робити новий (Fij)
+    public static final String TAG_REFRESHES = "Refreshes";
+
     public CowReaderItem(Properties properties) {
         super(properties);
     }
@@ -54,8 +59,15 @@ public class CowReaderItem extends Item {
     public static void refresh(ItemStack stack, HungryCow cow, Player player) {
         CompoundTag tag = stack.getOrCreateTag();
         if (tag.hasUUID(BloodNeedleItem.TAG_ID) && tag.getUUID(BloodNeedleItem.TAG_ID).equals(cow.getUUID())) {
+            int used = tag.getInt(TAG_REFRESHES);
+            if (used >= MAX_REFRESHES) {
+                player.displayClientMessage(Component.literal("Корововед більше не оновлюється: зроби новий"), true);
+                return;
+            }
             BloodNeedleItem.writeSnapshot(tag, cow);
-            player.displayClientMessage(Component.literal("Корововед оновлено: " + cow.family.name), true);
+            tag.putInt(TAG_REFRESHES, used + 1);
+            player.displayClientMessage(Component.literal("Корововед оновлено: " + cow.family.name
+                    + " (лишилось оновлень: " + (MAX_REFRESHES - used - 1) + ")"), true);
         } else {
             player.displayClientMessage(Component.literal("Це не та корова: Корововед знає лише "
                     + tag.getString(BloodNeedleItem.TAG_NAME)), true);
@@ -67,6 +79,7 @@ public class CowReaderItem extends Item {
         CompoundTag tag = stack.getTag();
         if (tag != null && tag.contains(BloodNeedleItem.TAG_NAME)) {
             tooltip.add(Component.literal("Корова: " + tag.getString(BloodNeedleItem.TAG_NAME)).withStyle(ChatFormatting.DARK_PURPLE));
+            tooltip.add(Component.literal("Оновлень лишилось: " + Math.max(0, MAX_REFRESHES - tag.getInt(TAG_REFRESHES))).withStyle(ChatFormatting.GRAY));
         }
     }
 }
