@@ -31,8 +31,9 @@ public final class FungusEffects {
     public static final double GLOW_RADIUS = 15;         // сяйво: мирні збігаються з 15 бл. (Fij) ...
     public static final double GLOW_HOSTILE_FACTOR = 2;  // ... злі помічають удвічі далі, ніж зазвичай (Fij: «з 5 бл. — то з 10»), не ближче 15
     public static final double GLOW_HOSTILE_MAX = 64;    // ... але не далі 64 бл.
-    public static final int SEIZURE_EVERY = 100;         // гравець: напад раз на 5 с (Fij) ...
-    public static final int SEIZURE_TICKS = 40;          // ... триває 2 с
+    public static final int SEIZURE_TICKS = 200;         // гравець: напад триває 10 с (Fij, було 2 с) ...
+    public static final int SEIZURE_PAUSE = 100;         // ... потім 5 с керування знову є (Fij: «раз на 5 с»)
+    public static final int SEIZURE_EVERY = SEIZURE_TICKS + SEIZURE_PAUSE;   // тобто напад повторюється кожні 15 с
     public static final double SEIZURE_PUSH = 0.28;      // під час нападу персонаж біжить до найближчого
     public static final double PLAYER_HIT_REACH = 3.0;   // і б'є, коли ближче 3 бл.
     public static final int HIT_EVERY = 20;              // моби під дією б'ють раз на 1 с
