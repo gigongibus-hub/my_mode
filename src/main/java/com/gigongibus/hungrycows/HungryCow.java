@@ -807,6 +807,13 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         return i >= 0 && i < Anim.values().length ? Anim.values()[i] : Anim.NONE;
     }
 
+    public static final float BULL_NAME_HEIGHT = 2.3F;   // модель бика вища за хітбокс — ім'я над головою, а не в тілі
+
+    @Override
+    public float getNameTagOffsetY() {
+        return bullModel() ? BULL_NAME_HEIGHT * sizeScale() : super.getNameTagOffsetY();
+    }
+
     /** Дорослий бик — малюється моделлю бика (на клієнті стать не відома, тому синхронізується) */
     public boolean bullModel() {
         return this.entityData.get(DATA_BULL);
