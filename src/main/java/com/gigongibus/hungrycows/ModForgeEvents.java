@@ -1,5 +1,7 @@
 package com.gigongibus.hungrycows;
 
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.BlockPos;
 import com.gigongibus.hungrycows.CowCharacter.Experience;
 import com.mojang.logging.LogUtils;
 import net.minecraft.commands.CommandSourceStack;
@@ -75,6 +77,7 @@ public class ModForgeEvents {
     // Команди для тестів (потрібні права оператора / чити):
     //   /hungrycows birth single — вагітна самка, за 10 с пологи, одне теля
     //   /hungrycows birth twins  — те саме, але двійнята
+    //   /hungrycows hay          — скрині з усіма видами сіна мода (стадії × стани × нитки), поруч із гравцем
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("hungrycows")
@@ -85,6 +88,7 @@ public class ModForgeEvents {
                 .then(Commands.literal("path").executes(c -> pathTest(c.getSource())))
                 .then(Commands.literal("old").executes(c -> spawnOld(c.getSource())))
                 .then(Commands.literal("sick").executes(c -> spawnSick(c.getSource())))
+                .then(Commands.literal("hay").executes(c -> hayChests(c.getSource())))
                 .then(Commands.literal("birth")
                         .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
                         .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
@@ -106,6 +110,45 @@ public class ModForgeEvents {
     }
 
     // /hungrycows sick — заражена «кашлем» корова (перевірити хворобу)
+    // ================= /hungrycows hay =================
+    public static final int HAY_CHEST_COUNT_EACH = 64;   // скільки кожного виду в скрині
+
+    /** Усі можливі види сіна: 4 стадії × стани (зірочник лише свіже, вогняний гриб лише сухе, яблуко/морква лише свіже) × нитки */
+    public static java.util.List<ItemStack> allHayKinds() {
+        java.util.List<ItemStack> out = new java.util.ArrayList<>();
+        net.minecraft.world.level.block.state.BlockState base = ModBlocks.HAY.get().defaultBlockState();
+        for (boolean bound : new boolean[] { true, false }) {
+            for (CowHayBlock.Stage st : CowHayBlock.Stage.values()) {
+                for (CowHayBlock.Cond c : CowHayBlock.Cond.values()) {
+                    if ((c == CowHayBlock.Cond.STAR_FUNGUS || c == CowHayBlock.Cond.APPLE || c == CowHayBlock.Cond.CARROT) && st != CowHayBlock.Stage.FRESH) continue;
+                    if (c == CowHayBlock.Cond.FIRE_FUNGUS && st != CowHayBlock.Stage.DRY) continue;
+                    ItemStack s = CowHayBlock.stackOf(base.setValue(CowHayBlock.STAGE, st).setValue(CowHayBlock.COND, c).setValue(CowHayBlock.BOUND, bound));
+                    s.setCount(HAY_CHEST_COUNT_EACH);
+                    out.add(s);
+                }
+            }
+        }
+        return out;
+    }
+
+    // Ставить скрині в ряд перед гравцем (на схід) і кладе в них усі види сіна
+    private static int hayChests(CommandSourceStack source) {
+        ServerLevel level = source.getLevel();
+        java.util.List<ItemStack> kinds = allHayKinds();
+        BlockPos start = BlockPos.containing(source.getPosition()).east(2);
+        int chests = 0;
+        for (int i = 0; i < kinds.size(); i += 27, chests++) {
+            BlockPos pos = start.east(chests);
+            level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState());
+            if (level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest) {
+                for (int j = 0; j < 27 && i + j < kinds.size(); j++) chest.setItem(j, kinds.get(i + j));
+            }
+        }
+        int n = chests;
+        source.sendSuccess(() -> Component.literal("Скрині з сіном: " + kinds.size() + " видів у " + n + " скринях (на схід від тебе)"), true);
+        return 1;
+    }
+
     private static int spawnSick(CommandSourceStack source) {
         ServerLevel level = source.getLevel();
         HungryCow cow = ModEntities.HUNGRY_COW.get().create(level);

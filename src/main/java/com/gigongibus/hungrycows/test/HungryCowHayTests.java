@@ -378,4 +378,28 @@ public class HungryCowHayTests {
             h.succeed();
         });
     }
+
+    // 11. /hungrycows hay — скрині з усіма видами сіна
+    @GameTest(template = "platform", batch = "hay_cmd", timeoutTicks = 20)
+    public static void hayChestCommand(GameTestHelper h) {
+        var level = h.getLevel();
+        BlockPos at = h.absolutePos(new BlockPos(1, 2, 4));
+        var src = level.getServer().createCommandSourceStack().withLevel(level).withPosition(Vec3.atBottomCenterOf(at)).withPermission(4).withSuppressedOutput();
+        level.getServer().getCommands().performPrefixedCommand(src, "hungrycows hay");
+        int stacks = 0, chests = 0;
+        java.util.Set<Integer> kinds = new java.util.HashSet<>();
+        for (int k = 0; k < 4; k++) {
+            if (level.getBlockEntity(at.east(2 + k)) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity chest) {
+                chests++;
+                for (int j = 0; j < chest.getContainerSize(); j++) {
+                    ItemStack st = chest.getItem(j);
+                    if (st.is(ModBlocks.HAY_ITEM.get())) { stacks++; kinds.add(CowHayBlock.variant(st)); }
+                }
+            }
+            level.setBlockAndUpdate(at.east(2 + k), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        }
+        LOG.info("[тест] hayChestCommand: скринь {}, стосів сіна {}, різних видів {}", chests, stacks, kinds.size());
+        h.assertTrue(chests == 3 && stacks == 64 && kinds.size() == 64, "у скринях не всі види сіна");
+        h.succeed();
+    }
 }
