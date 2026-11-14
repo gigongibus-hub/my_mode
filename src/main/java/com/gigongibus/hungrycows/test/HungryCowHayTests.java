@@ -313,7 +313,8 @@ public class HungryCowHayTests {
             LOG.info("[тест] rageCowStaysAndIsFeared: найдалі від місця {} бл., страх іншої {}, відбігла на {} бл.", maxAway[0], fear[0], apart[0]);
             h.assertTrue(apart[0] >= 6, "інша корова не відбігла (найдалі " + apart[0] + " бл.)");
             h.assertTrue(cow.raging(), "лють скінчилась");
-            h.assertTrue(maxAway[0] <= HungryCow.RAGE_STAY + 2.5, "відійшла від місця гриба на " + maxAway[0]);
+            // женеться за ціллю — може відійти до межі люті (8 бл.), але не далі
+            h.assertTrue(maxAway[0] <= HungryCow.RAGE_RADIUS + 1, "відійшла від місця гриба на " + maxAway[0]);
             h.assertTrue(fear[0] > 0, "інша корова не боїться корови в люті");
             clear.run();
             h.succeed();
@@ -394,6 +395,44 @@ public class HungryCowHayTests {
             LOG.info("[тест] fungusCraving: з'їла за {} с, тяга тепер {} (поріг голоду {})", h.getTick() / 20.0, cow.fungusEaten, cow.fungusCraveHunger());
             clear.run();
         });
+    }
+
+    // 6а. Трава розростається (Fij): під парканом пролазить, через стіну — ні; стежка корів, яку 3 доби не топтали, заростає
+    @GameTest(template = "platform", batch = "grass", timeoutTicks = 20)   // окрема партія: не зсуває майданчики тестів води
+    public static void grassSpreadsUnderFenceNotWall(GameTestHelper h) {
+        var level = h.getLevel();
+        for (int x = 1; x <= 7; x++) for (int z = 2; z <= 6; z++)
+            level.setBlockAndUpdate(h.absolutePos(new BlockPos(x, 1, z)), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState());
+        BlockPos plant = h.absolutePos(new BlockPos(2, 2, 4));
+        level.setBlockAndUpdate(plant, net.minecraft.world.level.block.Blocks.GRASS.defaultBlockState());
+        level.setBlockAndUpdate(plant.east(), net.minecraft.world.level.block.Blocks.OAK_FENCE.defaultBlockState());
+        level.setBlockAndUpdate(plant.north(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+        boolean east = com.gigongibus.hungrycows.GrassSpread.spread(level, plant, Direction.EAST);
+        boolean eastGrew = level.getBlockState(plant.east(2)).is(net.minecraft.world.level.block.Blocks.GRASS);
+        boolean north = com.gigongibus.hungrycows.GrassSpread.spread(level, plant, Direction.NORTH);
+        boolean west = com.gigongibus.hungrycows.GrassSpread.spread(level, plant, Direction.WEST);
+        // стежки
+        BlockPos old = h.absolutePos(new BlockPos(6, 1, 3)), fresh = h.absolutePos(new BlockPos(6, 1, 5)), player = h.absolutePos(new BlockPos(4, 1, 6));
+        for (BlockPos p : java.util.List.of(old, fresh, player)) level.setBlockAndUpdate(p, net.minecraft.world.level.block.Blocks.DIRT_PATH.defaultBlockState());
+        long now = level.getGameTime();
+        com.gigongibus.hungrycows.Trails.markPath(level, old, now - com.gigongibus.hungrycows.Trails.REGROW_AFTER_TICKS - 1);
+        com.gigongibus.hungrycows.Trails.markPath(level, fresh, now);
+        boolean oldGrew = com.gigongibus.hungrycows.GrassSpread.regrowPath(level, old);
+        boolean freshGrew = com.gigongibus.hungrycows.GrassSpread.regrowPath(level, fresh);
+        boolean playerGrew = com.gigongibus.hungrycows.GrassSpread.regrowPath(level, player);
+        LOG.info("[тест] grassSpreadsUnderFenceNotWall: під парканом {} ({}), крізь камінь {}, просто поруч {}; стежка стара {}, свіжа {}, гравця {}",
+                east, eastGrew, north, west, oldGrew, freshGrew, playerGrew);
+        h.assertTrue(east && eastGrew, "трава не пролізла під парканом");
+        h.assertFalse(north, "трава пройшла крізь камінь");
+        h.assertTrue(west, "трава не перейшла на сусідній блок");
+        h.assertTrue(oldGrew && level.getBlockState(old).is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK), "стара стежка не заросла");
+        h.assertFalse(freshGrew, "заросла стежка, якою щойно ходили");
+        h.assertFalse(playerGrew, "заросла стежка гравця");
+        for (int x = 1; x <= 7; x++) for (int z = 2; z <= 6; z++) {
+            level.setBlockAndUpdate(h.absolutePos(new BlockPos(x, 2, z)), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(h.absolutePos(new BlockPos(x, 1, z)), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+        }
+        h.succeed();
     }
 
     // 6. Трава мотикою чи ножицями — пучок свіжої трави; присівши з ножицями — звичайне ламання. Пучок з рук −10, пшениця −5

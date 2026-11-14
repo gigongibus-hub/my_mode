@@ -374,7 +374,8 @@ public class SleepGoal extends Goal {
         BlockPos here = cow.blockPosition();
         if (here.equals(lastStep)) return;
         lastStep = here.immutable();
-        Trails.step(level, here.below());
+        // на стежці (вона нижча за блок) корова «стоїть у ній» — крок рахуємо по самій стежці
+        Trails.step(level, level.getBlockState(here).is(net.minecraft.world.level.block.Blocks.DIRT_PATH) ? here : here.below());
     }
 
     private boolean nearBase(BlockPos base) {

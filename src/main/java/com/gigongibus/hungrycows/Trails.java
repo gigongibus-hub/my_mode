@@ -24,6 +24,7 @@ public class Trails extends SavedData {
     public static final int STEPS_TO_TRAIL = 36;             // стільки кроків корів на блоці — і він стає стежкою (Fij: «довше», було 12)
     public static final long FORGET_TICKS = 3 * 24000L;      // 3 доби ніхто не ступав — лічильник з нуля
     public static final int CLEANUP_OVER = 5000;             // записів більше — прибрати старі
+    public static final long REGROW_AFTER_TICKS = 3 * 24000L; // Fij (варіант А): стежкою 3 доби не ходили — може зарости травою
 
     private static final String NAME = HungryCowsMod.MODID + "_trails";
 
@@ -38,6 +39,7 @@ public class Trails extends SavedData {
     }
 
     private final Map<Long, Entry> entries = new HashMap<>();
+    private final Map<Long, Long> paths = new HashMap<>();   // стежки, витоптані коровами: коли по них ходили востаннє
 
     public static Trails get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(Trails::load, Trails::new, NAME);
@@ -45,9 +47,13 @@ public class Trails extends SavedData {
 
     // Корова ступила на блок ground (дорогою додому)
     public static void step(ServerLevel level, BlockPos ground) {
-        if (!level.getBlockState(ground).is(Blocks.GRASS_BLOCK)) return;
         Trails data = get(level);
         long now = level.getGameTime();
+        if (level.getBlockState(ground).is(Blocks.DIRT_PATH)) {   // ходять стежкою — вона не заростає
+            if (data.paths.containsKey(ground.asLong())) { data.paths.put(ground.asLong(), now); data.setDirty(); }
+            return;
+        }
+        if (!level.getBlockState(ground).is(Blocks.GRASS_BLOCK)) return;
         Entry e = data.entries.get(ground.asLong());
         if (e == null || now - e.last > FORGET_TICKS) {
             e = new Entry(0, now);
@@ -65,10 +71,29 @@ public class Trails extends SavedData {
                 level.destroyBlock(above, false);         // трава чи квітка витоптана
             }
             level.setBlockAndUpdate(ground, Blocks.DIRT_PATH.defaultBlockState());
+            data.paths.put(ground.asLong(), now);
         }
         if (data.entries.size() > CLEANUP_OVER) {
             data.entries.values().removeIf(x -> now - x.last > FORGET_TICKS);
         }
+    }
+
+    /** Стежку корів давно не топтали — може зарости (стежки гравця не заростають) */
+    public static boolean canRegrow(ServerLevel level, BlockPos path) {
+        Long last = get(level).paths.get(path.asLong());
+        return last != null && level.getGameTime() - last > REGROW_AFTER_TICKS;
+    }
+
+    public static void regrown(ServerLevel level, BlockPos path) {
+        Trails data = get(level);
+        if (data.paths.remove(path.asLong()) != null) data.setDirty();
+    }
+
+    /** Для тестів: стежка корів, останній крок — when */
+    public static void markPath(ServerLevel level, BlockPos path, long when) {
+        Trails data = get(level);
+        data.paths.put(path.asLong(), when);
+        data.setDirty();
     }
 
     // ---------- збереження ----------
@@ -84,6 +109,14 @@ public class Trails extends SavedData {
             list.add(c);
         }
         tag.put("Entries", list);
+        ListTag pl = new ListTag();
+        for (Map.Entry<Long, Long> e : paths.entrySet()) {
+            CompoundTag c = new CompoundTag();
+            c.putLong("Pos", e.getKey());
+            c.putLong("Last", e.getValue());
+            pl.add(c);
+        }
+        tag.put("Paths", pl);
         return tag;
     }
 
@@ -93,6 +126,11 @@ public class Trails extends SavedData {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag c = list.getCompound(i);
             data.entries.put(c.getLong("Pos"), new Entry(c.getInt("Steps"), c.getLong("Last")));
+        }
+        ListTag pl = tag.getList("Paths", Tag.TAG_COMPOUND);
+        for (int i = 0; i < pl.size(); i++) {
+            CompoundTag c = pl.getCompound(i);
+            data.paths.put(c.getLong("Pos"), c.getLong("Last"));
         }
         return data;
     }

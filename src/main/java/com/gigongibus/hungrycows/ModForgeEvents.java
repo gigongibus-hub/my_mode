@@ -352,6 +352,7 @@ public class ModForgeEvents {
         if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
             VillageCows.tick(level);
             Regrowth.tick(level);
+            GrassSpread.tick(level);
             if (level.getGameTime() % CowSmell.TRAIL_EVERY == 0) CowSmell.recordTrails(level);   // сліди запаху
         }
     }
@@ -365,6 +366,15 @@ public class ModForgeEvents {
             CowHearing.onSound(level, event.getState().getSoundType().getBreakSound().getLocation().toString(), Vec3.atCenterOf(event.getPos()), event.getPlayer());
             // трава мотикою чи ножицями (не присівши) — пучок свіжої трави (Fij)
             if (GrassHarvest.harvest(level, event.getPos(), event.getState(), event.getPlayer())) event.setCanceled(true);
+            // трава (рослина) згодом відросте на тому самому місці (Fij); у творчому — ні (будують)
+            net.minecraft.world.level.block.state.BlockState st = event.getState();
+            if ((st.is(net.minecraft.world.level.block.Blocks.GRASS) || st.is(net.minecraft.world.level.block.Blocks.TALL_GRASS))
+                    && (event.getPlayer() == null || !event.getPlayer().isCreative())) {
+                BlockPos plant = st.is(net.minecraft.world.level.block.Blocks.TALL_GRASS)
+                        && st.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF) == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER
+                        ? event.getPos().below() : event.getPos();
+                Regrowth.plantBroken(level, plant);
+            }
         }
     }
 

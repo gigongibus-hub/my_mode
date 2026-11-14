@@ -39,6 +39,8 @@ public class Regrowth extends SavedData {
     public static final int TALL_TICKS = 5 * 1200;
     public static final int FLOWER_MIN_TICKS = 5 * 1200;    // з'їдена квітка відростає за 5–8 хв
     public static final int FLOWER_MAX_TICKS = 8 * 1200;          // низька трава стає високою через 5 хв
+    public static final int BROKEN_MIN_TICKS = 5 * 1200;    // Fij: траву зламав гравець — на тому місці відросте за 5–10 хв
+    public static final int BROKEN_MAX_TICKS = 10 * 1200;
     public static final int CHECK_EVERY_TICKS = 20;         // як часто перевіряти, чи щось уже має відрости
 
     private static final String NAME = HungryCowsMod.MODID + "_regrowth";
@@ -82,6 +84,11 @@ public class Regrowth extends SavedData {
         if (level.getRandom().nextFloat() < PLANT_CHANCE) {
             get(level).add(level, plantPos, Kind.SHORT_PLANT, Blocks.AIR, PLANT_MIN_TICKS, PLANT_MAX_TICKS);
         }
+    }
+
+    // Гравець зламав низьку/високу траву (Fij): згодом виросте знову (завжди, не 30%)
+    public static void plantBroken(ServerLevel level, BlockPos plantPos) {
+        get(level).add(level, plantPos, Kind.SHORT_PLANT, Blocks.AIR, BROKEN_MIN_TICKS, BROKEN_MAX_TICKS);
     }
 
     // Корова з'їла квітку: через 5–8 хв на тому самому місці виросте така сама
