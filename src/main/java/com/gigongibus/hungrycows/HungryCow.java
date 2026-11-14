@@ -792,6 +792,9 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);
     private int animUntil = 0;
     public int idleAnimNext = 0, idleAnimUntil = 0;   // лише в грі гравця: коли грати «спокій 1»
+    public boolean animMoving = false, animRunning = false;   // лише в грі гравця: іде / біжить (з запасом)
+    public float animSpeed = 1.0F;
+    public float headYawNow = 0, headPitchNow = 0;       // лише в грі гравця: плавний поворот голови                       // лише в грі гравця: плавна швидкість програвання
     private final software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache geoCache =
             software.bernie.geckolib.util.GeckoLibUtil.createInstanceCache(this);
 
@@ -828,7 +831,7 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
 
     @Override
     public void registerControllers(software.bernie.geckolib.core.animation.AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new software.bernie.geckolib.core.animation.AnimationController<>(this, "main", 4, BullAnimations::predicate));
+        controllers.add(new software.bernie.geckolib.core.animation.AnimationController<>(this, "main", BullAnimations.TRANSITION_TICKS, BullAnimations::predicate));
     }
 
     @Override

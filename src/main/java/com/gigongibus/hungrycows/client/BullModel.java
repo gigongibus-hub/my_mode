@@ -16,11 +16,13 @@ public class BullModel extends GeoModel<HungryCow> {
     private static final ResourceLocation TEXTURE = new ResourceLocation(HungryCowsMod.MODID, "textures/entity/bull.png");
     private static final ResourceLocation ANIMATIONS = new ResourceLocation(HungryCowsMod.MODID, "animations/bull.animation.json");
     // кістки моделі Fij: golowa = шия + голова разом (жодна анімація її не крутить), golowabez = лише голова (її крутять
-    // анімації «спокій 1» і «підготовка»). Погляд — лише головою (Fij: «шия й голова повинні бути розділені»), пиття — усією шиєю
+    // анімації «спокій 1» і «підготовка»; шарнір — на стику з шиєю). Fij: шия НЕ гнеться ні від погляду, ні коли їсть чи п'є —
+    // нахиляється лише голова
     private static final String NECK = "golowa";
     private static final String HEAD = "golowabez";
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    public static final float DRINK_PITCH = 40F;   // п'є — шия з головою донизу на 40° (в анімації пиття голова не рухається)
+    public static final float DRINK_PITCH = 50F;   // п'є — голова (не шия) донизу на 50° (в анімації пиття голова не рухається)
+    public static final float HEAD_SMOOTH = 0.15F; // голова повертається плавно (15% за кадр), а не стрибком
     public static final float LOOK_PITCH_MAX = 30F; // головою вгору/вниз не більше 30°
 
     @Override
@@ -46,20 +48,24 @@ public class BullModel extends GeoModel<HungryCow> {
         CoreGeoBone neck = getAnimationProcessor().getBone(NECK);
         CoreGeoBone head = getAnimationProcessor().getBone(HEAD);
         HungryCow.Anim a = cow.animNow();
-        if (neck != null) {
+        if (neck != null) {   // шия завжди рівна (Fij)
+            neck.setRotX(neck.getInitialSnapshot().getRotX());
             neck.setRotY(neck.getInitialSnapshot().getRotY());
-            neck.setRotX(neck.getInitialSnapshot().getRotX() - (a == HungryCow.Anim.DRINK ? DRINK_PITCH * Mth.DEG_TO_RAD : 0));
         }
-        // голову крутить анімація (спокій 1, підготовка) — не заважаємо; інакше — дивиться, куди бик
+        // голову крутить анімація (спокій 1, підготовка) — не заважаємо
         boolean animatedHead = a == HungryCow.Anim.PREPARE || cow.tickCount < cow.idleAnimUntil;
         if (head == null || animatedHead) return;
         EntityModelData data = state.getData(DataTickets.ENTITY_MODEL_DATA);
         float yaw = 0, pitch = 0;
-        if (a == HungryCow.Anim.NONE && data != null) {
+        if (a == HungryCow.Anim.DRINK) {
+            pitch = -DRINK_PITCH;   // у GeckoLib «донизу» = мінус
+        } else if (a == HungryCow.Anim.NONE && data != null) {
             yaw = data.netHeadYaw();
             pitch = Mth.clamp(data.headPitch(), -LOOK_PITCH_MAX, LOOK_PITCH_MAX);
         }
-        head.setRotY(head.getInitialSnapshot().getRotY() + yaw * Mth.DEG_TO_RAD);
-        head.setRotX(head.getInitialSnapshot().getRotX() + pitch * Mth.DEG_TO_RAD);
+        cow.headYawNow += (yaw - cow.headYawNow) * HEAD_SMOOTH;
+        cow.headPitchNow += (pitch - cow.headPitchNow) * HEAD_SMOOTH;
+        head.setRotY(head.getInitialSnapshot().getRotY() + cow.headYawNow * Mth.DEG_TO_RAD);
+        head.setRotX(head.getInitialSnapshot().getRotX() + cow.headPitchNow * Mth.DEG_TO_RAD);
     }
 }

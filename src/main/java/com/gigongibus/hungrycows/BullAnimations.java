@@ -16,6 +16,11 @@ public final class BullAnimations {
     public static final float WALK_NORMAL = 0.4F;          // звичайна хода: анімація ходьби з рідною швидкістю
     public static final float RUN_NORMAL = 0.6F;           // звичайний біг ...
     public static final float RUN_FASTER = 1.4F;           // ... грається в 1,4 раза швидше за файл (у файлі біг 2 с, як ходьба)
+    public static final int TRANSITION_TICKS = 10;         // перехід між анімаціями 0,5 с (було 0,2 с — «топорно», Fij)
+    // поріг з запасом, щоб на межі анімація не смикалась туди-сюди: почати йти з 0,08, зупинитись нижче 0,03;
+    // почати бігти з 0,6, перестати нижче 0,45
+    public static final float WALK_START = 0.08F, WALK_STOP = 0.03F, RUN_START = 0.6F, RUN_STOP = 0.45F;
+    public static final float SPEED_SMOOTH = 0.08F;        // швидкість програвання міняється плавно (8% за кадр), а не стрибком
     public static final int IDLE_LENGTH_TICKS = 80;        // спокій 1 триває 4 с ...
     public static final int IDLE_PAUSE_MIN = 200, IDLE_PAUSE_MAX = 500;   // ... і повторюється раз на 10–25 с, поки стоїть
 
@@ -30,28 +35,30 @@ public final class BullAnimations {
     private BullAnimations() {
     }
 
+    private static PlayState play(AnimationState<HungryCow> state, HungryCow cow, RawAnimation anim, float speed) {
+        cow.animSpeed += (speed - cow.animSpeed) * SPEED_SMOOTH;
+        state.setControllerSpeed(cow.animSpeed);
+        return state.setAndContinue(anim);
+    }
+
     public static PlayState predicate(AnimationState<HungryCow> state) {
         HungryCow cow = state.getAnimatable();
         float legs = Math.abs(state.getLimbSwingAmount());
-        state.setControllerSpeed(1.0F);
+        // іде / біжить — з запасом (гістерезис)
+        cow.animMoving = cow.animMoving ? legs > WALK_STOP : legs > WALK_START;
+        cow.animRunning = cow.animMoving && (cow.animRunning ? legs > RUN_STOP : legs > RUN_START);
         switch (cow.animNow()) {
-            case PREPARE -> { return state.setAndContinue(PREPARE); }
-            case ATTACK -> {
-                state.setControllerSpeed(Math.max(1.0F, legs / RUN_NORMAL * RUN_FASTER));
-                return state.setAndContinue(ATTACK);
-            }
-            case CHEW -> { return state.setAndContinue(CHEW); }
-            case DRINK -> { return state.setAndContinue(DRINK); }
+            case PREPARE -> { return play(state, cow, PREPARE, 1.0F); }
+            case ATTACK -> { return play(state, cow, ATTACK, Math.max(1.0F, legs / RUN_NORMAL * RUN_FASTER)); }
+            case CHEW -> { return play(state, cow, CHEW, 1.0F); }
+            case DRINK -> { return play(state, cow, DRINK, 1.0F); }
             default -> { }
         }
-        if (state.isMoving()) {
+        if (cow.animMoving) {
             cow.idleAnimNext = 0;
-            if (legs >= RUN_FROM) {
-                state.setControllerSpeed(Math.max(1.0F, legs / RUN_NORMAL * RUN_FASTER));
-                return state.setAndContinue(RUN);
-            }
-            state.setControllerSpeed(Math.max(0.5F, Math.min(1.5F, legs / WALK_NORMAL)));
-            return state.setAndContinue(WALK);
+            cow.idleAnimUntil = 0;
+            if (cow.animRunning) return play(state, cow, RUN, Math.max(1.0F, legs / RUN_NORMAL * RUN_FASTER));
+            return play(state, cow, WALK, Math.max(0.6F, Math.min(1.4F, legs / WALK_NORMAL)));
         }
         // стоїть: час від часу «спокій 1»
         int t = cow.tickCount;
@@ -60,7 +67,8 @@ public final class BullAnimations {
             cow.idleAnimUntil = t + IDLE_LENGTH_TICKS;
             cow.idleAnimNext = cow.idleAnimUntil + IDLE_PAUSE_MIN + cow.getRandom().nextInt(IDLE_PAUSE_MAX - IDLE_PAUSE_MIN + 1);
         }
-        if (t < cow.idleAnimUntil) return state.setAndContinue(IDLE);
+        if (t < cow.idleAnimUntil) return play(state, cow, IDLE, 1.0F);
+        cow.animSpeed = 1.0F;
         return PlayState.STOP;
     }
 }

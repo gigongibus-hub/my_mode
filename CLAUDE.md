@@ -342,7 +342,11 @@
   як було, середина ближче 2). Сон: `SleepGoal.bullFits` — навколо місця 1,35 бл. без стін (довга модель не крізь стіну), між
   місцями біля бика 3 бл. (`BULL_CLAIM_SPACE`). `PersonalSpaceGoal`: «затісно» = пів ширин обох + 0,4. Стать: Sex 1 — самка,
   2 — самець. ТЕСТИ: `TestWorld.cow(h, pos)` — завжди самка (раніше випадкова стать; великий бик не пролазив у тестові проходи
-  1 бл. — 8 провалів); биків тести беруть `HungryCowBullTests.spawnSex`. Тест `bullIsBigAndEatsWithMouth` (1,41 × 1,96, морда 1,2). Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
+  1 бл. — 8 провалів); биків тести беруть `HungryCowBullTests.spawnSex`. Тест `bullIsBigAndEatsWithMouth` (1,41 × 1,96, морда 1,2).
+  Fij («анімації топорні; коли їдять і п'ють, шия теж згинається»): шия `golowa` ЗАВЖДИ рівна; погляд і пиття — лише голова
+  `golowabez` (шарнір на стику з шиєю; п'є — 50°); голова повертається плавно (`HEAD_SMOOTH` 15%/кадр). `BullAnimations`: перехід
+  10 тіків (було 4), іде/біжить з запасом (почати 0,08 / зупинитись 0,03; біг 0,6 / 0,45), швидкість програвання — плавно (8%/кадр).
+  Перевірка в грі: датапак `run/saves/bulltest` розчищає майданчик із водою біля гравця (спавн часом у кроні дерева). Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
   (4 с, раз на 10–25 с); `is_standing2` — жує жуйку (`RuminateGoal`); `is_standing3` — п'є (`DrinkWaterGoal`); `pidhutovka_atak` —
   готується напасти (`ConfrontGoal` BULL_WARN; `BullFightGoal` перші 2 с — `PREPARE_TICKS`, `fightStart`); `atac` — біжить нападати
   (CHARGE/ATTACK, бійка, «бий» у `FearGoal`, `MushroomRageGoal`); `jty` хода, `bigh` біг (ноги ≥ 0,55; ×1,4 швидше). Дію ціль
