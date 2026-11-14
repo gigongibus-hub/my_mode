@@ -15,7 +15,7 @@ public class CowMoveControl extends MoveControl {
     // Fij «тікаючи, бики крутять кола»: бик повертає повільно, а біг уперед не чекав повороту — коло ширше за точку шляху,
     // і бик кружляв довкола неї. Тепер, поки ціль збоку чи позаду, бик іде повільніше (спершу розвертається).
     public static final float BULL_SLOW_FROM_DEG = 30F;   // ціль більше ніж на 30° убік — бик сповільнюється
-    public static final float BULL_TURN_SPEED_MIN = 0.15F; // ціль позаду — 15% швидкості (майже розворот на місці)
+    public static final float BULL_TURN_SPEED_MIN = 0.1F;  // ціль збоку (90°) чи позаду — 10% швидкості (розворот майже на місці)
 
     private final HungryCow cow;
 
@@ -41,9 +41,8 @@ public class CowMoveControl extends MoveControl {
         float want = (float) (net.minecraft.util.Mth.atan2(dz, dx) * (180F / Math.PI)) - 90F;
         float off = Math.abs(net.minecraft.util.Mth.wrapDegrees(want - cow.getYRot()));
         if (off <= BULL_SLOW_FROM_DEG) return;
-        // 30° → уся швидкість, 120° і більше → найменша
-        float k = 1F - (off - BULL_SLOW_FROM_DEG) / 90F;
-        k = Math.max(BULL_TURN_SPEED_MIN, Math.min(1F, k));
+        // швидкість × косинус кута: 45° → 71%, 60° → 50%, 90° і більше → найменша (інакше обходить точку колом)
+        float k = Math.max(BULL_TURN_SPEED_MIN, net.minecraft.util.Mth.cos(off * ((float) Math.PI / 180F)));
         cow.setSpeed(cow.getSpeed() * k);
     }
 

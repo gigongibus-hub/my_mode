@@ -160,12 +160,16 @@ public class HungryCowBullTests {
             if (last[0] != null) walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
             last[0] = bull.position();
         });
+        double[] atArrival = { -1 };
         h.succeedWhen(() -> {
             double d = Math.hypot(bull.getX() - t.x, bull.getZ() - t.z);
-            h.assertTrue(d < 1.5, String.format("не добіг: до цілі %.2f бл., пробіг %.1f бл.", d, walked[0]));
-            LOG.info("[тест] bullTurnsAndRunsNotCircles: добіг за {} с, пробіг {} бл. (напряму 9)",
-                    String.format("%.1f", h.getTick() / 20.0), String.format("%.1f", walked[0]));
-            h.assertTrue(walked[0] < 14, String.format("бик кружляв: пробіг %.1f бл. замість 9", walked[0]));
+            if (atArrival[0] < 0 && d < 1.5) {
+                atArrival[0] = walked[0];
+                LOG.info("[тест] bullTurnsAndRunsNotCircles: добіг за {} с, пробіг {} бл. (напряму 9)",
+                        String.format("%.1f", h.getTick() / 20.0), String.format("%.1f", walked[0]));
+            }
+            h.assertTrue(atArrival[0] >= 0, String.format("не добіг: до цілі %.2f бл., пробіг %.1f бл.", d, walked[0]));
+            if (atArrival[0] >= 14) h.fail(String.format("бик кружляв: пробіг %.1f бл. замість 9", atArrival[0]));
             bull.discard();
         });
     }
