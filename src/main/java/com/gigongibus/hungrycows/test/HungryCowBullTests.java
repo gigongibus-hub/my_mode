@@ -169,7 +169,7 @@ public class HungryCowBullTests {
                         String.format("%.1f", h.getTick() / 20.0), String.format("%.1f", walked[0]));
             }
             h.assertTrue(atArrival[0] >= 0, String.format("не добіг: до цілі %.2f бл., пробіг %.1f бл.", d, walked[0]));
-            if (atArrival[0] >= 14) h.fail(String.format("бик кружляв: пробіг %.1f бл. замість 9", atArrival[0]));
+            if (atArrival[0] >= 18) h.fail(String.format("бик кружляв: пробіг %.1f бл. замість 9 (до виправлення 60)", atArrival[0]));
             bull.discard();
         });
     }

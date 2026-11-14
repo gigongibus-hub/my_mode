@@ -79,7 +79,9 @@ public final class FungusEffects {
     private static LivingEntity nearest(LivingEntity self, double radius) {
         LivingEntity best = null;
         double bestD = radius * radius;
-        for (LivingEntity e : self.level().getEntitiesOfClass(LivingEntity.class, self.getBoundingBox().inflate(radius), e -> canBeHit(e, self))) {
+        // лише кого бачить (крізь стіну не дістане, а за склом — і не вистрілить; Fij: розбійник «не стріляв»)
+        for (LivingEntity e : self.level().getEntitiesOfClass(LivingEntity.class, self.getBoundingBox().inflate(radius),
+                e -> canBeHit(e, self) && self.hasLineOfSight(e))) {
             double d = self.distanceToSqr(e);
             if (d < bestD) { bestD = d; best = e; }
         }
