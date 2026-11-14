@@ -9,6 +9,19 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.AbstractGolem;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
+import net.minecraft.world.entity.animal.MushroomCow;
+import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.entity.projectile.ThrownPotion;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.entity.living.LivingEvent;
@@ -37,13 +50,23 @@ public final class FungusEffects {
     public static final double SEIZURE_PUSH = 0.28;      // під час нападу персонаж біжить до найближчого
     public static final double PLAYER_HIT_REACH = 3.0;   // і б'є, коли ближче 3 бл.
     public static final int HIT_EVERY = 20;              // моби під дією б'ють раз на 1 с
-    public static final double MOB_SPEED = 1.2;          // і біжать до цілі
+    // Швидкість погоні (Fij: верблюди, нюхачі, віслюки, кози, кролики ледь ішли, а жителі й заклиначі мчали): раніше всім ×1,2
+    // від їхньої швидкості, а вона в мобів різна в 5 разів (верблюд 0,09, житель 0,5). Тепер усі біжать приблизно однаково.
+    public static final double CHASE_SPEED = 0.3;        // швидкість погоні (як у зомбі, що біжить), однакова для всіх ...
+    public static final double SPEED_MOD_MIN = 0.5;      // ... множник не менше ×0,5 (швидкі: житель, торговець, заклинач) ...
+    public static final double SPEED_MOD_MAX = 4.0;      // ... і не більше ×4 (повільні: верблюд, нюхач)
+    public static final double RABBIT_SPEED_MOD = 2.2;   // кролик стрибає — йому потрібен множник як у переляку (ванільно 2,2)
+    // Стрільці (Fij): далеко — час від часу стріляють, близько — б'ють рукою
+    public static final double RANGED_FROM = 5.0;        // далі 5 бл. — стріляє (ближче — б'є)
+    public static final double RANGED_MAX = 16.0;        // не далі 16 бл.
+    public static final int SHOOT_EVERY = 60;            // раз на 3 с
     public static final float NO_ATTACK_DAMAGE = 2F;     // урон мирних мобів (у них немає «сили атаки») — 1 серце
     public static final int FORCE_REFRESH = 40;          // ціль «сяйва» тримається 2 с і оновлюється щосекунди
 
     private record Forced(LivingEntity target, int until) { }
     private static final Map<Mob, Forced> FORCED = new WeakHashMap<>();
     private static final Map<Mob, Integer> NEXT_HIT = new WeakHashMap<>();
+    private static final Map<Mob, Integer> NEXT_SHOT = new WeakHashMap<>();
 
     private FungusEffects() {
     }
@@ -66,13 +89,80 @@ public final class FungusEffects {
     /** Моб іде на ціль і б'є її (і мирний — тоді урон 1 серце) */
     private static void force(Mob mob, LivingEntity target, int ticks) {
         FORCED.put(mob, new Forced(target, mob.tickCount + ticks));
-        if (mob.getTarget() != target && !(mob instanceof HungryCow)) mob.setTarget(target);
+        // стрільцям ціль не даємо: їхній ванільний лук/арбалет стріляв би й упритул (Fij: близько — рукою), а відьма «лікує своїх»
+        if (mob.getTarget() != target && !(mob instanceof HungryCow) && !isShooter(mob)) mob.setTarget(target);
+    }
+
+    /** Чим моб може стріляти зараз */
+    private static boolean isShooter(Mob m) {
+        if (m instanceof net.minecraft.world.entity.monster.CrossbowAttackMob) return m.isHolding(Items.CROSSBOW);
+        if (m instanceof net.minecraft.world.entity.monster.AbstractSkeleton) return m.isHolding(Items.BOW);
+        if (m instanceof net.minecraft.world.entity.monster.Drowned) return m.isHolding(Items.TRIDENT);
+        return m instanceof net.minecraft.world.entity.monster.RangedAttackMob;
+    }
+
+    /** Множник швидкості, щоб моб біг зі швидкістю CHASE_SPEED */
+    private static double speedFor(Mob m) {
+        if (m instanceof net.minecraft.world.entity.animal.Rabbit) return RABBIT_SPEED_MOD;
+        double base = m.getAttribute(Attributes.MOVEMENT_SPEED) != null ? m.getAttributeBaseValue(Attributes.MOVEMENT_SPEED) : 0.25;
+        if (base <= 0) return SPEED_MOD_MAX;
+        return Math.max(SPEED_MOD_MIN, Math.min(SPEED_MOD_MAX, CHASE_SPEED / base));
+    }
+
+    /** Моб із «мозком» (житель, верблюд, нюхач, коза, піглін…): мозок сам веде навігацію, тож ціль ходьби — через його пам'ять */
+    private static boolean brainWalks(Mob m) {
+        return m.getBrain().checkMemory(MemoryModuleType.WALK_TARGET, net.minecraft.world.entity.ai.memory.MemoryStatus.REGISTERED);
+    }
+
+    private static void walkTo(Mob m, LivingEntity t) {
+        double speed = speedFor(m);
+        if (m instanceof net.minecraft.world.entity.monster.Drowned d) d.setSearchingForLand(d.isInWater());   // у воді — пливе (не тоне)
+        if (brainWalks(m)) {
+            m.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(t, (float) speed, 0));
+            return;
+        }
+        if (m.tickCount % 5 == 0 || m.getNavigation().isDone()) m.getNavigation().moveTo(t, speed);
+    }
+
+    private static void stopWalking(Mob m) {
+        m.getNavigation().stop();
+        if (brainWalks(m)) m.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+    }
+
+    // постріл: арбалет (піглін, розбійник) — стріла; лук — як у ванільній; відьма — шкідливе зілля навіть у «своїх»
+    private static void shoot(Mob m, LivingEntity t) {
+        if (m instanceof Witch w) { witchThrow(w, t); return; }
+        if (m instanceof net.minecraft.world.entity.monster.CrossbowAttackMob c) {
+            AbstractArrow arrow = ProjectileUtil.getMobArrow(m, new ItemStack(Items.ARROW), 1F);
+            c.shootCrossbowProjectile(t, m.getMainHandItem(), arrow, 0F);
+            m.level().addFreshEntity(arrow);
+            m.playSound(SoundEvents.CROSSBOW_SHOOT, 1F, 1F);
+            return;
+        }
+        if (m instanceof net.minecraft.world.entity.monster.RangedAttackMob r) r.performRangedAttack(t, 1F);
+    }
+
+    private static void witchThrow(Witch w, LivingEntity t) {
+        Vec3 v = t.getDeltaMovement();
+        double dx = t.getX() + v.x - w.getX(), dy = t.getEyeY() - 1.1 - w.getY(), dz = t.getZ() + v.z - w.getZ();
+        double d = Math.sqrt(dx * dx + dz * dz);
+        Potion potion = t.isInvertedHealAndHarm() ? Potions.HEALING : Potions.HARMING;   // нежить лікування ранить
+        if (d >= 8 && !t.hasEffect(MobEffects.MOVEMENT_SLOWDOWN)) potion = Potions.SLOWNESS;
+        else if (t.getHealth() >= 8 && !t.hasEffect(MobEffects.POISON) && !t.isInvertedHealAndHarm()) potion = Potions.POISON;
+        else if (d <= 3 && !t.hasEffect(MobEffects.WEAKNESS) && w.getRandom().nextFloat() < 0.25F) potion = Potions.WEAKNESS;
+        ThrownPotion tp = new ThrownPotion(w.level(), w);
+        tp.setItem(PotionUtils.setPotion(new ItemStack(Items.SPLASH_POTION), potion));
+        tp.setXRot(tp.getXRot() - 20F);
+        tp.shoot(dx, dy + d * 0.2, dz, 0.75F, 8F);
+        w.level().playSound(null, w.getX(), w.getY(), w.getZ(), SoundEvents.WITCH_THROW, w.getSoundSource(), 1F, 0.8F + w.getRandom().nextFloat() * 0.4F);
+        w.level().addFreshEntity(tp);
     }
 
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity e = event.getEntity();
         if (e.level().isClientSide) return;
+        if (e instanceof MushroomCow && e.hasEffect(ModEffects.FUNGUS_BURN.get())) e.removeEffect(ModEffects.FUNGUS_BURN.get());   // Fij: грибна корова не реагує
         if (e.hasEffect(ModEffects.FUNGUS_BURN.get())) burn(e);
         else if (e instanceof ServerPlayer p) {   // ефект скінчився посеред нападу — керування повертається
             var speed = p.getAttribute(Attributes.MOVEMENT_SPEED);
@@ -177,20 +267,34 @@ public final class FungusEffects {
             FORCED.remove(mob);
             farSightOff(mob);
             if (mob.getTarget() == t) mob.setTarget(null);
+            if (mob instanceof net.minecraft.world.entity.monster.Drowned d) d.setSearchingForLand(false);
             return;
         }
         mob.getLookControl().setLookAt(t, 30F, 30F);
         double reach = (mob.getBbWidth() + t.getBbWidth()) / 2.0 + 1.0;
-        if (mob.distanceTo(t) > reach) {
-            if (mob.tickCount % 5 == 0 || mob.getNavigation().isDone()) mob.getNavigation().moveTo(t, MOB_SPEED);
+        double dist = mob.distanceTo(t);
+        if (dist > reach) {
+            walkTo(mob, t);
+            // стрілець далеко — час від часу стріляє (і далі йде ближче)
+            if (dist > RANGED_FROM && dist <= RANGED_MAX && isShooter(mob) && mob.hasLineOfSight(t)) {
+                int next = NEXT_SHOT.getOrDefault(mob, mob.tickCount + SHOOT_EVERY / 2);
+                if (!NEXT_SHOT.containsKey(mob)) NEXT_SHOT.put(mob, next);
+                if (mob.tickCount >= next) {
+                    NEXT_SHOT.put(mob, mob.tickCount + SHOOT_EVERY);
+                    shoot(mob, t);
+                }
+            }
             return;
         }
+        stopWalking(mob);   // уже поруч — не пхається впритул (жителі й торговці налазили на ціль)
         int next = NEXT_HIT.getOrDefault(mob, 0);
         if (mob.tickCount < next) return;
         NEXT_HIT.put(mob, mob.tickCount + HIT_EVERY);
-        float dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE) != null ? (float) mob.getAttributeValue(Attributes.ATTACK_DAMAGE) : NO_ATTACK_DAMAGE;
         mob.swing(InteractionHand.MAIN_HAND);
-        t.hurt(mob.damageSources().mobAttack(mob), dmg);
+        // справжній удар моба (з його особливостями: отрута печерного павука, іссушення, голод від кадавра, зачарування зброї);
+        // мирні (без «сили атаки») — 1 серце
+        if (mob.getAttribute(Attributes.ATTACK_DAMAGE) != null) mob.doHurtTarget(t);
+        else t.hurt(mob.damageSources().mobAttack(mob), NO_ATTACK_DAMAGE);
     }
 
     /** Для тестів: чи змушений моб бити саме цю ціль */

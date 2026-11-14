@@ -183,4 +183,123 @@ public class HungryCowFungusTests {
             h.succeed();
         });
     }
+
+    // ---------- Fij: моби під грибогорінням поводяться як справжні (партія "fungus_mobs2") ----------
+    private static final String MOBS2 = "fungus_mobs2";
+
+    // 6. Печерний павук б'є своїм ударом — з отрутою
+    @GameTest(template = "arena", batch = MOBS2, timeoutTicks = 200)
+    public static void burnCaveSpiderPoisons(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var spider = h.spawn(EntityType.CAVE_SPIDER, new BlockPos(5, 2, 7));
+        var pig = h.spawn(EntityType.PIG, new BlockPos(8, 2, 7));
+        pig.setNoAi(true);
+        spider.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; spider.discard(); pig.discard(); };
+        h.runAfterDelay(199, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 10 с печерний павук не отруїв свиню");
+            h.assertTrue(pig.hasEffect(net.minecraft.world.effect.MobEffects.POISON), "ще не отруїв");
+            LOG.info("[тест] burnCaveSpiderPoisons: отрута за {} с", h.getTick() / 20.0);
+            clear.run();
+        });
+    }
+
+    // 7. Розбійник з арбалетом далеко (9 бл.) — стріляє
+    @GameTest(template = "arena", batch = MOBS2, timeoutTicks = 200)
+    public static void burnPillagerShootsFromFar(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var pillager = h.spawn(EntityType.PILLAGER, new BlockPos(3, 2, 7));
+        pillager.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+        var pig = h.spawn(EntityType.PIG, new BlockPos(12, 2, 7));
+        pig.setNoAi(true);
+        pillager.setNoAi(true);   // лише для тесту: стоїть далеко (іти ближче не буде)
+        pillager.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
+        boolean[] cleared = { false };
+        Runnable clear = () -> {
+            cleared[0] = true; pillager.discard(); pig.discard();
+            h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.AbstractArrow.class, new AABB(h.absolutePos(BlockPos.ZERO)).inflate(30)).forEach(a -> a.discard());
+        };
+        h.runAfterDelay(199, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 10 с розбійник не вистрілив");
+            var arrows = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.AbstractArrow.class,
+                    new AABB(h.absolutePos(BlockPos.ZERO)).inflate(30), a -> a.getOwner() == pillager);
+            h.assertTrue(!arrows.isEmpty(), "ще не стріляв");
+            LOG.info("[тест] burnPillagerShootsFromFar: постріл за {} с", h.getTick() / 20.0);
+            clear.run();
+        });
+    }
+
+    // 8. Відьма кидає в іншу відьму шкідливе зілля, а не лікування
+    @GameTest(template = "arena", batch = MOBS2, timeoutTicks = 200)
+    public static void burnWitchHarmsWitch(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var a = h.spawn(EntityType.WITCH, new BlockPos(2, 2, 7));
+        var b = h.spawn(EntityType.WITCH, new BlockPos(11, 2, 7));
+        a.setNoAi(true);
+        b.setNoAi(true);
+        a.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
+        boolean[] cleared = { false };
+        java.util.List<String> thrown = new java.util.ArrayList<>();
+        Runnable clear = () -> {
+            cleared[0] = true; a.discard(); b.discard();
+            h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.ThrownPotion.class, new AABB(h.absolutePos(BlockPos.ZERO)).inflate(30)).forEach(p -> p.discard());
+        };
+        h.runAfterDelay(199, clear);
+        h.onEachTick(() -> {
+            for (var p : h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.ThrownPotion.class,
+                    new AABB(h.absolutePos(BlockPos.ZERO)).inflate(30), p -> p.getOwner() == a)) {
+                String id = net.minecraftforge.registries.ForgeRegistries.POTIONS.getKey(PotionUtils.getPotion(p.getItem())).getPath();
+                if (!thrown.contains(id)) thrown.add(id);
+            }
+        });
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 10 с відьма нічого не кинула");
+            h.assertTrue(!thrown.isEmpty(), "ще не кидала");
+            LOG.info("[тест] burnWitchHarmsWitch: кинула {} за {} с", thrown, h.getTick() / 20.0);
+            h.assertFalse(thrown.stream().anyMatch(x -> x.contains("healing") || x.contains("regeneration")), "відьма лікує: " + thrown);
+            clear.run();
+        });
+    }
+
+    // 9. Грибна корова не реагує на вогнегриб
+    @GameTest(template = "arena", batch = MOBS2, timeoutTicks = 20)
+    public static void mooshroomIgnoresBurn(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var m = h.spawn(EntityType.MOOSHROOM, new BlockPos(7, 2, 7));
+        m.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
+        h.runAtTickTime(5, () -> {
+            boolean has = m.hasEffect(ModEffects.FUNGUS_BURN.get());
+            m.discard();
+            h.assertFalse(has, "грибна корова під грибогорінням");
+            h.succeed();
+        });
+    }
+
+    // 10. Верблюд (повільний, з «мозком») під грибогорінням таки біжить до цілі
+    @GameTest(template = "arena", batch = MOBS2, timeoutTicks = 200)
+    public static void burnCamelRuns(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var camel = h.spawn(EntityType.CAMEL, new BlockPos(3, 2, 7));
+        var pig = h.spawn(EntityType.PIG, new BlockPos(12, 2, 7));
+        pig.setNoAi(true);
+        camel.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
+        float hp = pig.getHealth();
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; camel.discard(); pig.discard(); };
+        h.runAfterDelay(199, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], String.format("за 10 с верблюд не добіг: до свині %.1f бл.", camel.distanceTo(pig)));
+            h.assertTrue(pig.getHealth() < hp, "ще не вдарив");
+            LOG.info("[тест] burnCamelRuns: добіг і вдарив за {} с", h.getTick() / 20.0);
+            clear.run();
+        });
+    }
 }
