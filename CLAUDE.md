@@ -328,9 +328,9 @@
   (README Fij). Ресурси: `geo/bull.geo.json` (identifier `geometry.bull`), `animations/bull.animation.json` (усі 7 разом),
   `textures/entity/bull.png` (128×128). Лише ДОРОСЛІ бики (`DATA_BULL` синхронізується з `isBull()` раз на с); корови й телята —
   стара модель з мастями; бики всі коричневі (гени масті лишаються й передаються). `client/HungryCowDispatchRenderer` (зареєстрований у
-  `ModEvents`) вибирає `BullRenderer` (GeoEntityRenderer, `MODEL_SCALE` 0,75 × ген розміру — модель Fij 1,25 × 2,1 × 3 бл., СПИТАТИ
-  Fij про розмір; без тями — на боці) або `HungryCowRenderer`; світіння зірочника — у диспетчері. `client/BullModel`: голова
-  (`golowa`) за поглядом, коли немає дії. Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
+  `ModEvents`) вибирає `BullRenderer` (GeoEntityRenderer, `MODEL_SCALE` 0,95 × ген розміру — Fij: «трохи більший за гравця», ≈2 бл.; хітбокс коров'ячий; без тями — на боці) або `HungryCowRenderer`; світіння зірочника — у диспетчері. `client/BullModel`: голова
+  (`golowa`, жодна анімація її не крутить) за поглядом, коли немає дії; п'є — нахил 40° (`DRINK_PITCH`); кут ставити ЦІЛИЙ від
+  `getInitialSnapshot` — додавання щокадру крутило голову без кінця (Fij). Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
   (4 с, раз на 10–25 с); `is_standing2` — жує жуйку (`RuminateGoal`); `is_standing3` — п'є (`DrinkWaterGoal`); `pidhutovka_atak` —
   готується напасти (`ConfrontGoal` BULL_WARN; `BullFightGoal` перші 2 с — `PREPARE_TICKS`, `fightStart`); `atac` — біжить нападати
   (CHARGE/ATTACK, бійка, «бий» у `FearGoal`, `MushroomRageGoal`); `jty` хода, `bigh` біг (ноги ≥ 0,55; ×1,4 швидше). Дію ціль

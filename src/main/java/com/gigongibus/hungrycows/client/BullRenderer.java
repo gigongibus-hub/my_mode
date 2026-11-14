@@ -10,8 +10,9 @@ import software.bernie.geckolib.renderer.GeoEntityRenderer;
 /** Рендерер дорослого бика: модель Fij, розмір за геном, без тями — лежить на боці */
 public class BullRenderer extends GeoEntityRenderer<HungryCow> {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    // Модель Fij велика (1,25 × 2,1 × 3 бл.; ванільна корова ≈ 0,9 × 1,4 × 1,5). Множник розміру — спитати Fij
-    public static final float MODEL_SCALE = 0.75F;
+    // Модель Fij: 1,25 × 2,1 × 3 бл. Fij: «трохи більший за гравця» (гравець 1,8) — 0,95 → ≈ 2 бл. заввишки (× ген розміру).
+    // Хітбокс (для ходьби, дверей) лишається коров'ячим — інакше бик не пролазив би в проходи 1 бл.
+    public static final float MODEL_SCALE = 0.95F;
 
     public BullRenderer(EntityRendererProvider.Context context) {
         super(context, new BullModel());

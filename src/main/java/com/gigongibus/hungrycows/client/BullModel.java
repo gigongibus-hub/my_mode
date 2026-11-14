@@ -15,7 +15,9 @@ public class BullModel extends GeoModel<HungryCow> {
     private static final ResourceLocation MODEL = new ResourceLocation(HungryCowsMod.MODID, "geo/bull.geo.json");
     private static final ResourceLocation TEXTURE = new ResourceLocation(HungryCowsMod.MODID, "textures/entity/bull.png");
     private static final ResourceLocation ANIMATIONS = new ResourceLocation(HungryCowsMod.MODID, "animations/bull.animation.json");
-    private static final String HEAD = "golowa";   // кістка голови в моделі Fij
+    private static final String HEAD = "golowa";   // кістка голови в моделі Fij (жодна анімація її не крутить)
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    public static final float DRINK_PITCH = 40F;   // п'є — голова нахилена донизу на 40° (в анімації пиття голова не рухається)
 
     @Override
     public ResourceLocation getModelResource(HungryCow cow) {
@@ -32,15 +34,24 @@ public class BullModel extends GeoModel<HungryCow> {
         return ANIMATIONS;
     }
 
-    // Голова повертається туди, куди дивиться бик (крім анімацій, де голову веде сама анімація)
+    // Голова: дивиться туди, куди бик (коли нічим не зайнятий); п'є — нахилена; інакше — рівно.
+    // Кут ставимо ЦІЛИЙ (від початкового положення), а не додаємо: раніше додавали щокадру — голова крутилась без кінця (Fij)
     @Override
     public void setCustomAnimations(HungryCow cow, long instanceId, AnimationState<HungryCow> state) {
         super.setCustomAnimations(cow, instanceId, state);
-        if (cow.animNow() != HungryCow.Anim.NONE) return;
         CoreGeoBone head = getAnimationProcessor().getBone(HEAD);
+        if (head == null) return;
+        float baseX = head.getInitialSnapshot().getRotX(), baseY = head.getInitialSnapshot().getRotY();
+        float yaw = 0, pitch = 0;
+        HungryCow.Anim a = cow.animNow();
         EntityModelData data = state.getData(DataTickets.ENTITY_MODEL_DATA);
-        if (head == null || data == null) return;
-        head.setRotY(head.getRotY() + data.netHeadYaw() * Mth.DEG_TO_RAD);
-        head.setRotX(head.getRotX() + data.headPitch() * Mth.DEG_TO_RAD);
+        if (a == HungryCow.Anim.DRINK) {
+            pitch = DRINK_PITCH;
+        } else if (a == HungryCow.Anim.NONE && data != null) {
+            yaw = data.netHeadYaw();
+            pitch = data.headPitch();
+        }
+        head.setRotY(baseY + yaw * Mth.DEG_TO_RAD);
+        head.setRotX(baseX + pitch * Mth.DEG_TO_RAD);
     }
 }
