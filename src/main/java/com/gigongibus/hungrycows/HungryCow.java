@@ -104,6 +104,7 @@ public class HungryCow extends Cow {
     public static final double STAR_LURE_RANGE_MAX = 48;   // ... не далі 48 бл.
     public static final double STAR_LURE_CHANCE = 0.1;     // кожні 5 с злий моб у радіусі без цілі йде на неї: 10% × (1 + з'їдено)
     public static final int STAR_LURE_EVERY = 5;           // перевірка раз на 5 с
+    public static final int STAR_LIGHT_EVERY = 4;          // світло навколо (невидимий блок світла) переставляє раз на 4 тіки
     public static final int FEVER_SECONDS = 300;           // потім 5 хв «горить зсередини» ...
     public static final double FEVER_HEAT_PER_SECOND = 1.5; // ... перегрівання +1,5/с (вода охолоджує, як від спеки)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
@@ -343,6 +344,43 @@ public class HungryCow extends Cow {
     public int starGlowLevel() {
         int n = this.level().isClientSide ? this.entityData.get(DATA_GLOW) : starEaten;
         return n <= 0 ? 0 : Math.min(15, STAR_GLOW_FIRST + STAR_GLOW_STEP * (n - 1));
+    }
+
+    // Зірочник (Fij): світяться й блоки навколо — у повітрі там, де корова, стоїть невидимий ванільний блок світла,
+    // він іде за коровою; старий прибирається (і коли корова зникла / чанк вивантажено, і після завантаження)
+    private BlockPos lightPos = null;
+
+    private void updateStarLight() {
+        int level = starGlowLevel();
+        if (level <= 0 || this.tickCount % STAR_LIGHT_EVERY != 0) return;
+        BlockPos want = this.blockPosition();
+        if (!this.level().getBlockState(want).isAir() && !isOurLight(want)) want = want.above();   // у траві/килимі — блоком вище
+        if (want.equals(lightPos) && isOurLight(want)) return;
+        clearStarLight();
+        if (this.level().getBlockState(want).isAir()) {
+            this.level().setBlock(want, net.minecraft.world.level.block.Blocks.LIGHT.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.LightBlock.LEVEL, level), 3);
+            lightPos = want;
+        }
+    }
+
+    private boolean isOurLight(BlockPos p) {
+        return this.level().getBlockState(p).is(net.minecraft.world.level.block.Blocks.LIGHT);
+    }
+
+    private void clearStarLight() {
+        if (lightPos != null && this.level().hasChunkAt(lightPos) && isOurLight(lightPos)) {
+            this.level().setBlock(lightPos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+        }
+        lightPos = null;
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        // вивантаження чанка світ не чіпає: світло збережеться разом з місцем і прибереться після завантаження
+        if (!this.level().isClientSide && reason != Entity.RemovalReason.UNLOADED_TO_CHUNK
+                && reason != Entity.RemovalReason.UNLOADED_WITH_PLAYER) clearStarLight();
+        super.remove(reason);
     }
 
     // зірочник: злі моби поруч ідуть на корову
@@ -986,6 +1024,7 @@ public class HungryCow extends Cow {
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
+        if (!this.level().isClientSide) updateStarLight();
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             // сіно мода під ногами: корова його брудить (лежить — удвічі швидше)
             CowHayBlock.trample(this.level(), this.getBlockPosBelowThatAffectsMyMovement(), sleeping ? 2 : 1);
@@ -2086,6 +2125,7 @@ public class HungryCow extends Cow {
         tag.putInt("FeverLeft", feverLeft);
         tag.putInt("FungusEaten", fungusEaten);
         tag.putInt("StarEaten", starEaten);
+        if (lightPos != null) tag.putLong("StarLight", lightPos.asLong());
         tag.putFloat("ToxinDamage", toxinDamage);
         tag.putInt("DyingLeft", dyingLeft);
         tag.put("Trust", trust.save());
@@ -2126,6 +2166,7 @@ public class HungryCow extends Cow {
         feverLeft = tag.getInt("FeverLeft");
         fungusEaten = tag.getInt("FungusEaten");
         starEaten = tag.getInt("StarEaten");
+        lightPos = tag.contains("StarLight") ? BlockPos.of(tag.getLong("StarLight")) : null;   // прибере, коли переставлятиме
         this.entityData.set(DATA_GLOW, starEaten);
         toxinLeft = tag.getInt("ToxinLeft");
         toxinDamage = tag.getFloat("ToxinDamage");

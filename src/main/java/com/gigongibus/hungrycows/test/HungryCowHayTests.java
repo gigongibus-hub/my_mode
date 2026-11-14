@@ -294,17 +294,28 @@ public class HungryCowHayTests {
         cow.removeEffect(MobEffects.WITHER);
         cow.setHealth(cow.getMaxHealth());
         h.assertTrue(glow1 == HungryCow.STAR_GLOW_FIRST && glow2 == HungryCow.STAR_GLOW_FIRST + HungryCow.STAR_GLOW_STEP, "світіння " + glow1 + " / " + glow2);
+        int[] lightSeen = { 0 };
+        h.onEachTick(() -> {   // блок світла біля корови (світяться й блоки навколо)
+            for (BlockPos p : BlockPos.betweenClosed(cow.blockPosition(), cow.blockPosition().above()))
+                if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.LIGHT))
+                    lightSeen[0] = Math.max(lightSeen[0], h.getLevel().getBlockState(p).getValue(net.minecraft.world.level.block.LightBlock.LEVEL));
+        });
         cow.starEaten = 9;   // шанс приманити 100% (2 рази — 30% на 5 с, тест був би випадковим)
         var sk = h.spawn(EntityType.SKELETON, new BlockPos(12, 2, 12));
         sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));   // не горить на сонці
         sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         boolean[] cleared = { false };
-        Runnable clear = () -> { cleared[0] = true; cow.discard(); sk.discard(); };
+        Runnable clear = () -> {
+            cleared[0] = true; cow.discard(); sk.discard();
+            h.assertFalse(h.getLevel().getBlockState(cow.blockPosition()).is(net.minecraft.world.level.block.Blocks.LIGHT)
+                    || h.getLevel().getBlockState(cow.blockPosition().above()).is(net.minecraft.world.level.block.Blocks.LIGHT), "після корови лишилось світло");
+        };
         h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
         h.succeedWhen(() -> {
             h.assertFalse(cleared[0], "за 15 с скелет не пішов на корову");
             h.assertTrue(sk.getTarget() == cow, "скелет ще не приманений");
-            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет приманений за {} с", glow1, glow2, h.getTick() / 20.0);
+            h.assertTrue(lightSeen[0] > 0, "навколо корови немає світла");
+            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет приманений за {} с, світло {}", glow1, glow2, h.getTick() / 20.0, lightSeen[0]);
             clear.run();
         });
     }
