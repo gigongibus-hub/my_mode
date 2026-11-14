@@ -34,6 +34,11 @@ public class ModItems {
     // крок 3: ступка з товкачиком (діорит; 34 використання — Fij) і щіпка піску душ (ступка + пісок душ → 9 щіпок)
     public static final RegistryObject<Item> MORTAR =
             HungryCowsMod.ITEMS.register("mortar", () -> new MortarItem(new Item.Properties().durability(MortarItem.USES)));
+    // гриби з сіна (Fij, текстури Fij): для зілля
+    public static final RegistryObject<Item> FIRE_FUNGUS =
+            HungryCowsMod.ITEMS.register("fire_fungus", () -> new Item(new Item.Properties()));
+    public static final RegistryObject<Item> STAR_FUNGUS =
+            HungryCowsMod.ITEMS.register("star_fungus", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> SOUL_SAND_PINCH =
             HungryCowsMod.ITEMS.register("soul_sand_pinch", () -> new Item(new Item.Properties()));
 

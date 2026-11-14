@@ -44,6 +44,16 @@ public class ModEvents {
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
         }
+        // гриби й зілля з грибів (Fij): ванільна вкладка кладе кожне зілля в усі пляшки — зайві (не та тривалість) прибираємо
+        if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
+            event.accept(ModItems.FIRE_FUNGUS);
+            event.accept(ModItems.STAR_FUNGUS);
+        }
+        if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS || event.getTabKey() == CreativeModeTabs.COMBAT) {
+            java.util.List<net.minecraft.world.item.ItemStack> wrong = new java.util.ArrayList<>();
+            for (var en : event.getEntries()) if (ModPotions.wrongBottle(en.getKey())) wrong.add(en.getKey());
+            for (var s : wrong) event.getEntries().remove(s);
+        }
         // молоко кожної якості (поки для тестів)
         if (event.getTabKey() == CreativeModeTabs.FOOD_AND_DRINKS) {
             for (MilkQuality q : MilkQuality.values()) {

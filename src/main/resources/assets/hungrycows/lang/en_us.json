@@ -15,5 +15,17 @@
   "item.hungrycows.cow_reader": "Cow Reader",
   "block.hungrycows.hay": "Hay",
   "item.hungrycows.hay_bundle": "Bundle of Fresh Grass",
-  "effect.hungrycows.mushroom_rage": "Mushroom Rage"
+  "effect.hungrycows.mushroom_rage": "Mushroom Rage",
+  "item.hungrycows.fire_fungus": "Fire Fungus",
+  "item.hungrycows.star_fungus": "Star Fungus",
+  "effect.hungrycows.fungus_burn": "Fungus Burn",
+  "effect.hungrycows.fungus_glow": "Fungus Glow",
+  "item.minecraft.potion.effect.fire_fungus": "Potion of Fungus Burn",
+  "item.minecraft.splash_potion.effect.fire_fungus": "Splash Potion of Fungus Burn",
+  "item.minecraft.lingering_potion.effect.fire_fungus": "Lingering Potion of Fungus Burn",
+  "item.minecraft.tipped_arrow.effect.fire_fungus": "Arrow of Fungus Burn",
+  "item.minecraft.potion.effect.star_fungus": "Potion of Fungus Glow",
+  "item.minecraft.splash_potion.effect.star_fungus": "Splash Potion of Fungus Glow",
+  "item.minecraft.lingering_potion.effect.star_fungus": "Lingering Potion of Fungus Glow",
+  "item.minecraft.tipped_arrow.effect.star_fungus": "Arrow of Fungus Glow"
 }

@@ -24,6 +24,10 @@ public class HungryCowsMod {
         BloodPaperRecipe.SERIALIZERS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModEffects.EFFECTS.register(modEventBus);
+        ModPotions.POTIONS.register(modEventBus);                       // зілля з грибів (Fij)
+        modEventBus.addListener(ModPotions::setup);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPotions::onBrewed);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(ModPotions::onCrafted);
         ModNetwork.register();
     }
 }

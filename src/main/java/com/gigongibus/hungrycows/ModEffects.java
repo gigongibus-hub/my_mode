@@ -16,6 +16,16 @@ public class ModEffects {
     // «Грибна лють» (план Fij): корова з'їла сіно з вогняним грибом — 1 доба б'є всіх навколо місця, де з'їла
     public static final RegistryObject<MobEffect> MUSHROOM_RAGE = EFFECTS.register("mushroom_rage", MushroomRageEffect::new);
 
+    // Зілля з грибів (Fij): грибогоріння (вогнегриб, помаранчеве) і грибне сяйво (зірочник, жовте). Дія — `FungusEffects`
+    public static final RegistryObject<MobEffect> FUNGUS_BURN = EFFECTS.register("fungus_burn", () -> new SimpleEffect(MobEffectCategory.HARMFUL, 0xFF8A1E));
+    public static final RegistryObject<MobEffect> FUNGUS_GLOW = EFFECTS.register("fungus_glow", () -> new SimpleEffect(MobEffectCategory.HARMFUL, 0xFFE03A));
+
+    public static class SimpleEffect extends MobEffect {
+        public SimpleEffect(MobEffectCategory category, int color) {
+            super(category, color);
+        }
+    }
+
     public static class MushroomRageEffect extends MobEffect {
         public MushroomRageEffect() {
             super(MobEffectCategory.HARMFUL, 0xE0561B);

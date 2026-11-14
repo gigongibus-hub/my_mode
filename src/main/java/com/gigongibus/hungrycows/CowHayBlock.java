@@ -321,6 +321,7 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
             t[0] = 0;
         }
         Cond c = state.getValue(COND);
+        if (FungusPatches.tick(level, pos, state, seconds)) return false;   // гриб відріс (Fij)
         if (c.rotten()) return false;
         boolean water = touchesWater(level, pos) || rainedOn(level, pos) || state.getValue(WATERLOGGED);   // вода всередині — теж мокне
         // 2) біля вогню — сохне (вогонь сильніший за воду поруч, хіба що сіно у воді)
@@ -398,6 +399,18 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         boolean tie = stack.is(Items.STRING) || stack.is(Items.COBWEB);   // нитка (Fij) або павутина
         if (tie && state.getValue(BOUND)) {
             if (!level.isClientSide) player.displayClientMessage(net.minecraft.network.chat.Component.literal("Сіно вже зв'язане"), true);
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        // гриб із сіна (Fij): ПКМ — 1 вогнегриб / зірочник, щонайбільше 3, потім гриб зникає (і згодом відростає)
+        Cond fc = state.getValue(COND);
+        if (!tie && hand == InteractionHand.MAIN_HAND && (fc == Cond.FIRE_FUNGUS || fc == Cond.STAR_FUNGUS)) {
+            if (level instanceof ServerLevel server) {
+                BlockState after = FungusPatches.pick(server, pos, state);
+                if (after != state) level.setBlockAndUpdate(pos, after);
+                Block.popResourceFromFace(level, pos, hit.getDirection(),
+                        new ItemStack(fc == Cond.FIRE_FUNGUS ? ModItems.FIRE_FUNGUS.get() : ModItems.STAR_FUNGUS.get()));
+                level.playSound(null, pos, SoundEvents.FUNGUS_BREAK, SoundSource.BLOCKS, 1.0F, 1.0F);
+            }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
         if (tie) next = state.setValue(BOUND, true);
@@ -486,7 +499,10 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     @Override
     @SuppressWarnings("deprecation")
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
-        if (!newState.is(this) && level instanceof ServerLevel server) HayWear.get(server).remove(pos);
+        if (!newState.is(this) && level instanceof ServerLevel server) {
+            HayWear.get(server).remove(pos);
+            FungusPatches.remove(server, pos);   // сіно прибрали — пам'ять гриба теж
+        }
         super.onRemove(state, level, pos, newState, moved);
     }
 

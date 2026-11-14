@@ -15,5 +15,17 @@
   "item.hungrycows.cow_reader": "Корововед",
   "block.hungrycows.hay": "Сіно",
   "item.hungrycows.hay_bundle": "Пучок свіжої трави",
-  "effect.hungrycows.mushroom_rage": "Грибна лють"
+  "effect.hungrycows.mushroom_rage": "Грибна лють",
+  "item.hungrycows.fire_fungus": "Вогнегриб",
+  "item.hungrycows.star_fungus": "Зірочник",
+  "effect.hungrycows.fungus_burn": "Грибогоріння",
+  "effect.hungrycows.fungus_glow": "Грибне сяйво",
+  "item.minecraft.potion.effect.fire_fungus": "Зілля грибогоріння",
+  "item.minecraft.splash_potion.effect.fire_fungus": "Вибухове зілля грибогоріння",
+  "item.minecraft.lingering_potion.effect.fire_fungus": "Осідаюче зілля грибогоріння",
+  "item.minecraft.tipped_arrow.effect.fire_fungus": "Стріла грибогоріння",
+  "item.minecraft.potion.effect.star_fungus": "Зілля грибного сяйва",
+  "item.minecraft.splash_potion.effect.star_fungus": "Вибухове зілля грибного сяйва",
+  "item.minecraft.lingering_potion.effect.star_fungus": "Осідаюче зілля грибного сяйва",
+  "item.minecraft.tipped_arrow.effect.star_fungus": "Стріла грибного сяйва"
 }
