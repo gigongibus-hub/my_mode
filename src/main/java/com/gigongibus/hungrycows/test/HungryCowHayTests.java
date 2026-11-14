@@ -239,6 +239,67 @@ public class HungryCowHayTests {
         });
     }
 
+    // 5б. Лють (Fij): корова в люті тримається місця гриба, інші корови її бояться
+    @GameTest(template = "arena", batch = "hay_rage", timeoutTicks = RAGE_TIMEOUT)
+    public static void rageCowStaysAndIsFeared(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 4));
+        cow.setAge(0);
+        cow.hunger = 0;
+        HungryCow other = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 4));
+        other.setAge(0);
+        other.hunger = 0;
+        other.setYRot(90);
+        other.setYHeadRot(90);
+        cow.eatHay(hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
+        cow.removeEffect(MobEffects.WITHER);
+        BlockPos center = cow.rageCenter;
+        double[] maxAway = { 0 };
+        int[] fear = { 0 };
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; cow.discard(); other.discard(); };
+        h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
+        h.onEachTick(() -> {
+            if (cleared[0]) return;
+            maxAway[0] = Math.max(maxAway[0], Math.sqrt(cow.position().distanceToSqr(net.minecraft.world.phys.Vec3.atBottomCenterOf(center))));
+            fear[0] = Math.max(fear[0], other.fear);
+        });
+        h.runAtTickTime(200, () -> {
+            if (cleared[0]) return;
+            LOG.info("[тест] rageCowStaysAndIsFeared: найдалі від місця {} бл., страх іншої {}, з'їла грибів {}", maxAway[0], fear[0], cow.fungusEaten);
+            h.assertTrue(cow.raging(), "лють скінчилась");
+            h.assertTrue(maxAway[0] <= HungryCow.RAGE_STAY + 2.5, "відійшла від місця гриба на " + maxAway[0]);
+            h.assertTrue(fear[0] > 0, "інша корова не боїться корови в люті");
+            clear.run();
+            h.succeed();
+        });
+    }
+
+    // 5в. Тяга (Fij): з'їла гриб 3 рази — іде до нього, хоча ще не голодна (голод 17 < 25)
+    @GameTest(template = "arena", batch = "hay_eat", timeoutTicks = AVOID_TIMEOUT)
+    public static void fungusCraving(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        BlockPos fungus = new BlockPos(9, 2, 10);
+        h.setBlock(fungus, hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(5, 2, 10));
+        cow.setAge(0);
+        cow.setYRot(-90);
+        cow.setYHeadRot(-90);
+        cow.fungusEaten = 3;
+        cow.hunger = 17;
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; cow.discard(); h.setBlock(fungus, net.minecraft.world.level.block.Blocks.AIR); };
+        h.runAfterDelay(AVOID_TIMEOUT - 1, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 30 с не пішла до гриба (поріг тяги " + cow.fungusCraveHunger() + ", голод " + cow.hunger + ")");
+            h.assertTrue(h.getBlockState(fungus).isAir(), "ще не з'їла");
+            LOG.info("[тест] fungusCraving: з'їла за {} с, тяга тепер {} (поріг голоду {})", h.getTick() / 20.0, cow.fungusEaten, cow.fungusCraveHunger());
+            clear.run();
+        });
+    }
+
     // 6. Трава мотикою чи ножицями — пучок свіжої трави; присівши з ножицями — звичайне ламання. Пучок з рук −10, пшениця −5
     @GameTest(template = "platform", batch = "hay", timeoutTicks = 20)
     public static void grassBundlesAndFeeding(GameTestHelper h) {

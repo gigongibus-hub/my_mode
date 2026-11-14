@@ -88,7 +88,7 @@ public class WatchGoal extends Goal {
 
     private boolean isDanger(LivingEntity e) {
         if (e instanceof Player p) return cow.trustOf(p) < 0 && cow.isScary(p);
-        return e instanceof Wolf || (cow.isScary(e) && !(e instanceof HungryCow));
+        return e instanceof Wolf || cow.isScary(e);   // корова — лише в грибній люті (isScary)
     }
 
     // Кого помітила: важливих частіше, рухомих частіше; небезпеку — завжди

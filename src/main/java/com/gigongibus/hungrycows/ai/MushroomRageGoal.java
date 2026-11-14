@@ -39,7 +39,7 @@ public class MushroomRageGoal extends Goal {
     }
 
     private boolean raging() {
-        return cow.rageCenter != null && cow.hasEffect(ModEffects.MUSHROOM_RAGE.get()) && !cow.heat.unconscious;
+        return cow.raging() && !cow.heat.unconscious;
     }
 
     private boolean valid(LivingEntity e) {

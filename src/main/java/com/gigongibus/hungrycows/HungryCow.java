@@ -87,6 +87,15 @@ public class HungryCow extends Cow {
     // «Грибна лють» (план Fij): вогняний гриб — 1 доба люті, потім жар. ЛЮТЬ: рекомендації Claude, Fij ще не підтвердив
     public static final int MUSHROOM_RAGE_SECONDS = 1200;  // 1 ігрова доба
     public static final double RAGE_RADIUS = 8;            // б'є всіх навколо місця, де з'їла, у радіусі 8 бл.
+    public static final double RAGE_FEAR = 25;             // інші корови бояться корову в люті: +25 страху за секунду поруч (6 бл.)
+    public static final double RAGE_STAY = 4;              // у люті ходить біля місця, де з'їла гриб (до 4 бл.)
+    // тяга до вогняного гриба (Fij: «чим більше з'їсть, тим більше хоче»)
+    public static final int FUNGUS_CRAVE_MAX = 10;         // рахує до 10 з'їдених (далі тяга не росте)
+    public static final double FUNGUS_CRAVE_SCORE = 10;    // кожен з'їдений: +10 балів грибу при виборі їжі
+    public static final double FUNGUS_CRAVE_TASTY = 3;     // ... і смачніше: дофамін +3 за кожен
+    public static final int FUNGUS_CRAVE_HUNGER = 20;      // з'їла хоч раз — іде до гриба вже з голоду 20 ...
+    public static final int FUNGUS_CRAVE_HUNGER_STEP = 2;  // ... і ще на 2 раніше за кожен з'їдений ...
+    public static final int FUNGUS_CRAVE_HUNGER_MIN = 5;   // ... але не раніше голоду 5
     public static final int FEVER_SECONDS = 300;           // потім 5 хв «горить зсередини» ...
     public static final double FEVER_HEAT_PER_SECOND = 1.5; // ... перегрівання +1,5/с (вода охолоджує, як від спеки)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
@@ -319,6 +328,17 @@ public class HungryCow extends Cow {
     public final CowEpisodes episodes = new CowEpisodes(this);          // спогади й корисні місця (етап 6)                   // дотик (план Fij, етап 5)                   // смак (план Fij, етап 4)             // слух (план Fij, етап 3)                   // нюх (план Fij, етап 2)                // зір (план Fij, етап 1)
     public BlockPos rageCenter = null;   // де з'їла вогняний гриб (лють б'є навколо цього місця)
     public int feverLeft = 0;           // секунд жару після люті
+    public int fungusEaten = 0;         // скільки разів їла вогняний гриб (тяга; зберігається)
+
+    public boolean raging() {
+        return rageCenter != null && this.hasEffect(ModEffects.MUSHROOM_RAGE.get());
+    }
+
+    /** Тяга до вогняного гриба: з якого голоду йде до нього (0 — тяги немає) */
+    public int fungusCraveHunger() {
+        if (fungusEaten <= 0) return 0;
+        return Math.max(FUNGUS_CRAVE_HUNGER_MIN, FUNGUS_CRAVE_HUNGER - FUNGUS_CRAVE_HUNGER_STEP * (fungusEaten - 1));
+    }
     public final CowHeat heat = new CowHeat(this);                    // перегрівання на сонці (ідея Fij)
     public final CowGate gate = new CowGate(this);
     public final CowInbreeding inbreeding = new CowInbreeding(this);
@@ -822,6 +842,7 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
         this.goalSelector.addGoal(1, new LaborGoal(this));
         this.goalSelector.addGoal(1, new com.gigongibus.hungrycows.ai.MushroomRageGoal(this));   // грибна лють: б'є всіх біля місця                 // пологи: стоїть на місці
+        this.goalSelector.addGoal(10, new com.gigongibus.hungrycows.ai.RageStayGoal(this));   // у люті ходить біля місця гриба
         this.goalSelector.addGoal(2, new DefendCalfGoal(this));
         confront = new com.gigongibus.hungrycows.ai.ConfrontGoal(this);
         this.goalSelector.addGoal(2, confront);                                // бодає гравця: біг, теля, кут, ватажок, подруга; бик попереджає            // б'є того, хто вдарив теля
@@ -1534,7 +1555,8 @@ public class HungryCow extends Cow {
         if (c == CowHayBlock.Cond.FIRE_FUNGUS) {
             addEffect(new MobEffectInstance(ModEffects.MUSHROOM_RAGE.get(), MUSHROOM_RAGE_SECONDS * 20));
             rageCenter = this.blockPosition();
-            chem.onTasty(CowHayBlock.FIRE_FUNGUS_TASTY);   // смачно (Fij)
+            chem.onTasty(CowHayBlock.FIRE_FUNGUS_TASTY + FUNGUS_CRAVE_TASTY * fungusEaten);   // смачно (Fij), і чим далі, тим смачніше
+            fungusEaten = Math.min(FUNGUS_CRAVE_MAX, fungusEaten + 1);   // тяга росте
             tell(family.name + " з'їла вогняний гриб: грибна лють!");
         }
         tell(family.name + " з'їла сіно (" + CowHayBlock.describe(s.getValue(CowHayBlock.STAGE).id, c.id, null) + ")");
@@ -1659,7 +1681,8 @@ public class HungryCow extends Cow {
                 || e instanceof Spider
                 || e instanceof Creeper
                 || e instanceof EnderMan
-                || e instanceof Villager;
+                || e instanceof Villager
+                || e instanceof HungryCow hc && hc != this && hc.raging();   // корова в грибній люті
     }
 
     // Хто лякає корову найбільше в радіусі range (або null).
@@ -1737,6 +1760,7 @@ public class HungryCow extends Cow {
             // з ефектом «Друг корови» корови бояться вдвічі менше
             return player.hasEffect(ModEffects.COW_FRIEND.get()) ? f / 2 : f;
         }
+        if (e instanceof HungryCow) return (int) RAGE_FEAR;   // корова в люті
         return 10;
     }
 
@@ -1802,6 +1826,7 @@ public class HungryCow extends Cow {
     // Шанс напасти на загрозу замість утечі: бик 80%, корова 40%, ± риси; теля, друг, крипер, ендермен — 0
     public double fightChance(LivingEntity threat) {
         if (this.isBaby() || threat == null) return 0;
+        if (threat instanceof HungryCow) return 0;   // корову в грибній люті лише бояться (Fij), не б'ються з нею
         if (threat instanceof Creeper || threat instanceof EnderMan || threat instanceof net.minecraft.world.entity.npc.Villager) return 0;
         if (threat instanceof Player p && (trustOf(p) >= CowTrust.FRIEND_FROM || p.isCreative() || p.isSpectator())) return 0;
         // на гравця — лише якщо він щойно (10 с) бив цю корову; просто підійшов — тікає, як раніше
@@ -2020,6 +2045,7 @@ public class HungryCow extends Cow {
         tag.putInt("ToxinLeft", toxinLeft);
         if (rageCenter != null) tag.putLong("RageCenter", rageCenter.asLong());
         tag.putInt("FeverLeft", feverLeft);
+        tag.putInt("FungusEaten", fungusEaten);
         tag.putFloat("ToxinDamage", toxinDamage);
         tag.putInt("DyingLeft", dyingLeft);
         tag.put("Trust", trust.save());
@@ -2058,6 +2084,7 @@ public class HungryCow extends Cow {
         foodDay = tag.contains("FoodDay") ? tag.getLong("FoodDay") : -1;
         rageCenter = tag.contains("RageCenter") ? BlockPos.of(tag.getLong("RageCenter")) : null;
         feverLeft = tag.getInt("FeverLeft");
+        fungusEaten = tag.getInt("FungusEaten");
         toxinLeft = tag.getInt("ToxinLeft");
         toxinDamage = tag.getFloat("ToxinDamage");
         dyingLeft = tag.getInt("DyingLeft");

@@ -116,7 +116,13 @@ public class SeekGrassGoal extends Goal {
     public boolean canUse() {
         if (cow.isBaby()) return false;  // теля, поки мале, п'є лише молоко
         if (cow.choking) return false;   // подавлена корова не шукає їжі
-        if (!cow.shouldSeekFood()) return false;   // вирішує мозок (або відчуття голоду, якщо мозок вимкнено)
+        // тяга до вогняного гриба (Fij): з'їла раніше — іде до нього, навіть не голодна (лише до гриба)
+        int crave = cow.fungusCraveHunger();
+        cravingOnly = false;
+        if (!cow.shouldSeekFood()) {
+            if (crave <= 0 || cow.hunger < crave || cow.raging()) return false;   // вирішує мозок (або відчуття голоду)
+            cravingOnly = true;
+        }
         // раз на 10 секунд забуваємо, що вважали недосяжним
         if (cow.tickCount - lastClearTick > UNREACHABLE_FORGET) {   // раз на хвилину забуває, що вважала недосяжним
             unreachable.clear();
@@ -141,7 +147,7 @@ public class SeekGrassGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return !cow.choking && cow.shouldSeekFood() && target != null;
+        return !cow.choking && (cow.shouldSeekFood() || cravingOnly) && target != null;
     }
 
     // Ієрархія біля їжі: слабша поступається, лише якщо сильніша йде до ТІЄЇ САМОЇ трави (для кавуна, гарбуза, сіна —
@@ -391,7 +397,8 @@ public class SeekGrassGoal extends Goal {
             BlockState s = cow.level().getBlockState(c.pos);
             if (s.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
                     && s.getValue(com.gigongibus.hungrycows.CowHayBlock.COND) == com.gigongibus.hungrycows.CowHayBlock.Cond.FIRE_FUNGUS)
-                taste += com.gigongibus.hungrycows.CowHayBlock.FIRE_FUNGUS_LIKE;
+                taste += com.gigongibus.hungrycows.CowHayBlock.FIRE_FUNGUS_LIKE
+                        + HungryCow.FUNGUS_CRAVE_SCORE * cow.fungusEaten;   // тяга: що більше з'їла, то більше хоче
         }
         return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste + socialScore(c.pos);
     }
@@ -544,6 +551,8 @@ public class SeekGrassGoal extends Goal {
         return Math.max(-FRIEND_SCORE_MAX, Math.min(FRIEND_SCORE_MAX, s));
     }
 
+    private boolean cravingOnly = false;   // шукає лише вогняний гриб (тяга), а не будь-яку їжу
+
     private BlockPos findFood() {
         neighbours.clear();
         neighbours.addAll(cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(radius + FRIEND_GRAZE),
@@ -570,6 +579,7 @@ public class SeekGrassGoal extends Goal {
             if (modHay && !com.gigongibus.hungrycows.CowHayBlock.safeFor(state, cow)) continue;   // слабка гниле не їсть
             // пліснява й гниле: здорова не їсть зовсім, лише та, що голодує (план Fij)
             if (modHay && state.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).avoided() && cow.hunger < HungryCow.STARVE_AT) continue;
+            if (cravingOnly && !(modHay && state.getValue(com.gigongibus.hungrycows.CowHayBlock.COND) == com.gigongibus.hungrycows.CowHayBlock.Cond.FIRE_FUNGUS)) continue;
             if (k == Kind.GRASS_BLOCK) grassBlocks++;
             if (unreachable.contains(p)) continue;
             // відраза: цю їжу сама не їсть (хіба що голодує)
@@ -592,6 +602,7 @@ public class SeekGrassGoal extends Goal {
         desperate = visible(desperate);
         bluet = visible(bluet);
         if (normal.isEmpty() && flowers.isEmpty() && desperate.isEmpty() && bluet.isEmpty()) {
+            if (cravingOnly) return null;          // тяга: гриба не видно — не шукає (вона не голодна)
             cow.foodNotSeenTick = cow.tickCount;   // не бачить жодної їжі — SearchFoodGoal поведе шукати
             smellFood(all);                        // нюх: може, чує її запах
             return null;
