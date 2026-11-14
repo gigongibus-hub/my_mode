@@ -28,7 +28,9 @@ import java.util.WeakHashMap;
 public final class FungusEffects {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final double BURN_RADIUS = 10;         // грибогоріння: б'є все в 10 бл. (Fij)
-    public static final double GLOW_RADIUS = 15;         // сяйво: моби збігаються з 15 бл. (Fij)
+    public static final double GLOW_RADIUS = 15;         // сяйво: мирні збігаються з 15 бл. (Fij) ...
+    public static final double GLOW_HOSTILE_FACTOR = 2;  // ... злі помічають удвічі далі, ніж зазвичай (Fij: «з 5 бл. — то з 10»), не ближче 15
+    public static final double GLOW_HOSTILE_MAX = 64;    // ... але не далі 64 бл.
     public static final int SEIZURE_EVERY = 100;         // гравець: напад раз на 5 с (Fij) ...
     public static final int SEIZURE_TICKS = 40;          // ... триває 2 с
     public static final double SEIZURE_PUSH = 0.28;      // під час нападу персонаж біжить до найближчого
@@ -71,6 +73,10 @@ public final class FungusEffects {
         LivingEntity e = event.getEntity();
         if (e.level().isClientSide) return;
         if (e.hasEffect(ModEffects.FUNGUS_BURN.get())) burn(e);
+        else if (e instanceof ServerPlayer p) {   // ефект скінчився посеред нападу — керування повертається
+            var speed = p.getAttribute(Attributes.MOVEMENT_SPEED);
+            if (speed != null && speed.getModifier(SEIZURE_ID) != null) speed.removeModifier(SEIZURE_ID);
+        }
         if (e.hasEffect(ModEffects.FUNGUS_GLOW.get()) && e.tickCount % 20 == 0) glow(e);
         if (e instanceof Mob mob) chase(mob);
     }
@@ -95,10 +101,19 @@ public final class FungusEffects {
         }
     }
 
-    // гравець: раз на 5 с — напад: біжить до найближчого й б'є
+    // гравець: раз на 5 с — напад (Fij: «не зможе керувати»): клавіші ходьби не діють (швидкість 0), голова повернута до цілі,
+    // персонаж сам біжить до найближчого в 10 бл. і б'є
+    private static final java.util.UUID SEIZURE_ID = java.util.UUID.fromString("2b7e4c1a-9d3f-4a6b-8e5c-1f0d2a3b4c5e");
+
     private static void seizure(ServerPlayer p) {
         int phase = p.tickCount % SEIZURE_EVERY;
-        if (phase >= SEIZURE_TICKS) return;
+        var speed = p.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (phase >= SEIZURE_TICKS) {
+            if (speed != null && speed.getModifier(SEIZURE_ID) != null) speed.removeModifier(SEIZURE_ID);
+            return;
+        }
+        if (speed != null && speed.getModifier(SEIZURE_ID) == null) speed.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+                SEIZURE_ID, "fungus seizure", -1.0, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL));
         LivingEntity t = nearest(p, BURN_RADIUS);
         if (phase == 0) p.displayClientMessage(net.minecraft.network.chat.Component.literal("Напад грибогоріння!"), true);
         if (t == null) return;
@@ -107,7 +122,7 @@ public final class FungusEffects {
         Vec3 flat = new Vec3(dir.x, 0, dir.z);
         if (flat.lengthSqr() > 1.0E-4) {
             float yaw = (float) (Math.toDegrees(Math.atan2(-flat.x, flat.z)));
-            if (phase % 5 == 0) p.connection.teleport(p.getX(), p.getY(), p.getZ(), yaw, 10F);   // повертає голову до цілі
+            if (phase % 2 == 0) p.connection.teleport(p.getX(), p.getY(), p.getZ(), yaw, 10F);   // голова — до цілі (гравець не відверне)
             if (dist > PLAYER_HIT_REACH - 0.5) {
                 Vec3 push = flat.normalize().scale(SEIZURE_PUSH);
                 p.setDeltaMovement(push.x, p.getDeltaMovement().y, push.z);
@@ -121,11 +136,35 @@ public final class FungusEffects {
     }
 
     // ---------- грибне сяйво ----------
+    private static double glowReach(Mob m) {
+        if (!(m instanceof net.minecraft.world.entity.monster.Enemy)) return GLOW_RADIUS;
+        double normal = m.getAttribute(Attributes.FOLLOW_RANGE) != null ? m.getAttributeValue(Attributes.FOLLOW_RANGE) : 16;
+        return Math.min(GLOW_HOSTILE_MAX, Math.max(GLOW_RADIUS, normal * GLOW_HOSTILE_FACTOR));
+    }
+
     private static void glow(LivingEntity lit) {
-        for (Mob m : lit.level().getEntitiesOfClass(Mob.class, lit.getBoundingBox().inflate(GLOW_RADIUS),
-                m -> m != lit && m.isAlive() && !(m instanceof AbstractGolem) && m.distanceToSqr(lit) <= GLOW_RADIUS * GLOW_RADIUS)) {
+        for (Mob m : lit.level().getEntitiesOfClass(Mob.class, lit.getBoundingBox().inflate(GLOW_HOSTILE_MAX),
+                m -> m != lit && m.isAlive() && !(m instanceof AbstractGolem))) {
+            double r = glowReach(m);
+            if (m.distanceToSqr(lit) > r * r) continue;
             force(m, lit, FORCE_REFRESH);
+            farSight(m, r);   // щоб злий моб міг дійти здалеку (пошук шляху не будує дорогу, довшу за «дальність стеження»)
         }
+    }
+
+    // тимчасово більша «дальність стеження» злого моба (знімається, коли сяйво скінчилось)
+    private static final java.util.UUID FAR_SIGHT_ID = java.util.UUID.fromString("6f1d2c3b-4a59-4e68-9d7c-8b0a1f2e3d4c");
+
+    private static void farSight(Mob m, double range) {
+        var attr = m.getAttribute(Attributes.FOLLOW_RANGE);
+        if (attr == null || attr.getModifier(FAR_SIGHT_ID) != null || attr.getValue() >= range) return;
+        attr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(FAR_SIGHT_ID, "fungus glow",
+                range - attr.getValue(), net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION));
+    }
+
+    private static void farSightOff(Mob m) {
+        var attr = m.getAttribute(Attributes.FOLLOW_RANGE);
+        if (attr != null && attr.getModifier(FAR_SIGHT_ID) != null) attr.removeModifier(FAR_SIGHT_ID);
     }
 
     // ---------- моб, якого зілля змусило бити ----------
@@ -135,6 +174,7 @@ public final class FungusEffects {
         LivingEntity t = f.target();
         if (mob.tickCount > f.until() || t == null || !canBeHit(t, mob) || t.level() != mob.level()) {
             FORCED.remove(mob);
+            farSightOff(mob);
             if (mob.getTarget() == t) mob.setTarget(null);
             return;
         }

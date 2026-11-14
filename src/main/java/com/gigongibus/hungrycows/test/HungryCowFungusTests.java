@@ -163,4 +163,24 @@ public class HungryCowFungusTests {
             clear.run();
         });
     }
+
+    // 5. Сяйво: злі помічають удвічі далі (зомбі за 25 бл.), мирні — лише з 15 (свиня за 20 бл. — ні)
+    @GameTest(template = "arena", batch = "fungus_mobs", timeoutTicks = 60)
+    public static void glowHostilesFromFarther(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        var chicken = h.spawn(EntityType.CHICKEN, new BlockPos(7, 2, 7));
+        var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 32));
+        var pig = h.spawn(EntityType.PIG, new BlockPos(27, 2, 7));
+        for (var m : java.util.List.of(chicken, zombie, pig)) m.setNoAi(true);
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        chicken.addEffect(new MobEffectInstance(ModEffects.FUNGUS_GLOW.get(), 600));
+        h.runAtTickTime(45, () -> {
+            boolean z = FungusEffects.isForcedOn(zombie, chicken), p = FungusEffects.isForcedOn(pig, chicken);
+            LOG.info("[тест] glowHostilesFromFarther: зомбі за {} бл. — {}, свиня за {} бл. — {}", zombie.distanceTo(chicken), z, pig.distanceTo(chicken), p);
+            chicken.discard(); zombie.discard(); pig.discard();
+            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p);
+            h.succeed();
+        });
+    }
 }
