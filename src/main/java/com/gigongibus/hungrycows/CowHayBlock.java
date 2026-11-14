@@ -72,6 +72,7 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     public static final int[] DIRT_SLIGHT_DAYS = { 3, 4, 5, 10 };
     public static final int[] DIRT_VERY_DAYS = { 7, 8, 9, 15 };
     public static final int SECONDS_PER_DAY = 1200;        // ігрова доба = 20 хв
+    public static final int AGE_SPEED_MAX = 64;            // з прискоренням світу — не більше 64 «випадкових тіків» сіна за раз
     // світло плісняви (як у сяйливого лишайника)
     public static final int MOLD_LIGHT = 7;
     // поживність (Fij): база за стадією, мінус стан
@@ -273,7 +274,8 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
         updateWater(level, pos);
         state = level.getBlockState(pos);
-        if (check(state, level, pos, random, CHECK_SECONDS)) return;   // розпалось — блока вже немає
+        // прискорення світу (`/hungrycows speed`): за 5 с минає більше «часу сіна»
+        if (check(state, level, pos, random, CHECK_SECONDS * WorldClock.speed(level))) return;   // розпалось — блока вже немає
         schedule(level, pos);
     }
 
@@ -428,7 +430,8 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
 
     @Override
     public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        BlockState next = age(state, level, pos, random);
+        BlockState next = state;   // прискорення: кілька «випадкових тіків» за раз (не більше AGE_SPEED_MAX)
+        for (int i = Math.min(AGE_SPEED_MAX, WorldClock.speed(level)); i > 0; i--) next = age(next, level, pos, random);
         if (next != state) level.setBlockAndUpdate(pos, next);
         if (next.getValue(COND).moldy()) spreadMold(level, pos, random);
     }
@@ -496,7 +499,7 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         int st = s.getValue(STAGE).ordinal();
         int slight = DIRT_SLIGHT_DAYS[st] * SECONDS_PER_DAY, very = DIRT_VERY_DAYS[st] * SECONDS_PER_DAY;
         Cond n;
-        int v = wear.get(pos) + amount;
+        int v = wear.get(pos) + amount * WorldClock.speed(server);   // прискорення світу
         switch (c) {
             case CLEAN, APPLE, CARROT, WET, MOLD -> n = v >= slight ? (c == Cond.MOLD ? Cond.MOLD_DIRT : Cond.SLIGHTLY_DIRTY) : c;
             case SLIGHTLY_DIRTY -> {

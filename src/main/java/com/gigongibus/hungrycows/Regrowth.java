@@ -36,11 +36,11 @@ public class Regrowth extends SavedData {
     public static final float PLANT_CHANCE = 0.30F;         // шанс, що на трав'яному блоці виросте низька трава
     public static final int PLANT_MIN_TICKS = 3 * 1200;     // ... через 3–5 хв
     public static final int PLANT_MAX_TICKS = 5 * 1200;
-    public static final int TALL_TICKS = 5 * 1200;
+    public static final int TALL_TICKS = 24000;             // Fij: низька стає високою через добу (було 5 хв)
     public static final int FLOWER_MIN_TICKS = 5 * 1200;    // з'їдена квітка відростає за 5–8 хв
     public static final int FLOWER_MAX_TICKS = 8 * 1200;          // низька трава стає високою через 5 хв
-    public static final int BROKEN_MIN_TICKS = 5 * 1200;    // Fij: траву зламав гравець — на тому місці відросте за 5–10 хв
-    public static final int BROKEN_MAX_TICKS = 10 * 1200;
+    public static final int BROKEN_MIN_TICKS = 24000;       // Fij: траву зламав гравець — на тому місці відросте через ігрову добу
+    public static final int BROKEN_MAX_TICKS = 24000;
     public static final int CHECK_EVERY_TICKS = 20;         // як часто перевіряти, чи щось уже має відрости
 
     private static final String NAME = HungryCowsMod.MODID + "_regrowth";
@@ -95,7 +95,7 @@ public class Regrowth extends SavedData {
     public static void flowerEaten(ServerLevel level, BlockPos pos, Block flower) {
         Regrowth data = get(level);
         RandomSource r = level.getRandom();
-        long due = level.getGameTime() + FLOWER_MIN_TICKS + r.nextInt(FLOWER_MAX_TICKS - FLOWER_MIN_TICKS + 1);
+        long due = WorldClock.now(level) + FLOWER_MIN_TICKS + r.nextInt(FLOWER_MAX_TICKS - FLOWER_MIN_TICKS + 1);
         data.entries.put(pos.asLong(), new Entry(Kind.FLOWER, due, id(Blocks.AIR), id(flower)));
         data.setDirty();
     }
@@ -107,9 +107,17 @@ public class Regrowth extends SavedData {
         if (data.entries.remove(pos.above().asLong()) != null) data.setDirty();   // рослина над цим блоком
     }
 
+    private static boolean grassKind(Kind k) {
+        return k == Kind.GRASS || k == Kind.SHORT_PLANT || k == Kind.TALL_PLANT;
+    }
+
+    private static long clockFor(ServerLevel level, Kind k) {
+        return grassKind(k) ? WorldClock.grassNow(level) : WorldClock.now(level);
+    }
+
     private void add(ServerLevel level, BlockPos pos, Kind kind, Block expected, int minTicks, int maxTicks) {
         RandomSource r = level.getRandom();
-        long due = level.getGameTime() + minTicks + r.nextInt(Math.max(1, maxTicks - minTicks + 1));
+        long due = clockFor(level, kind) + minTicks + r.nextInt(Math.max(1, maxTicks - minTicks + 1));
         entries.put(pos.asLong(), new Entry(kind, due, id(expected), ""));
         setDirty();
     }
@@ -120,11 +128,11 @@ public class Regrowth extends SavedData {
         if (level.getGameTime() % CHECK_EVERY_TICKS != 0) return;
         Regrowth data = get(level);
         if (data.entries.isEmpty()) return;
-        long now = level.getGameTime();
+        long now = WorldClock.now(level), grassNow = WorldClock.grassNow(level);
         List<Map.Entry<Long, Entry>> due = new ArrayList<>();
         for (Iterator<Map.Entry<Long, Entry>> it = data.entries.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Long, Entry> e = it.next();
-            if (e.getValue().due > now) continue;
+            if (e.getValue().due > (grassKind(e.getValue().kind) ? grassNow : now)) continue;   // трава — свій годинник (можна зупинити)
             BlockPos pos = BlockPos.of(e.getKey());
             if (!level.isLoaded(pos)) continue;   // чанк не завантажений: відросте, коли гравець прийде
             it.remove();

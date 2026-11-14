@@ -21,8 +21,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 public final class GrassSpread {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int SAMPLES_PER_PLAYER = 16;     // щосекунди 16 випадкових місць біля кожного гравця ...
-    public static final int RADIUS = 64;                 // ... до 64 бл. (тож кожне місце — приблизно раз на 13 хв)
-    public static final float SPREAD_CHANCE = 0.25F;     // трава на такому місці переходить на сусідній блок з шансом 25%
+    public static final int RADIUS = 48;                 // ... до 48 бл. (97 × 97 місць — кожне приблизно раз на 10 хв = пів доби)
+    public static final float SPREAD_CHANCE = 1.0F;      // Fij: трава розростається в середньому раз на пів доби
+    public static final int SAMPLES_MAX = 4096;          // з прискоренням — не більше стількох місць за секунду
     public static final float PATH_CHANCE = 0.30F;       // стежка біля трави заростає з шансом 30%
     public static final int EVERY_TICKS = 20;
 
@@ -30,10 +31,11 @@ public final class GrassSpread {
     }
 
     public static void tick(ServerLevel level) {
-        if (level.getGameTime() % EVERY_TICKS != 0) return;
+        if (level.getGameTime() % EVERY_TICKS != 0 || !WorldClock.grassGrowth(level)) return;   // ріст трави вимкнено
         RandomSource r = level.getRandom();
+        int samples = Math.min(SAMPLES_MAX, SAMPLES_PER_PLAYER * WorldClock.speed(level));   // прискорення
         for (ServerPlayer p : level.players()) {
-            for (int i = 0; i < SAMPLES_PER_PLAYER; i++) {
+            for (int i = 0; i < samples; i++) {
                 int x = p.getBlockX() + r.nextInt(RADIUS * 2 + 1) - RADIUS;
                 int z = p.getBlockZ() + r.nextInt(RADIUS * 2 + 1) - RADIUS;
                 if (!level.hasChunkAt(new BlockPos(x, 0, z))) continue;

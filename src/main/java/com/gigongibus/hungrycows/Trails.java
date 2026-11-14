@@ -48,9 +48,9 @@ public class Trails extends SavedData {
     // Корова ступила на блок ground (дорогою додому)
     public static void step(ServerLevel level, BlockPos ground) {
         Trails data = get(level);
-        long now = level.getGameTime();
+        long now = WorldClock.now(level);
         if (level.getBlockState(ground).is(Blocks.DIRT_PATH)) {   // ходять стежкою — вона не заростає
-            if (data.paths.containsKey(ground.asLong())) { data.paths.put(ground.asLong(), now); data.setDirty(); }
+            if (data.paths.containsKey(ground.asLong())) { data.paths.put(ground.asLong(), WorldClock.grassNow(level)); data.setDirty(); }
             return;
         }
         if (!level.getBlockState(ground).is(Blocks.GRASS_BLOCK)) return;
@@ -71,7 +71,7 @@ public class Trails extends SavedData {
                 level.destroyBlock(above, false);         // трава чи квітка витоптана
             }
             level.setBlockAndUpdate(ground, Blocks.DIRT_PATH.defaultBlockState());
-            data.paths.put(ground.asLong(), now);
+            data.paths.put(ground.asLong(), WorldClock.grassNow(level));   // заростання — за годинником трави
         }
         if (data.entries.size() > CLEANUP_OVER) {
             data.entries.values().removeIf(x -> now - x.last > FORGET_TICKS);
@@ -81,7 +81,7 @@ public class Trails extends SavedData {
     /** Стежку корів давно не топтали — може зарости (стежки гравця не заростають) */
     public static boolean canRegrow(ServerLevel level, BlockPos path) {
         Long last = get(level).paths.get(path.asLong());
-        return last != null && level.getGameTime() - last > REGROW_AFTER_TICKS;
+        return last != null && WorldClock.grassNow(level) - last > REGROW_AFTER_TICKS;
     }
 
     public static void regrown(ServerLevel level, BlockPos path) {

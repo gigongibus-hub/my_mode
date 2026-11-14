@@ -119,6 +119,12 @@ public class ModForgeEvents {
                 .then(Commands.literal("old").executes(c -> spawnOld(c.getSource())))
                 .then(Commands.literal("sick").executes(c -> spawnSick(c.getSource())))
                 .then(Commands.literal("hay").executes(c -> hayChests(c.getSource())))
+                .then(Commands.literal("grass")
+                        .then(Commands.literal("on").executes(c -> setGrass(c.getSource(), true)))
+                        .then(Commands.literal("off").executes(c -> setGrass(c.getSource(), false))))
+                .then(Commands.literal("speed").executes(c -> showSpeed(c.getSource()))
+                        .then(Commands.argument("разів", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, WorldClock.SPEED_MAX))
+                                .executes(c -> setSpeed(c.getSource(), com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "разів")))))
                 .then(Commands.literal("star").executes(c -> spawnInfected(c.getSource(), true, 0))
                         .then(Commands.argument("рівень", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, HungryCow.STAR_MAX))
                                 .executes(c -> spawnInfected(c.getSource(), true, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "рівень")))))
@@ -161,6 +167,28 @@ public class ModForgeEvents {
         source.sendSuccess(() -> Component.literal(star
                 ? "Корови із зірочником: " + count + " (рівні " + from + "–" + to + ")"
                 : "Корови з вогняним грибом: " + count + " (тяга " + from + "–" + to + (level > 0 ? ", у люті" : ", без люті") + ")"), true);
+        return n;
+    }
+
+    // /hungrycows grass on|off — ріст трави (відростання, розростання, заростання стежок) у всіх вимірах
+    private static int setGrass(CommandSourceStack source, boolean on) {
+        for (ServerLevel l : source.getServer().getAllLevels()) WorldClock.setGrassGrowth(l, on);
+        source.sendSuccess(() -> Component.literal(on ? "Трава знову росте" : "Ріст трави зупинено"), true);
+        return 1;
+    }
+
+    // /hungrycows speed [N] — прискорити все, що росте й псується само (трава, мох, квіти, стежки, сіно), у N разів; корів і мобів — ні
+    private static int setSpeed(CommandSourceStack source, int n) {
+        for (ServerLevel l : source.getServer().getAllLevels()) WorldClock.setSpeed(l, n);
+        source.sendSuccess(() -> Component.literal("Світ мода прискорено в " + n + " раз(и) (корови й моби — як завжди)"), true);
+        return n;
+    }
+
+    private static int showSpeed(CommandSourceStack source) {
+        ServerLevel l = source.getLevel();
+        int n = WorldClock.speed(l);
+        boolean g = WorldClock.grassGrowth(l);
+        source.sendSuccess(() -> Component.literal("Прискорення: " + n + "×, ріст трави: " + (g ? "так" : "зупинено")), false);
         return n;
     }
 
@@ -351,6 +379,7 @@ public class ModForgeEvents {
     public static void onLevelTick(TickEvent.LevelTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.level instanceof ServerLevel level) {
             VillageCows.tick(level);
+            WorldClock.tick(level);
             Regrowth.tick(level);
             GrassSpread.tick(level);
             if (level.getGameTime() % CowSmell.TRAIL_EVERY == 0) CowSmell.recordTrails(level);   // сліди запаху

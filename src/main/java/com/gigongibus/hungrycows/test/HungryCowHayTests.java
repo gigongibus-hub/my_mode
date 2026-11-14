@@ -414,7 +414,7 @@ public class HungryCowHayTests {
         // стежки
         BlockPos old = h.absolutePos(new BlockPos(6, 1, 3)), fresh = h.absolutePos(new BlockPos(6, 1, 5)), player = h.absolutePos(new BlockPos(4, 1, 6));
         for (BlockPos p : java.util.List.of(old, fresh, player)) level.setBlockAndUpdate(p, net.minecraft.world.level.block.Blocks.DIRT_PATH.defaultBlockState());
-        long now = level.getGameTime();
+        long now = com.gigongibus.hungrycows.WorldClock.grassNow(level);
         com.gigongibus.hungrycows.Trails.markPath(level, old, now - com.gigongibus.hungrycows.Trails.REGROW_AFTER_TICKS - 1);
         com.gigongibus.hungrycows.Trails.markPath(level, fresh, now);
         boolean oldGrew = com.gigongibus.hungrycows.GrassSpread.regrowPath(level, old);
@@ -433,6 +433,41 @@ public class HungryCowHayTests {
             level.setBlockAndUpdate(h.absolutePos(new BlockPos(x, 1, z)), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
         }
         h.succeed();
+    }
+
+    // 6б. Годинник світу (Fij): ріст трави можна зупинити; прискорення ×1000 — зламана трава відростає (доба) і стає високою (ще доба)
+    @GameTest(template = "platform", batch = "worldclock", timeoutTicks = 300)
+    public static void grassPausesAndSpeedsUp(GameTestHelper h) {
+        var level = h.getLevel();
+        BlockPos soil = h.absolutePos(new BlockPos(4, 1, 4)), plant = soil.above();
+        level.setBlockAndUpdate(soil, net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState());
+        level.setBlockAndUpdate(plant, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        com.gigongibus.hungrycows.WorldClock.setGrassGrowth(level, false);
+        com.gigongibus.hungrycows.WorldClock.setSpeed(level, 1000);   // доба = 24 тіки
+        com.gigongibus.hungrycows.Regrowth.plantBroken(level, plant);
+        int[] grewAt = { -1 };
+        Runnable restore = () -> {
+            com.gigongibus.hungrycows.WorldClock.setSpeed(level, 1);
+            com.gigongibus.hungrycows.WorldClock.setGrassGrowth(level, true);
+            level.setBlockAndUpdate(plant.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(plant, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(soil, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+        };
+        h.runAtTickTime(100, () -> {   // 5 с при ×1000 = 4 доби, але ріст вимкнено
+            boolean paused = level.getBlockState(plant).isAir();
+            if (!paused) { restore.run(); h.fail("трава виросла, хоча ріст зупинено"); return; }
+            com.gigongibus.hungrycows.WorldClock.setGrassGrowth(level, true);
+        });
+        h.onEachTick(() -> {
+            if (grewAt[0] < 0 && level.getBlockState(plant).is(net.minecraft.world.level.block.Blocks.GRASS)) grewAt[0] = (int) h.getTick();
+        });
+        h.runAfterDelay(299, restore);
+        h.succeedWhen(() -> {
+            h.assertTrue(h.getTick() > 100, "ще перевіряємо паузу");
+            h.assertTrue(level.getBlockState(plant).is(net.minecraft.world.level.block.Blocks.TALL_GRASS), "ще не висока (низька з тіку " + grewAt[0] + ")");
+            LOG.info("[тест] grassPausesAndSpeedsUp: на паузі не росла; після ввімкнення низька на тіку {}, висока на тіку {}", grewAt[0], h.getTick());
+            restore.run();
+        });
     }
 
     // 6. Трава мотикою чи ножицями — пучок свіжої трави; присівши з ножицями — звичайне ламання. Пучок з рук −10, пшениця −5
