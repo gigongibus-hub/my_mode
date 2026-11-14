@@ -457,6 +457,7 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
     public HungryCow(EntityType<? extends Cow> type, Level level) {
         super(type, level);
         // погляд: коли бик опустив голову перед нападом, гра не повертає голову рівно щотіку
+        this.moveControl = new com.gigongibus.hungrycows.nav.CowMoveControl(this);   // бик повертається повільніше, біжить швидше
         this.lookControl = new net.minecraft.world.entity.ai.control.LookControl(this) {
             @Override
             protected boolean resetXRotOnTick() {

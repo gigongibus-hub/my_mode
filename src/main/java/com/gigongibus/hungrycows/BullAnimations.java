@@ -15,7 +15,8 @@ public final class BullAnimations {
     public static final float RUN_FROM = 0.55F;            // «швидкість ніг» (limbSwingAmount) від 0,55 — біг, менше — ходьба
     public static final float WALK_NORMAL = 0.4F;          // звичайна хода: анімація ходьби з рідною швидкістю
     public static final float RUN_NORMAL = 0.6F;           // звичайний біг ...
-    public static final float RUN_FASTER = 1.4F;           // ... грається в 1,4 раза швидше за файл (у файлі біг 2 с, як ходьба)
+    public static final float RUN_FASTER = 2.0F;           // ... грається вдвічі швидше за файл (у файлі біг 2 с, як ходьба; Fij: «ковзають»)
+    public static final float WALK_FASTER = 1.6F;          // хода — в 1,6 раза швидше за файл (Fij: «ковзають по льоду», було 1,0)
     public static final int TRANSITION_TICKS = 10;         // перехід між анімаціями 0,5 с (було 0,2 с — «топорно», Fij)
     // поріг з запасом, щоб на межі анімація не смикалась туди-сюди: почати йти з 0,08, зупинитись нижче 0,03;
     // почати бігти з 0,6, перестати нижче 0,45
@@ -58,7 +59,7 @@ public final class BullAnimations {
             cow.idleAnimNext = 0;
             cow.idleAnimUntil = 0;
             if (cow.animRunning) return play(state, cow, RUN, Math.max(1.0F, legs / RUN_NORMAL * RUN_FASTER));
-            return play(state, cow, WALK, Math.max(0.6F, Math.min(1.4F, legs / WALK_NORMAL)));
+            return play(state, cow, WALK, Math.max(0.8F, Math.min(2.4F, legs / WALK_NORMAL * WALK_FASTER)));
         }
         // стоїть: час від часу «спокій 1»
         int t = cow.tickCount;
