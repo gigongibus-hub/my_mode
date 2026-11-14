@@ -293,7 +293,7 @@
   getBlockLightLevel`: 4, далі +2 за кожен, до 15; світ навколо не освітлює) і приманює злих мобів (`lureMonsters`, раз на 5 с:
   `Monster` без цілі в радіусі 8 × (1 + з'їдено), до 48, з шансом 10% × (1 + з'їдено) → `setTarget(корова)`). Їсть зірочник, як і
   раніше, лише коли голодує (гниле). Книга «Потреби»: «Зірочник: …», «Вогняний гриб: …». Тест `starFungusGlowsAndLures`. 87/87.
-  НЕ ЗРОБЛЕНО:, «грибна порода», зілля з грибів; комфорт в оцінці дому.
+  НЕ ЗРОБЛЕНО: «грибна порода», зілля з грибів; комфорт в оцінці дому.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
