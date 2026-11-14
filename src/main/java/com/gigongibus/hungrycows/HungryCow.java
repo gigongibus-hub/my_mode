@@ -1644,6 +1644,7 @@ public class HungryCow extends Cow {
         }
         if (c.rotten()) addEffect(new MobEffectInstance(MobEffects.WITHER, CowHayBlock.WITHER_ROTTEN_SECONDS * 20));
         if (c == CowHayBlock.Cond.STAR_FUNGUS) {
+            chem.onTasty(CowHayBlock.STAR_FUNGUS_TASTY);   // смачно, трохи менше за вогняний гриб (Fij)
             starEaten = Math.min(STAR_MAX, starEaten + 1);
             this.entityData.set(DATA_GLOW, starEaten);
             tell(family.name + " з'їла зірочник: світиться (" + starGlowLevel() + ") і приманює злих мобів");

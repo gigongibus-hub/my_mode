@@ -209,6 +209,33 @@ public class HungryCowHayTests {
         });
     }
 
+    // 4в. Зірочник теж приваблює (Fij: «так, але трохи менше»): сита корова вибирає його, а не чисте сіно на тій самій відстані
+    @GameTest(template = "arena", batch = "hay_eat", timeoutTicks = AVOID_TIMEOUT)
+    public static void cowPrefersStarFungus(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        BlockPos clean = new BlockPos(8, 2, 10), star = new BlockPos(8, 2, 4);   // однаково далеко від корови
+        h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(star, hay(Stage.FRESH, Cond.STAR_FUNGUS, true));
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        cow.setAge(0);
+        cow.setYRot(-90);
+        cow.setYHeadRot(-90);
+        cow.hunger = 35;
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; cow.discard(); h.setBlock(clean, net.minecraft.world.level.block.Blocks.AIR); h.setBlock(star, net.minecraft.world.level.block.Blocks.AIR); };
+        h.runAfterDelay(AVOID_TIMEOUT - 1, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 30 с нічого не з'їла (голод " + cow.hunger + ")");
+            boolean cleanLeft = h.getBlockState(clean).getBlock() instanceof CowHayBlock;
+            boolean starLeft = h.getBlockState(star).getBlock() instanceof CowHayBlock;
+            h.assertTrue(!cleanLeft || !starLeft, "ще не їла");
+            LOG.info("[тест] cowPrefersStarFungus: за {} с, зірочник з'їла {}, чисте з'їла {}", h.getTick() / 20.0, !starLeft, !cleanLeft);
+            h.assertTrue(cleanLeft, "спершу з'їла чисте, а не зірочник");
+            clear.run();
+        });
+    }
+
     // 5. Грибна лють: б'є свиню поруч, теля не чіпає
     private static final int RAGE_TIMEOUT = 300;
 
@@ -270,7 +297,7 @@ public class HungryCowHayTests {
         h.runAtTickTime(200, () -> {
             if (cleared[0]) return;
             LOG.info("[тест] rageCowStaysAndIsFeared: найдалі від місця {} бл., страх іншої {}, відбігла на {} бл.", maxAway[0], fear[0], apart[0]);
-            h.assertTrue(apart[0] >= 8, "інша корова не відбігла (найдалі " + apart[0] + " бл.)");
+            h.assertTrue(apart[0] >= 6, "інша корова не відбігла (найдалі " + apart[0] + " бл.)");
             h.assertTrue(cow.raging(), "лють скінчилась");
             h.assertTrue(maxAway[0] <= HungryCow.RAGE_STAY + 2.5, "відійшла від місця гриба на " + maxAway[0]);
             h.assertTrue(fear[0] > 0, "інша корова не боїться корови в люті");

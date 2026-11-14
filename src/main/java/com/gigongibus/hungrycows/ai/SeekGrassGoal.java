@@ -399,6 +399,9 @@ public class SeekGrassGoal extends Goal {
                     && s.getValue(com.gigongibus.hungrycows.CowHayBlock.COND) == com.gigongibus.hungrycows.CowHayBlock.Cond.FIRE_FUNGUS)
                 taste += com.gigongibus.hungrycows.CowHayBlock.FIRE_FUNGUS_LIKE
                         + HungryCow.FUNGUS_CRAVE_SCORE * cow.fungusEaten;   // тяга: що більше з'їла, то більше хоче
+            else if (s.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
+                    && s.getValue(com.gigongibus.hungrycows.CowHayBlock.COND) == com.gigongibus.hungrycows.CowHayBlock.Cond.STAR_FUNGUS)
+                taste += com.gigongibus.hungrycows.CowHayBlock.STAR_FUNGUS_LIKE;   // зірочник — трохи менше (Fij)
         }
         return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste + socialScore(c.pos);
     }
