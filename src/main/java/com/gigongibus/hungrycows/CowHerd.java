@@ -99,6 +99,7 @@ public class CowHerd {
             adults++;
             if (c != cow && dominance(c) > myDom) rank++;
             if (!c.repro.isFemale()) continue;   // стадо водить самка, бик лише поряд
+            if (c.raging()) continue;            // за коровою в грибній люті стадо не йде
             double l = leadership(c);
             // однакова сила: та, що має менший номер у світі, щоб уся група вибрала ту саму
             if (l > bestLead || (l == bestLead && best != null && c.getId() < best.getId())) {

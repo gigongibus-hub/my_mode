@@ -257,6 +257,7 @@ public class HungryCowHayTests {
         BlockPos center = cow.rageCenter;
         double[] maxAway = { 0 };
         int[] fear = { 0 };
+        double[] apart = { 0 };
         boolean[] cleared = { false };
         Runnable clear = () -> { cleared[0] = true; cow.discard(); other.discard(); };
         h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
@@ -264,15 +265,47 @@ public class HungryCowHayTests {
             if (cleared[0]) return;
             maxAway[0] = Math.max(maxAway[0], Math.sqrt(cow.position().distanceToSqr(net.minecraft.world.phys.Vec3.atBottomCenterOf(center))));
             fear[0] = Math.max(fear[0], other.fear);
+            apart[0] = Math.max(apart[0], other.distanceTo(cow));
         });
         h.runAtTickTime(200, () -> {
             if (cleared[0]) return;
-            LOG.info("[тест] rageCowStaysAndIsFeared: найдалі від місця {} бл., страх іншої {}, з'їла грибів {}", maxAway[0], fear[0], cow.fungusEaten);
+            LOG.info("[тест] rageCowStaysAndIsFeared: найдалі від місця {} бл., страх іншої {}, відбігла на {} бл.", maxAway[0], fear[0], apart[0]);
+            h.assertTrue(apart[0] >= 8, "інша корова не відбігла (найдалі " + apart[0] + " бл.)");
             h.assertTrue(cow.raging(), "лють скінчилась");
             h.assertTrue(maxAway[0] <= HungryCow.RAGE_STAY + 2.5, "відійшла від місця гриба на " + maxAway[0]);
             h.assertTrue(fear[0] > 0, "інша корова не боїться корови в люті");
             clear.run();
             h.succeed();
+        });
+    }
+
+    // 5г. Зірочник (Fij): світиться (4, потім +2) і приманює злих мобів (скелет без цілі за 12 бл. іде на неї)
+    @GameTest(template = "arena", batch = "hay_rage", timeoutTicks = RAGE_TIMEOUT)
+    public static void starFungusGlowsAndLures(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(2, 2, 2));
+        cow.setAge(0);
+        cow.setNoAi(true);
+        cow.eatHay(hay(Stage.FRESH, Cond.STAR_FUNGUS, true));
+        int glow1 = cow.starGlowLevel();
+        cow.eatHay(hay(Stage.FRESH, Cond.STAR_FUNGUS, true));
+        int glow2 = cow.starGlowLevel();
+        cow.removeEffect(MobEffects.WITHER);
+        cow.setHealth(cow.getMaxHealth());
+        h.assertTrue(glow1 == HungryCow.STAR_GLOW_FIRST && glow2 == HungryCow.STAR_GLOW_FIRST + HungryCow.STAR_GLOW_STEP, "світіння " + glow1 + " / " + glow2);
+        cow.starEaten = 9;   // шанс приманити 100% (2 рази — 30% на 5 с, тест був би випадковим)
+        var sk = h.spawn(EntityType.SKELETON, new BlockPos(12, 2, 12));
+        sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));   // не горить на сонці
+        sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; cow.discard(); sk.discard(); };
+        h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 15 с скелет не пішов на корову");
+            h.assertTrue(sk.getTarget() == cow, "скелет ще не приманений");
+            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет приманений за {} с", glow1, glow2, h.getTick() / 20.0);
+            clear.run();
         });
     }
 

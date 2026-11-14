@@ -84,6 +84,8 @@ public final class CowBook {
             String what = fs.getBlock() instanceof CowHayBlock
                     ? "сіно (" + CowHayBlock.describe(fs.getValue(CowHayBlock.STAGE).id, fs.getValue(CowHayBlock.COND).id, null) + ")"
                     : fs.getBlock().getName().getString();
+            if (cow.starEaten > 0) out.add("Зірочник: з'їла " + cow.starEaten + " р. — світиться (" + cow.starGlowLevel() + "), приманює злих мобів");
+            if (cow.fungusEaten > 0) out.add("Вогняний гриб: з'їла " + cow.fungusEaten + " р. — тягне до нього");
             out.add("Під ногами: " + what + ", зручність " + CowHayBlock.comfort(cow.level(), floor));
         }
         out.add(cow.disease.line());

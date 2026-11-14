@@ -37,6 +37,13 @@ public class HungryCowRenderer extends CowRenderer {
         return super.getTextureLocation(cow);
     }
 
+    // зірочник: корова світиться в темряві (сама, світу навколо не освітлює)
+    @Override
+    protected int getBlockLightLevel(Cow cow, net.minecraft.core.BlockPos pos) {
+        int base = super.getBlockLightLevel(cow, pos);
+        return cow instanceof HungryCow hungry ? Math.max(base, hungry.starGlowLevel()) : base;
+    }
+
     @Override
     protected void scale(Cow cow, PoseStack poseStack, float partialTick) {
         if (cow instanceof HungryCow hungry) {

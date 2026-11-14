@@ -96,6 +96,14 @@ public class HungryCow extends Cow {
     public static final int FUNGUS_CRAVE_HUNGER = 20;      // з'їла хоч раз — іде до гриба вже з голоду 20 ...
     public static final int FUNGUS_CRAVE_HUNGER_STEP = 2;  // ... і ще на 2 раніше за кожен з'їдений ...
     public static final int FUNGUS_CRAVE_HUNGER_MIN = 5;   // ... але не раніше голоду 5
+    // зірочник (Fij, 14.11): з'їла — назавжди світиться в темряві й приманює злих мобів; що більше з'їла, то сильніше
+    public static final int STAR_MAX = 10;                 // рахує до 10 з'їдених
+    public static final int STAR_GLOW_FIRST = 4;           // перший раз — трохи світиться (яскравість 4 з 15) ...
+    public static final int STAR_GLOW_STEP = 2;            // ... кожен наступний +2 (до 15)
+    public static final double STAR_LURE_RANGE = 8;        // приманює: радіус 8 бл. × (1 + з'їдено) («в 1 раз більше» за кожен), ...
+    public static final double STAR_LURE_RANGE_MAX = 48;   // ... не далі 48 бл.
+    public static final double STAR_LURE_CHANCE = 0.1;     // кожні 5 с злий моб у радіусі без цілі йде на неї: 10% × (1 + з'їдено)
+    public static final int STAR_LURE_EVERY = 5;           // перевірка раз на 5 с
     public static final int FEVER_SECONDS = 300;           // потім 5 хв «горить зсередини» ...
     public static final double FEVER_HEAT_PER_SECOND = 1.5; // ... перегрівання +1,5/с (вода охолоджує, як від спеки)
     public static final int HUNGER_EVERY_SECONDS = 7;    // голод росте на 1 раз на стільки секунд (було 10) (для швидких тестів постав 1)
@@ -329,6 +337,25 @@ public class HungryCow extends Cow {
     public BlockPos rageCenter = null;   // де з'їла вогняний гриб (лють б'є навколо цього місця)
     public int feverLeft = 0;           // секунд жару після люті
     public int fungusEaten = 0;         // скільки разів їла вогняний гриб (тяга; зберігається)
+    public int starEaten = 0;           // скільки разів їла зірочник (світіння й приманювання; назавжди)
+
+    /** Яскравість світіння від зірочника (0 — не світиться) */
+    public int starGlowLevel() {
+        int n = this.level().isClientSide ? this.entityData.get(DATA_GLOW) : starEaten;
+        return n <= 0 ? 0 : Math.min(15, STAR_GLOW_FIRST + STAR_GLOW_STEP * (n - 1));
+    }
+
+    // зірочник: злі моби поруч ідуть на корову
+    private void lureMonsters() {
+        if (starEaten <= 0 || this.tickCount % (STAR_LURE_EVERY * 20) != 0) return;
+        double range = Math.min(STAR_LURE_RANGE_MAX, STAR_LURE_RANGE * (1 + starEaten));
+        double chance = Math.min(1.0, STAR_LURE_CHANCE * (1 + starEaten));
+        for (net.minecraft.world.entity.monster.Monster m : this.level().getEntitiesOfClass(
+                net.minecraft.world.entity.monster.Monster.class, this.getBoundingBox().inflate(range),
+                m -> m.isAlive() && m.getTarget() == null && m.distanceToSqr(this) <= range * range)) {
+            if (this.getRandom().nextDouble() < chance) m.setTarget(this);
+        }
+    }
 
     public boolean raging() {
         return rageCenter != null && this.hasEffect(ModEffects.MUSHROOM_RAGE.get());
@@ -699,6 +726,10 @@ public class HungryCow extends Cow {
         return this.entityData.get(DATA_COAT);
     }
 
+    // Світіння від зірочника: синхронізується, щоб гра гравця малювала корову яскравою в темряві
+    private static final EntityDataAccessor<Integer> DATA_GLOW =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.INT);
+
     // Без тями від спеки: синхронізується, щоб гравець бачив корову лежачою на боці
     private static final EntityDataAccessor<Boolean> DATA_UNCONSCIOUS =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);
@@ -709,6 +740,7 @@ public class HungryCow extends Cow {
         this.entityData.define(DATA_SIZE, 1.0F);
         this.entityData.define(DATA_UNCONSCIOUS, false);
         this.entityData.define(DATA_COAT, 0);
+        this.entityData.define(DATA_GLOW, 0);
     }
 
     public boolean isUnconsciousVisual() {
@@ -842,7 +874,8 @@ public class HungryCow extends Cow {
         this.goalSelector.addGoal(0, new SwimGoal(this));                  // плисти до берега; утома 70+ — тоне (замість ванільного FloatGoal)
         this.goalSelector.addGoal(1, new LaborGoal(this));
         this.goalSelector.addGoal(1, new com.gigongibus.hungrycows.ai.MushroomRageGoal(this));   // грибна лють: б'є всіх біля місця                 // пологи: стоїть на місці
-        this.goalSelector.addGoal(10, new com.gigongibus.hungrycows.ai.RageStayGoal(this));   // у люті ходить біля місця гриба
+        this.goalSelector.addGoal(10, new com.gigongibus.hungrycows.ai.RageStayGoal(this));
+        this.goalSelector.addGoal(4, new com.gigongibus.hungrycows.ai.AvoidRageGoal(this));   // тікає від корови в грибній люті   // у люті ходить біля місця гриба
         this.goalSelector.addGoal(2, new DefendCalfGoal(this));
         confront = new com.gigongibus.hungrycows.ai.ConfrontGoal(this);
         this.goalSelector.addGoal(2, confront);                                // бодає гравця: біг, теля, кут, ватажок, подруга; бик попереджає            // б'є того, хто вдарив теля
@@ -956,6 +989,7 @@ public class HungryCow extends Cow {
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             // сіно мода під ногами: корова його брудить (лежить — удвічі швидше)
             CowHayBlock.trample(this.level(), this.getBlockPosBelowThatAffectsMyMovement(), sleeping ? 2 : 1);
+            lureMonsters();
             // грибна лють скінчилась — жар зсередини (перегрівання росте, вода охолоджує)
             if (rageCenter != null && !this.hasEffect(ModEffects.MUSHROOM_RAGE.get())) {
                 rageCenter = null;
@@ -1552,6 +1586,11 @@ public class HungryCow extends Cow {
             default -> { }
         }
         if (c.rotten()) addEffect(new MobEffectInstance(MobEffects.WITHER, CowHayBlock.WITHER_ROTTEN_SECONDS * 20));
+        if (c == CowHayBlock.Cond.STAR_FUNGUS) {
+            starEaten = Math.min(STAR_MAX, starEaten + 1);
+            this.entityData.set(DATA_GLOW, starEaten);
+            tell(family.name + " з'їла зірочник: світиться (" + starGlowLevel() + ") і приманює злих мобів");
+        }
         if (c == CowHayBlock.Cond.FIRE_FUNGUS) {
             addEffect(new MobEffectInstance(ModEffects.MUSHROOM_RAGE.get(), MUSHROOM_RAGE_SECONDS * 20));
             rageCenter = this.blockPosition();
@@ -2046,6 +2085,7 @@ public class HungryCow extends Cow {
         if (rageCenter != null) tag.putLong("RageCenter", rageCenter.asLong());
         tag.putInt("FeverLeft", feverLeft);
         tag.putInt("FungusEaten", fungusEaten);
+        tag.putInt("StarEaten", starEaten);
         tag.putFloat("ToxinDamage", toxinDamage);
         tag.putInt("DyingLeft", dyingLeft);
         tag.put("Trust", trust.save());
@@ -2085,6 +2125,8 @@ public class HungryCow extends Cow {
         rageCenter = tag.contains("RageCenter") ? BlockPos.of(tag.getLong("RageCenter")) : null;
         feverLeft = tag.getInt("FeverLeft");
         fungusEaten = tag.getInt("FungusEaten");
+        starEaten = tag.getInt("StarEaten");
+        this.entityData.set(DATA_GLOW, starEaten);
         toxinLeft = tag.getInt("ToxinLeft");
         toxinDamage = tag.getFloat("ToxinDamage");
         dyingLeft = tag.getInt("DyingLeft");
