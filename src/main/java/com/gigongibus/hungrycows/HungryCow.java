@@ -821,7 +821,13 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
 
     private void updateAnimState() {
         if (animNow() != Anim.NONE && this.tickCount > animUntil) this.entityData.set(DATA_ANIM, Anim.NONE.ordinal());
-        if (this.tickCount % 20 == 0 && this.entityData.get(DATA_BULL) != isBull()) this.entityData.set(DATA_BULL, isBull());
+        refreshBullModel();
+    }
+
+    // Бик чи ні — одразу (Fij: щойно викликаний бик спершу був звичайною коровою, бо перевірялось раз на секунду)
+    public void refreshBullModel() {
+        if (this.level() == null || this.level().isClientSide || repro == null) return;
+        if (this.entityData.get(DATA_BULL) != isBull()) this.entityData.set(DATA_BULL, isBull());
     }
 
     @Override
@@ -883,6 +889,7 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         float size = SIZE_MIN + (SIZE_MAX - SIZE_MIN) * genes.value(CowGenes.Gene.SIZE) / 100.0F;
         this.entityData.set(DATA_SIZE, size);
         this.entityData.set(DATA_COAT, genes.coatColor() * CowGenes.COAT_PATTERNS + genes.coatPattern());
+        refreshBullModel();
 
         double health = gene(CowGenes.Gene.HEALTH) * (1.0 + (size - 1.0) * SIZE_HEALTH) * inbreeding.healthFactor();
         double speed = gene(CowGenes.Gene.WALK_SPEED) * (1.0 - (size - 1.0) * SIZE_SLOWDOWN) * inbreeding.speedFactor();
@@ -2270,5 +2277,6 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         disease.load(tag);
         setUnconsciousVisual(heat.unconscious);
         onGenesChanged();
+        refreshBullModel();
     }
 }
