@@ -67,7 +67,11 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     // гниття — лише від вологи (Fij: суху, що не мокла, зберігати безкінечно)
     public static final double FUNGUS = 0.05;              // гниле свіже → зірочник, гниле сухе → вогняний гриб (правило Fij)
     // бруд від корів (Fij: де ходять і лежать — брудніше, у кутку — чистіше)
-    public static final int COW_DIRT_SECONDS = 120;        // 2 хв корови на блоці (лежить — удвічі швидше) → на щабель брудніше
+    // Fij (14.11): таймер — скільки корови простояли на блоці (стоїть — іде, пішла — стоїть на місці; лежить — удвічі швидше).
+    // Ігрових діб до «трохи брудне» / «дуже брудне» за стадією: свіже, підсохле, сухе, пересохле
+    public static final int[] DIRT_SLIGHT_DAYS = { 3, 4, 5, 10 };
+    public static final int[] DIRT_VERY_DAYS = { 7, 8, 9, 15 };
+    public static final int SECONDS_PER_DAY = 1200;        // ігрова доба = 20 хв
     // світло плісняви (як у сяйливого лишайника)
     public static final int MOLD_LIGHT = 7;
     // поживність (Fij): база за стадією, мінус стан
@@ -427,7 +431,6 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         BlockState next = age(state, level, pos, random);
         if (next != state) level.setBlockAndUpdate(pos, next);
         if (next.getValue(COND).moldy()) spreadMold(level, pos, random);
-        trampled(level).computeIfPresent(pos.asLong(), (k, v) -> v / 2 > 0 ? v / 2 : null);   // бруд від корів «затухає»
     }
 
     /** Що станеться з блоком за один випадковий тік (без запису у світ — для тестів теж) */
@@ -476,26 +479,34 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
 
     // ---------- бруд від корів ----------
 
-    private static final Map<Level, Map<Long, Integer>> TRAMPLED = new java.util.WeakHashMap<>();
-
-    private static Map<Long, Integer> trampled(Level level) {
-        return TRAMPLED.computeIfAbsent(level, l -> new HashMap<>());
+    // блок прибрали (зламали, з'їли) — таймер бруду цього місця більше не потрібен
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        if (!newState.is(this) && level instanceof ServerLevel server) HayWear.get(server).remove(pos);
+        super.onRemove(state, level, pos, newState, moved);
     }
 
     /** Корова стоїть (1) чи лежить (2) на цьому блоці секунду — накопичує бруд */
     public static void trample(Level level, BlockPos pos, int amount) {
         BlockState s = level.getBlockState(pos);
-        if (!(s.getBlock() instanceof CowHayBlock)) return;
-        int v = trampled(level).merge(pos.asLong(), amount, Integer::sum);
-        if (v < COW_DIRT_SECONDS) return;
-        trampled(level).remove(pos.asLong());
+        if (!(s.getBlock() instanceof CowHayBlock) || !(level instanceof ServerLevel server)) return;
+        HayWear wear = HayWear.get(server);
         Cond c = s.getValue(COND);
-        Cond n = switch (c) {
-            case CLEAN, APPLE, CARROT, WET -> Cond.SLIGHTLY_DIRTY;
-            case SLIGHTLY_DIRTY -> Cond.VERY_DIRTY;
-            case MOLD -> Cond.MOLD_DIRT;
-            default -> c;
-        };
+        int st = s.getValue(STAGE).ordinal();
+        int slight = DIRT_SLIGHT_DAYS[st] * SECONDS_PER_DAY, very = DIRT_VERY_DAYS[st] * SECONDS_PER_DAY;
+        Cond n;
+        int v = wear.get(pos) + amount;
+        switch (c) {
+            case CLEAN, APPLE, CARROT, WET, MOLD -> n = v >= slight ? (c == Cond.MOLD ? Cond.MOLD_DIRT : Cond.SLIGHTLY_DIRTY) : c;
+            case SLIGHTLY_DIRTY -> {
+                v = Math.max(v, slight);   // уже трохи брудне (дощ, поставили таким) — далі до «дуже» лише різниця
+                n = v >= very ? Cond.VERY_DIRTY : c;
+            }
+            default -> { wear.remove(pos); return; }   // дуже брудне, гниле, гриби — далі не брудніє
+        }
+        if (n == Cond.VERY_DIRTY || n == Cond.MOLD_DIRT) wear.remove(pos);
+        else wear.set(pos, v);
         if (n != c) level.setBlockAndUpdate(pos, s.setValue(COND, n));
     }
 

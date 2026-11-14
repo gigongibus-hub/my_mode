@@ -21,7 +21,7 @@ import java.util.Map;
 public class Trails extends SavedData {
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    public static final int STEPS_TO_TRAIL = 12;             // стільки кроків корів на блоці — і він стає стежкою
+    public static final int STEPS_TO_TRAIL = 36;             // стільки кроків корів на блоці — і він стає стежкою (Fij: «довше», було 12)
     public static final long FORGET_TICKS = 3 * 24000L;      // 3 доби ніхто не ступав — лічильник з нуля
     public static final int CLEANUP_OVER = 5000;             // записів більше — прибрати старі
 

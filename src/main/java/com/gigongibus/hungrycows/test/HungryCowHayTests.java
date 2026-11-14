@@ -97,10 +97,24 @@ public class HungryCowHayTests {
         // гниле свіже → зірочник, гниле сухе → вогняний гриб (правило Fij)
         Cond star = CowHayBlock.age(hay(Stage.FRESH, Cond.ROTTEN, true), level, p, r).getValue(CowHayBlock.COND);
         Cond fire = CowHayBlock.age(hay(Stage.DRY, Cond.ROTTEN, true), level, p, r).getValue(CowHayBlock.COND);
-        // бруд від корів: 2 хв стояння → трохи брудне
+        // бруд від корів (Fij): сухе — 5 діб стояння → трохи брудне, 9 → дуже; пересохле — 10 / 15
+        int day = CowHayBlock.SECONDS_PER_DAY;
         level.setBlockAndUpdate(p, hay(Stage.DRY, Cond.CLEAN, true));
-        for (int i = 0; i < CowHayBlock.COW_DIRT_SECONDS; i++) CowHayBlock.trample(level, p, 1);
+        for (int i = 0; i < 5 * day - 1; i++) CowHayBlock.trample(level, p, 1);
+        Cond before5 = level.getBlockState(p).getValue(CowHayBlock.COND);
+        CowHayBlock.trample(level, p, 1);
         Cond trampled = level.getBlockState(p).getValue(CowHayBlock.COND);
+        for (int i = 0; i < 4 * day; i++) CowHayBlock.trample(level, p, 1);
+        Cond very9 = level.getBlockState(p).getValue(CowHayBlock.COND);
+        level.setBlockAndUpdate(p, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+        level.setBlockAndUpdate(p, hay(Stage.OVERDRIED, Cond.CLEAN, true));   // новий блок — таймер з нуля
+        for (int i = 0; i < 9 * day; i++) CowHayBlock.trample(level, p, 1);
+        Cond over9 = level.getBlockState(p).getValue(CowHayBlock.COND);
+        for (int i = 0; i < day / 2; i++) CowHayBlock.trample(level, p, 2);    // лежить — удвічі швидше: ще пів доби = доба
+        Cond over10 = level.getBlockState(p).getValue(CowHayBlock.COND);
+        h.assertTrue(before5 == Cond.CLEAN && trampled == Cond.SLIGHTLY_DIRTY && very9 == Cond.VERY_DIRTY,
+                "сухе: до 5 діб " + before5 + ", 5 діб " + trampled + ", 9 діб " + very9);
+        h.assertTrue(over9 == Cond.CLEAN && over10 == Cond.SLIGHTLY_DIRTY, "пересохле: 9 діб " + over9 + ", 10 діб " + over10);
         // пліснява заражає мокрого сусіда (кубик випадає, напрям — увесь сусідній ряд мокрий)
         level.setBlockAndUpdate(p, hay(Stage.DRY, Cond.MOLD, true));
         for (Direction d : Direction.values()) level.setBlockAndUpdate(p.relative(d), hay(Stage.DRY, Cond.WET, true));
