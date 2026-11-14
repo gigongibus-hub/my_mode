@@ -72,6 +72,13 @@ public class ModForgeEvents {
                 targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(zombie, HungryCow.class, true));
             }
         }
+        // павуки (і печерні) — як зомбі, завжди полюють на корів (Fij), і вдень теж
+        if (event.getEntity() instanceof net.minecraft.world.entity.monster.Spider spider) {
+            GoalSelector targets = targetSelector(spider);
+            if (targets != null) {
+                targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(spider, HungryCow.class, true));
+            }
+        }
     }
 
     // Команди для тестів (потрібні права оператора / чити):
@@ -89,9 +96,49 @@ public class ModForgeEvents {
                 .then(Commands.literal("old").executes(c -> spawnOld(c.getSource())))
                 .then(Commands.literal("sick").executes(c -> spawnSick(c.getSource())))
                 .then(Commands.literal("hay").executes(c -> hayChests(c.getSource())))
+                .then(Commands.literal("star").executes(c -> spawnInfected(c.getSource(), true, 0))
+                        .then(Commands.argument("рівень", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, HungryCow.STAR_MAX))
+                                .executes(c -> spawnInfected(c.getSource(), true, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "рівень")))))
+                .then(Commands.literal("fire").executes(c -> spawnInfected(c.getSource(), false, 0))
+                        .then(Commands.argument("рівень", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, HungryCow.FUNGUS_CRAVE_MAX))
+                                .executes(c -> spawnInfected(c.getSource(), false, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "рівень")))))
                 .then(Commands.literal("birth")
                         .then(Commands.literal("single").executes(c -> spawnPregnant(c.getSource(), 1)))
                         .then(Commands.literal("twins").executes(c -> spawnPregnant(c.getSource(), 2)))));
+    }
+
+    // /hungrycows star [рівень] — корова, що з'їла зірочник стільки разів (без рівня — 10 корів, рівні 1–10, рядком на схід)
+    // /hungrycows fire [рівень] — корова з тягою до вогняного гриба (з рівнем — ще й у грибній люті; без рівня — 10 корів без люті,
+    //                            бо в люті вони б'ються між собою)
+    public static final int INFECTED_SPACING = 3;   // між коровами рядка 3 бл.
+
+    private static int spawnInfected(CommandSourceStack source, boolean star, int level) {
+        ServerLevel world = source.getLevel();
+        int from = level > 0 ? level : 1, to = level > 0 ? level : (star ? HungryCow.STAR_MAX : HungryCow.FUNGUS_CRAVE_MAX);
+        net.minecraft.world.phys.Vec3 p = source.getPosition();
+        int n = 0;
+        for (int i = from; i <= to; i++) {
+            HungryCow cow = ModEntities.HUNGRY_COW.get().create(world);
+            if (cow == null) continue;
+            cow.moveTo(p.x + 2 + (i - from) * INFECTED_SPACING, p.y, p.z, 0, 0);
+            cow.setAge(0);
+            world.addFreshEntity(cow);
+            if (star) {
+                cow.setStarEaten(i);
+            } else {
+                cow.fungusEaten = i;
+                if (level > 0) {
+                    cow.addEffect(new net.minecraft.world.effect.MobEffectInstance(ModEffects.MUSHROOM_RAGE.get(), HungryCow.MUSHROOM_RAGE_SECONDS * 20));
+                    cow.rageCenter = cow.blockPosition();
+                }
+            }
+            n++;
+        }
+        int count = n;
+        source.sendSuccess(() -> Component.literal(star
+                ? "Корови із зірочником: " + count + " (рівні " + from + "–" + to + ")"
+                : "Корови з вогняним грибом: " + count + " (тяга " + from + "–" + to + (level > 0 ? ", у люті" : ", без люті") + ")"), true);
+        return n;
     }
 
     // /hungrycows old — доросла корова віком 999 діб (перевірити старість)

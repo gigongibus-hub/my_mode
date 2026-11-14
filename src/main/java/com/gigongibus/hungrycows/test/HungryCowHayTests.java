@@ -300,22 +300,30 @@ public class HungryCowHayTests {
                 if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.LIGHT))
                     lightSeen[0] = Math.max(lightSeen[0], h.getLevel().getBlockState(p).getValue(net.minecraft.world.level.block.LightBlock.LEVEL));
         });
-        cow.starEaten = 9;   // шанс приманити 100% (2 рази — 30% на 5 с, тест був би випадковим)
-        var sk = h.spawn(EntityType.SKELETON, new BlockPos(12, 2, 12));
-        sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));   // не горить на сонці
-        sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        // скелети й крипери (Fij): після 2 разів помічають з 4 бл. (3 + 1) і завжди йдуть; павуки — завжди, як зомбі (і вдень)
+        var near = h.spawn(EntityType.SKELETON, new BlockPos(2, 2, 5));
+        var far = h.spawn(EntityType.SKELETON, new BlockPos(2, 2, 10));
+        for (var sk : java.util.List.of(near, far)) {
+            sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));   // не горить на сонці
+            sk.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            sk.setNoAi(true);   // стоять на місці (ціль ставить корова)
+        }
+        var spider = h.spawn(EntityType.SPIDER, new BlockPos(12, 2, 12));
         boolean[] cleared = { false };
         Runnable clear = () -> {
-            cleared[0] = true; cow.discard(); sk.discard();
+            cleared[0] = true; cow.discard(); near.discard(); far.discard(); spider.discard();
             h.assertFalse(h.getLevel().getBlockState(cow.blockPosition()).is(net.minecraft.world.level.block.Blocks.LIGHT)
                     || h.getLevel().getBlockState(cow.blockPosition().above()).is(net.minecraft.world.level.block.Blocks.LIGHT), "після корови лишилось світло");
         };
         h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
         h.succeedWhen(() -> {
-            h.assertFalse(cleared[0], "за 15 с скелет не пішов на корову");
-            h.assertTrue(sk.getTarget() == cow, "скелет ще не приманений");
+            h.assertFalse(cleared[0], "за 15 с: близький скелет " + (near.getTarget() == cow) + ", павук " + (spider.getTarget() == cow));
+            h.assertTrue(near.getTarget() == cow, "близький скелет ще не приманений");
+            h.assertTrue(spider.getTarget() == cow, "павук ще не полює на корову");
             h.assertTrue(lightSeen[0] > 0, "навколо корови немає світла");
-            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет приманений за {} с, світло {}", glow1, glow2, h.getTick() / 20.0, lightSeen[0]);
+            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет (3 бл.) і павук за {} с, світло {}, далекий скелет {}",
+                    glow1, glow2, h.getTick() / 20.0, lightSeen[0], far.getTarget() == cow);
+            h.assertFalse(far.getTarget() == cow, "скелет за 8 бл. приманений (має лише з 4)");
             clear.run();
         });
     }

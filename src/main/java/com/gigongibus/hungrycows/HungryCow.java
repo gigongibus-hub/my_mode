@@ -104,6 +104,8 @@ public class HungryCow extends Cow {
     public static final double STAR_LURE_RANGE_MAX = 48;   // ... не далі 48 бл.
     public static final double STAR_LURE_CHANCE = 0.1;     // кожні 5 с злий моб у радіусі без цілі йде на неї: 10% × (1 + з'їдено)
     public static final int STAR_LURE_EVERY = 5;           // перевірка раз на 5 с
+    public static final int STAR_CLOSE_FIRST = 3;          // скелети й крипери (Fij): після першого разу помічають з 3 бл. ...
+    public static final int STAR_CLOSE_STEP = 1;           // ... і щоразу на 1 бл. далі (завжди йдуть на неї)
     public static final int STAR_LIGHT_EVERY = 4;          // світло навколо (невидимий блок світла) переставляє раз на 4 тіки
     public static final int FEVER_SECONDS = 300;           // потім 5 хв «горить зсередини» ...
     public static final double FEVER_HEAT_PER_SECOND = 1.5; // ... перегрівання +1,5/с (вода охолоджує, як від спеки)
@@ -385,14 +387,28 @@ public class HungryCow extends Cow {
 
     // зірочник: злі моби поруч ідуть на корову
     private void lureMonsters() {
-        if (starEaten <= 0 || this.tickCount % (STAR_LURE_EVERY * 20) != 0) return;
+        if (starEaten <= 0) return;
+        // скелети й крипери поруч — щосекунди (вони близько, чекати 5 с задовго); решта — раз на 5 с
+        boolean full = this.tickCount % (STAR_LURE_EVERY * 20) == 0;
         double range = Math.min(STAR_LURE_RANGE_MAX, STAR_LURE_RANGE * (1 + starEaten));
         double chance = Math.min(1.0, STAR_LURE_CHANCE * (1 + starEaten));
+        double close = STAR_CLOSE_FIRST + STAR_CLOSE_STEP * (starEaten - 1);   // скелети й крипери
         for (net.minecraft.world.entity.monster.Monster m : this.level().getEntitiesOfClass(
-                net.minecraft.world.entity.monster.Monster.class, this.getBoundingBox().inflate(range),
-                m -> m.isAlive() && m.getTarget() == null && m.distanceToSqr(this) <= range * range)) {
-            if (this.getRandom().nextDouble() < chance) m.setTarget(this);
+                net.minecraft.world.entity.monster.Monster.class, this.getBoundingBox().inflate(Math.max(range, close)),
+                m -> m.isAlive() && m.getTarget() == null)) {
+            double d2 = m.distanceToSqr(this);
+            if (m instanceof AbstractSkeleton || m instanceof Creeper) {   // ці — лише зблизька, але завжди
+                if (d2 <= close * close) m.setTarget(this);
+            } else if (full && d2 <= range * range && this.getRandom().nextDouble() < chance) {
+                m.setTarget(this);
+            }
         }
+    }
+
+    /** Для команд і тестів: скільки разів «з'їла» зірочник */
+    public void setStarEaten(int n) {
+        starEaten = Math.max(0, Math.min(STAR_MAX, n));
+        this.entityData.set(DATA_GLOW, starEaten);
     }
 
     public boolean raging() {
