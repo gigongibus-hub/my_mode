@@ -1,0 +1,19 @@
+{
+  "entity.hungrycows.hungry_cow": "Голодна корова",
+  "item.hungrycows.hungry_cow_spawn_egg": "Яйце призову голодної корови",
+  "item.hungrycows.quality_milk_bucket": "Відро молока (якість %s)",
+  "effect.hungrycows.cow_friend": "Друг корови",
+  "item.hungrycows.cow_book": "Корововедення",
+  "item.hungrycows.brain_stick": "Палиця налагодження мозку",
+  "block.hungrycows.salt_lick": "Соляний лизунець",
+  "item.hungrycows.calf_ticket": "Теля від мандрівного торговця",
+  "item.hungrycows.needle": "Голка",
+  "item.hungrycows.bloody_needle": "Голка з кров'ю",
+  "item.hungrycows.bloody_paper": "Папір з кров'ю",
+  "item.hungrycows.mortar": "Ступка з товкачиком",
+  "item.hungrycows.soul_sand_pinch": "Щіпка піску душ",
+  "item.hungrycows.cow_reader": "Корововед",
+  "block.hungrycows.hay": "Сіно",
+  "item.hungrycows.hay_bundle": "Пучок свіжої трави",
+  "effect.hungrycows.mushroom_rage": "Грибна лють"
+}

@@ -1,0 +1,19 @@
+{
+  "entity.hungrycows.hungry_cow": "Hungry Cow",
+  "item.hungrycows.hungry_cow_spawn_egg": "Hungry Cow Spawn Egg",
+  "item.hungrycows.quality_milk_bucket": "Milk Bucket (quality %s)",
+  "effect.hungrycows.cow_friend": "Cow Friend",
+  "item.hungrycows.cow_book": "Cow Husbandry",
+  "item.hungrycows.brain_stick": "Brain Debug Stick",
+  "block.hungrycows.salt_lick": "Salt Lick",
+  "item.hungrycows.calf_ticket": "Calf (from the wandering trader)",
+  "item.hungrycows.needle": "Needle",
+  "item.hungrycows.bloody_needle": "Bloody Needle",
+  "item.hungrycows.bloody_paper": "Bloody Paper",
+  "item.hungrycows.mortar": "Mortar and Pestle",
+  "item.hungrycows.soul_sand_pinch": "Pinch of Soul Sand",
+  "item.hungrycows.cow_reader": "Cow Reader",
+  "block.hungrycows.hay": "Hay",
+  "item.hungrycows.hay_bundle": "Bundle of Fresh Grass",
+  "effect.hungrycows.mushroom_rage": "Mushroom Rage"
+}

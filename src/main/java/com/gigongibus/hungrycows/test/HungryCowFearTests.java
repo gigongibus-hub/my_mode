@@ -1,0 +1,400 @@
+package com.gigongibus.hungrycows.test;
+
+import com.gigongibus.hungrycows.CowBrain;
+import com.gigongibus.hungrycows.HungryCow;
+import com.gigongibus.hungrycows.HungryCowsMod;
+import com.gigongibus.hungrycows.ModEntities;
+import com.mojang.authlib.GameProfile;
+import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
+
+import java.util.UUID;
+
+/**
+ * Тести страху (Forge GameTest), окрема партія "fear", щоб тестовий гравець не заважав іншим тестам.
+ * Майданчик: data/hungrycows/structures/arena.nbt — камінь 15×15, скляні стіни у 2 блоки (є куди тікати).
+ *
+ * Механіка страху не змінюється: тест лише ставить корову й тестового гравця, переставляє гравця й (у тесті 3) б'є.
+ *
+ * Тестовий гравець — TestPlayer (Forge FakePlayer, доданий у світ через ServerLevel.addNewPlayer).
+ * Ванільний makeMockServerPlayerInLevel() під Forge 47 падає (Connection.channel() = null). Обмеження:
+ *  - немає фізики: «на землі» завжди false, а корова вважає гравця не на землі таким, що СТРИБАЄ (страх 35 замість 3).
+ *    Тому після кожного переміщення тест ставить йому onGround = true (стан гравця, не корови);
+ *  - не ходить сам: «ходьба» = переставлення на 1 блок щосекунди. Корова рахує рух гравця раз на секунду, тож для неї
+ *    це ходьба 1 блок/с, але плавного руху між секундами немає; біг (isSprinting) не перевіряється;
+ *  - звичайний FakePlayer невразливий; TestPlayer — ні, щоб було видно, чи корова справді вдарила (лише в тесті).
+ *
+ * Що механіка обіцяє (і що тест вимагає):
+ *  1) підхід — страх росте (вимагає); втеча ймовірнісна: мозок вибирає «стерегтися» за балами, тож при страху біля
+ *     порогу корова може й не тікати (не вимагає, лише записує; вимагав би при паніці 80+, але від ходьби її немає);
+ *  2) раптова поява — страх ≈30–40, набагато вище порогу 5–15: має тікати (вимагає);
+ *  3) удар — довіра падає, страх різко росте; ворожа корова тікає або б'є кривдника (вимагає одне з двох).
+ * Усі числа зібрані на початку файлу.
+ */
+@GameTestHolder(HungryCowsMod.MODID)
+@PrefixGameTestTemplate(false)
+public class HungryCowFearTests {
+    private static final org.slf4j.Logger LOG = LogUtils.getLogger();
+
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    private static final String ARENA = "arena";
+    private static final String BATCH = "fear";
+    private static final long NOON = 6000;
+    private static final BlockPos CENTER = new BlockPos(7, 2, 7);   // y=1 — підлога
+    private static final int SECOND = 20;
+    private static final double FLED_BY = 1.5;        // «втекла» = відійшла від гравця щонайменше на 1,5 блока
+    private static final int FLEE_WAIT = 3 * SECOND;  // після останнього руху гравця чекаємо 3 с
+    // 1. Підхід: від 6 блоків до 2, щосекунди на 1 блок ближче до корови (туди, де вона зараз), потім стоїть
+    private static final int APPROACH_FROM = 6;
+    private static final int APPROACH_TO = 2;
+    private static final int APPROACH_TIMEOUT = 400;
+    // 2. Раптова поява: 2 с за 12 блоків, потім одразу за 1,5 блока
+    private static final double FAR = 12;
+    private static final double NEAR = 1.5;
+    private static final int SUDDEN_TIMEOUT = 300;
+    // 3. Удар: 2 с за 2 блоки, потім удар рукою
+    private static final double HIT_DISTANCE = 2;
+    private static final int HIT_TIMEOUT = 300;
+
+    // ---------- тестовий гравець ----------
+
+    // FakePlayer, якого можна поранити (щоб бачити, чи корова вдарила). Лише для тестів.
+    private static class TestPlayer extends FakePlayer {
+        Entity hurtBy = null;   // хто останнім завдав урону
+
+        TestPlayer(ServerLevel level) {
+            super(level, new GameProfile(UUID.randomUUID(), "fear_test"));
+        }
+
+        @Override
+        public boolean isInvulnerableTo(DamageSource source) {
+            return false;
+        }
+
+        @Override
+        public boolean hurt(DamageSource source, float amount) {
+            boolean r = super.hurt(source, amount);
+            if (r) hurtBy = source.getEntity();
+            return r;
+        }
+    }
+
+    private static TestPlayer makePlayer(GameTestHelper h) {
+        TestPlayer p = new TestPlayer(h.getLevel());
+        h.getLevel().addNewPlayer(p);
+        return p;
+    }
+
+    private static void removePlayer(GameTestHelper h, ServerPlayer p) {
+        if (!p.isRemoved()) h.getLevel().removePlayerImmediately(p, Entity.RemovalReason.DISCARDED);
+    }
+
+    // Поставити гравця в точку (на висоті корови), обличчям до корови
+    private static void placePlayer(ServerPlayer p, HungryCow cow, Vec3 at) {
+        p.moveTo(at.x, cow.getY(), at.z, 0, 0);
+        p.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, cow.getEyePosition());
+        p.setOnGround(true);   // див. обмеження вгорі: інакше корова вважала б, що гравець стрибає
+    }
+
+    private static HungryCow spawnCow(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), CENTER);
+        cow.setAge(0);
+        return cow;
+    }
+
+    private static boolean fearGoalRunning(HungryCow cow) {
+        return cow.isDoing(CowBrain.Action.WARY);   // працює ціль страху (FearGoal)
+    }
+
+    private static String state(HungryCow cow, ServerPlayer p) {
+        return String.format("страх %d (відчуття %d, поріг %d), довіра %d, відстань %.1f, ціль страху %s",
+                cow.fear, cow.chem.fearFelt(), cow.scaredAt(), cow.trustOf(p), cow.distanceTo(p), fearGoalRunning(cow) ? "так" : "ні");
+    }
+
+    // Спостереження щотіку: найбільший страх, чи доходило відчуття до порогу, коли вперше почалась ціль страху,
+    // найменша відстань до гравця і найбільша після неї (втеча = відійшла на FLED_BY від найближчої точки)
+    private static class Watch {
+        int maxFear = 0;
+        boolean reachedThreshold = false;
+        int fearGoalTick = -1;
+        double minDist = Double.MAX_VALUE;
+        double maxDistAfterMin = 0;
+
+        void tick(GameTestHelper h, HungryCow cow, ServerPlayer p) {
+            maxFear = Math.max(maxFear, cow.fear);
+            if (cow.chem.fearFelt() >= cow.scaredAt()) reachedThreshold = true;
+            if (fearGoalTick < 0 && fearGoalRunning(cow)) fearGoalTick = (int) h.getTick();
+            double d = cow.distanceTo(p);
+            if (d < minDist) {
+                minDist = d;
+                maxDistAfterMin = d;
+            }
+            maxDistAfterMin = Math.max(maxDistAfterMin, d);
+        }
+
+        boolean fled() {
+            return fearGoalTick >= 0 && maxDistAfterMin - minDist >= FLED_BY;
+        }
+
+        String text() {
+            return String.format("страх найбільший %d, поріг досягнуто: %s, ціль страху: %s, відстань найменша %.1f -> потім найбільша %.1f, втекла: %s",
+                    maxFear, reachedThreshold ? "так" : "ні", fearGoalTick >= 0 ? "з тіку " + fearGoalTick : "ні",
+                    minDist, maxDistAfterMin, fled() ? "так" : "ні");
+        }
+    }
+
+    // ---------- 1. Гравець підходить ----------
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = APPROACH_TIMEOUT)
+    public static void fearFromApproachingPlayer(GameTestHelper h) {
+        HungryCow cow = spawnCow(h);
+        TestPlayer p = makePlayer(h);
+        Vec3 dir = new Vec3(0, 0, -1);
+        Watch w = new Watch();          // страх і ціль страху — за весь тест
+        Watch afterStop = new Watch();  // втеча — після того, як гравець зупинився
+        boolean[] stopped = { false };
+        placePlayer(p, cow, cow.position().add(dir.scale(APPROACH_FROM)));
+        int startFear = cow.fear;
+        h.onEachTick(() -> {
+            w.tick(h, cow, p);
+            if (stopped[0]) afterStop.tick(h, cow, p);
+        });
+        var seq = h.startSequence().thenIdle(SECOND);   // корова запам'ятовує, де гравець
+        for (int d = APPROACH_FROM - 1; d >= APPROACH_TO; d--) {
+            final double dist = d;
+            // крок до корови: з того боку, де гравець зараз, на dist від корови
+            seq = seq.thenExecute(() -> {
+                Vec3 from = p.position().subtract(cow.position());
+                Vec3 side = new Vec3(from.x, 0, from.z).lengthSqr() < 1.0E-4 ? dir : new Vec3(from.x, 0, from.z).normalize();
+                placePlayer(p, cow, cow.position().add(side.scale(dist)));
+            }).thenIdle(SECOND);
+        }
+        seq.thenExecute(() -> stopped[0] = true)
+                .thenIdle(FLEE_WAIT)
+                .thenExecute(() -> {
+                    afterStop.fearGoalTick = w.fearGoalTick;   // ціль страху могла початись ще під час підходу
+                    LOG.info("[тест] fearFromApproachingPlayer: страх на початку {}; {}; після зупинки гравця: відстань {} -> найбільша {}, втекла: {}",
+                            startFear, w.text(), String.format("%.1f", afterStop.minDist), String.format("%.1f", afterStop.maxDistAfterMin),
+                            afterStop.fled() ? "так" : "ні");
+                    removePlayer(h, p);
+                    h.assertTrue(w.maxFear > startFear, "страх не зріс, коли гравець підходив: " + w.text());
+                    if (w.maxFear >= HungryCow.PANIC_AT) {   // паніка — рефлекс, тоді втеча обов'язкова
+                        h.assertTrue(afterStop.fled(), "паніка, але корова не втекла: " + w.text());
+                    }
+                })
+                .thenSucceed();
+        h.runAfterDelay(APPROACH_TIMEOUT - 1, () -> removePlayer(h, p));
+    }
+
+    // ---------- 2. Раптова поява поруч ----------
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = SUDDEN_TIMEOUT)
+    public static void fearFromSuddenPlayer(GameTestHelper h) {
+        HungryCow cow = spawnCow(h);
+        TestPlayer p = makePlayer(h);
+        Vec3 dir = new Vec3(0, 0, -1);
+        // зір (етап 1): позаду сліпа зона й нерухомого там не видно — корова повернута в бік, де з'явиться гравець (на північ)
+        cow.setYRot(180F);
+        cow.yBodyRot = 180F;
+        cow.setYHeadRot(180F);
+        Watch w = new Watch();
+        placePlayer(p, cow, cow.position().add(dir.scale(FAR)));
+        int startFear = cow.fear;
+        h.onEachTick(() -> w.tick(h, cow, p));
+        h.startSequence()
+                .thenIdle(2 * SECOND)
+                .thenExecute(() -> placePlayer(p, cow, cow.position().add(dir.scale(NEAR))))
+                .thenWaitUntil(() -> h.assertTrue(w.reachedThreshold, "гравець раптом поруч, а страх не дійшов до порогу: " + state(cow, p)))
+                .thenWaitUntil(() -> h.assertTrue(w.fearGoalTick >= 0, "страх вище порогу, але ціль страху не почалась: " + state(cow, p)))
+                .thenWaitUntil(() -> h.assertTrue(w.fled(), "ціль страху почалась, але корова не відійшла від гравця: " + w.text()))
+                .thenExecute(() -> {
+                    LOG.info("[тест] fearFromSuddenPlayer: страх на початку {}; {}", startFear, w.text());
+                    removePlayer(h, p);
+                })
+                .thenSucceed();
+        h.runAfterDelay(SUDDEN_TIMEOUT - 1, () -> removePlayer(h, p));
+    }
+
+    // ---------- 3. Удар ----------
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = HIT_TIMEOUT)
+    public static void fearFromHit(GameTestHelper h) {
+        HungryCow cow = spawnCow(h);
+        TestPlayer p = makePlayer(h);
+        Watch w = new Watch();
+        placePlayer(p, cow, cow.position().add(new Vec3(0, 0, -HIT_DISTANCE)));
+        int[] before = new int[2];   // страх і довіра перед ударом
+        h.startSequence()
+                .thenIdle(2 * SECOND)
+                .thenExecute(() -> {
+                    before[0] = cow.fear;
+                    before[1] = cow.trustOf(p);
+                    h.onEachTick(() -> w.tick(h, cow, p));   // відстань рахуємо від моменту удару
+                    p.attack(cow);   // справжній удар гравця рукою
+                })
+                .thenWaitUntil(() -> h.assertTrue(cow.fear > before[0], "після удару страх не зріс: " + state(cow, p)))
+                .thenWaitUntil(() -> h.assertTrue(w.fearGoalTick >= 0, "після удару ціль страху не почалась: " + state(cow, p)))
+                .thenIdle(FLEE_WAIT)
+                .thenExecute(() -> {
+                    boolean kicked = p.hurtBy == cow;
+                    LOG.info("[тест] fearFromHit: страх {} -> {}, довіра {} -> {}, корова вдарила гравця: {} (складність світу {}); {}",
+                            before[0], w.maxFear, before[1], cow.trustOf(p), kicked ? "так" : "ні", h.getLevel().getDifficulty(), w.text());
+                    removePlayer(h, p);
+                    h.assertTrue(cow.trustOf(p) < before[1], "після удару довіра не впала: " + state(cow, p));
+                    h.assertTrue(w.fled() || kicked, "після удару корова не втекла й не вдарила гравця: " + w.text());
+                })
+                .thenSucceed();
+        h.runAfterDelay(HIT_TIMEOUT - 1, () -> removePlayer(h, p));
+    }
+
+    // 4. Сильний удар гравця (від 2 сердець) — фобія до нього з одного разу; слабкий — ні (Fij)
+    @GameTest(template = ARENA, batch = "phobia", timeoutTicks = 40)
+    public static void strongHitMakesPhobia(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow strong = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        HungryCow weak = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(10, 2, 7));
+        strong.setAge(0);
+        weak.setAge(0);
+        TestPlayer p = makePlayer(h);
+        String name = p.getName().getString();
+        strong.hurt(strong.damageSources().playerAttack(p), 5.0F);
+        weak.hurt(weak.damageSources().playerAttack(p), 1.0F);
+        double ps = strong.psyche.phobia(name), pw = weak.psyche.phobia(name);
+        LOG.info("[тест] strongHitMakesPhobia: удар 5 -> фобія {}, удар 1 -> фобія {}", ps, pw);
+        strong.discard();
+        weak.discard();
+        removePlayer(h, p);
+        h.assertTrue(ps >= 0.99, "сильний удар не дав фобії (" + ps + ")");
+        h.assertTrue(pw < 0.5, "слабкий удар дав фобію (" + pw + ")");
+        h.succeed();
+    }
+
+    // 5. Голка (духовний документ, крок 1): укол — голка з кров'ю цієї корови, урону немає, страх росте, довіра падає
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 40)
+    public static void needlePricksCow(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        cow.setAge(0);
+        TestPlayer p = makePlayer(h);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.NEEDLE.get()));
+        float hp = cow.getHealth();
+        int fear = cow.fear, trust = cow.trust.get(p.getUUID());
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        net.minecraft.world.item.ItemStack got = p.getMainHandItem();
+        String name = got.hasTag() ? got.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME) : "";
+        LOG.info("[тест] needlePricksCow: {} ({}), здоров'я {} -> {}, страх {} -> {}, довіра {} -> {}", got.getItem(), name,
+                hp, cow.getHealth(), fear, cow.fear, trust, cow.trust.get(p.getUUID()));
+        boolean ok = got.is(com.gigongibus.hungrycows.ModItems.BLOODY_NEEDLE.get()) && name.equals(cow.family.name)
+                && cow.getHealth() >= hp && cow.fear > fear && cow.trust.get(p.getUUID()) < trust;
+        cow.discard();
+        removePlayer(h, p);
+        h.assertTrue(ok, "укол голкою працює не так, як треба");
+        h.succeed();
+    }
+
+    // 6. Крок 2: голка з кров'ю + папір у верстаті → папір з кров'ю тієї самої корови, голка повертається чистою
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 20)
+    public static void bloodyPaperRecipe(GameTestHelper h) {
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player p, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+        };
+        net.minecraft.world.inventory.TransientCraftingContainer grid = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        net.minecraft.world.item.ItemStack needle = new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.BLOODY_NEEDLE.get());
+        needle.getOrCreateTag().putString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME, "Ромашка");
+        grid.setItem(0, needle);
+        grid.setItem(4, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAPER));
+        var recipe = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, grid, h.getLevel());
+        h.assertTrue(recipe.isPresent(), "рецепт паперу з кров'ю не знайдено");
+        net.minecraft.world.item.ItemStack out = recipe.get().assemble(grid, h.getLevel().registryAccess());
+        net.minecraft.world.item.ItemStack left = recipe.get().getRemainingItems(grid).get(0);
+        LOG.info("[тест] bloodyPaperRecipe: {} ({}), лишилось {}", out.getItem(), out.hasTag() ? out.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME) : "-", left.getItem());
+        h.assertTrue(out.is(com.gigongibus.hungrycows.ModItems.BLOODY_PAPER.get()) && out.hasTag()
+                && out.getTag().getString(com.gigongibus.hungrycows.BloodNeedleItem.TAG_NAME).equals("Ромашка"), "папір з кров'ю не той");
+        h.assertTrue(left.is(com.gigongibus.hungrycows.ModItems.NEEDLE.get()), "голка не повернулась чистою");
+        h.succeed();
+    }
+
+    // 7. Крок 3: ступка + пісок душ → 9 щіпок; ступка лишається зношеною на 1, на 34-й раз ламається
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 20)
+    public static void mortarMakesPinches(GameTestHelper h) {
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player p, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+        };
+        net.minecraft.world.inventory.TransientCraftingContainer grid = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        net.minecraft.world.item.ItemStack mortar = new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.MORTAR.get());
+        grid.setItem(1, mortar);
+        grid.setItem(5, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SOUL_SAND));
+        var recipe = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, grid, h.getLevel());
+        h.assertTrue(recipe.isPresent(), "рецепт щіпок не знайдено");
+        net.minecraft.world.item.ItemStack out = recipe.get().assemble(grid, h.getLevel().registryAccess());
+        net.minecraft.world.item.ItemStack left = recipe.get().getRemainingItems(grid).get(1);
+        mortar.setDamageValue(com.gigongibus.hungrycows.MortarItem.USES - 1);   // останнє використання
+        net.minecraft.world.item.ItemStack lastLeft = recipe.get().getRemainingItems(grid).get(1);
+        LOG.info("[тест] mortarMakesPinches: {} x{}, ступка після: знос {}, останній раз: {}", out.getItem(), out.getCount(), left.getDamageValue(), lastLeft.isEmpty() ? "зламалась" : "ціла");
+        h.assertTrue(out.is(com.gigongibus.hungrycows.ModItems.SOUL_SAND_PINCH.get()) && out.getCount() == 9, "не 9 щіпок");
+        h.assertTrue(left.is(com.gigongibus.hungrycows.ModItems.MORTAR.get()) && left.getDamageValue() == 1, "ступка не лишилась зношеною на 1");
+        h.assertTrue(lastLeft.isEmpty(), "ступка не зламалась після 34 разів");
+        h.succeed();
+    }
+
+    // 8. Крок 4: укол → папір → «Корововед» (8 щіпок навколо паперу) зі знімком корови; ПКМ по тій самій корові — оновлює
+    @GameTest(template = ARENA, batch = "needle", timeoutTicks = 40)
+    public static void cowReaderChain(GameTestHelper h) {
+        h.getLevel().setDayTime(NOON);
+        TestWorld.calm(h);
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        cow.setAge(0);
+        TestPlayer p = makePlayer(h);
+        net.minecraft.world.item.ItemStack needle = com.gigongibus.hungrycows.BloodNeedleItem.prick(cow, p);
+        net.minecraft.world.inventory.AbstractContainerMenu menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public net.minecraft.world.item.ItemStack quickMoveStack(net.minecraft.world.entity.player.Player pl, int i) { return net.minecraft.world.item.ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player pl) { return true; }
+        };
+        var rm = h.getLevel().getRecipeManager();
+        var type = net.minecraft.world.item.crafting.RecipeType.CRAFTING;
+        net.minecraft.world.inventory.TransientCraftingContainer g1 = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        g1.setItem(0, needle);
+        g1.setItem(1, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAPER));
+        net.minecraft.world.item.ItemStack paper = rm.getRecipeFor(type, g1, h.getLevel()).get().assemble(g1, h.getLevel().registryAccess());
+        net.minecraft.world.inventory.TransientCraftingContainer g2 = new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+        for (int i = 0; i < 9; i++) g2.setItem(i, i == 4 ? paper : new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.SOUL_SAND_PINCH.get()));
+        var r2 = rm.getRecipeFor(type, g2, h.getLevel());
+        h.assertTrue(r2.isPresent(), "рецепт Корововеда не знайдено");
+        net.minecraft.world.item.ItemStack reader = r2.get().assemble(g2, h.getLevel().registryAccess());
+        int lines = reader.hasTag() ? reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).size() : 0;
+        String first = lines > 0 ? reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0) : "";
+        // оновлення: змінимо ім'я корови й ПКМ Корововедом
+        String old = cow.family.name;
+        cow.family.name = "Оновлена";
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, reader);
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        String after = reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0);
+        // ще 5 оновлень можна (усього 6), сьоме — ні
+        for (int i = 0; i < 5; i++) cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        cow.family.name = "Сьоме";
+        cow.mobInteract(p, net.minecraft.world.InteractionHand.MAIN_HAND);
+        String seventh = reader.getTag().getList(com.gigongibus.hungrycows.BloodNeedleItem.TAG_PAGES, 8).getString(0);
+        int used = reader.getTag().getInt(com.gigongibus.hungrycows.CowReaderItem.TAG_REFRESHES);
+        LOG.info("[тест] cowReaderChain: {} рядків, перший «{}» (корова {}), після оновлення «{}», оновлень {}, після 7-ї спроби «{}»",
+                lines, first, old, after, used, seventh);
+        cow.discard();
+        removePlayer(h, p);
+        h.assertTrue(reader.is(com.gigongibus.hungrycows.ModItems.COW_READER.get()) && lines > 20 && first.equals("#" + old), "Корововед без знімка корови");
+        h.assertTrue(after.equals("#Оновлена"), "ПКМ по корові не оновив Корововед");
+        h.assertTrue(used == 6 && seventh.equals("#Оновлена"), "сьоме оновлення спрацювало (має бути лише 6)");
+        h.succeed();
+    }
+}

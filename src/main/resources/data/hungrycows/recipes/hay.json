@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": ["BBB", "BBB", "BBB"],
+  "key": { "B": { "item": "hungrycows:hay_bundle" } },
+  "result": { "item": "hungrycows:hay" }
+}

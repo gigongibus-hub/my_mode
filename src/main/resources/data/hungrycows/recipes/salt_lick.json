@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [ "BBB", "BSB", "BBB" ],
+  "key": { "B": { "item": "minecraft:bone_meal" }, "S": { "item": "minecraft:stone" } },
+  "result": { "item": "hungrycows:salt_lick", "count": 1 }
+}
