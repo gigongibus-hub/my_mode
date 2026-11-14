@@ -44,8 +44,8 @@ public class HungryCowRainHotTests {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
         shelter(h, true);
-        HungryCow hater = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(3, 2, 3));
-        HungryCow lover = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(3, 2, 6));
+        HungryCow hater = TestWorld.cow(h, new BlockPos(3, 2, 3));
+        HungryCow lover = TestWorld.cow(h, new BlockPos(3, 2, 6));
         for (HungryCow c : new HungryCow[]{hater, lover}) c.setAge(0);
         hater.genes.set(CowGenes.Gene.RAIN_LIKING, 10);
         lover.genes.set(CowGenes.Gene.RAIN_LIKING, 90);
@@ -94,7 +94,7 @@ public class HungryCowRainHotTests {
         var server = h.getLevel().getServer();
         var source = server.createCommandSourceStack().withLevel(h.getLevel()).withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "fillbiome " + box + " minecraft:desert");
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 7));
         cow.setAge(0);
         boolean[] swapped = { false };
         Runnable clear = () -> {

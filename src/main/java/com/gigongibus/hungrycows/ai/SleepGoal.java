@@ -35,6 +35,8 @@ public class SleepGoal extends Goal {
     private static final double HOME_REACH = 1.0;        // «на своєму місці» = ближче цього
     private static final int SPOT_RADIUS = 5;            // своє місце шукає до 5 блоків від спільного
     private static final double CLAIM_RANGE = 16;        // чиї зайняті місця враховує
+    private static final double BULL_CLAIM_SPACE = 9.0;  // біля бика (довгий) — між місцями 3 бл.
+    private static final double BULL_FIT_HALF = 1.35;    // бик спить, де навколо вільно на 1,35 бл. (пів довжини моделі) — не крізь стіну
     private static final double CLAIM_SPACE = 4.0;       // між місцями хоч одна вільна клітинка (квадрат відстані 2 бл.; Fij: спали впритул)
     private static final double SLEEP_NEAR = 4.0;        // але й не далеко: спершу місця, де інша корова ближче 4 блоків
     private static final int MAX_SPOT_CHECKS = 6;        // скільки найкращих місць перевіряє, чи можна дійти
@@ -466,7 +468,8 @@ public class SleepGoal extends Goal {
     private boolean claimedByOther(BlockPos p) {
         for (HungryCow c : cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(CLAIM_RANGE),
                 c -> c != cow && c.isAlive() && c.sleepClaim != null)) {
-            if (tight ? c.sleepClaim.equals(p) : c.sleepClaim.distSqr(p) < CLAIM_SPACE) return true;
+            double space = (cow.bullModel() || c.bullModel()) ? BULL_CLAIM_SPACE : CLAIM_SPACE;
+            if (tight ? c.sleepClaim.equals(p) : c.sleepClaim.distSqr(p) < space) return true;
         }
         return false;
     }
@@ -490,12 +493,21 @@ public class SleepGoal extends Goal {
 
     // Усередині укриття (або в тіні дерева), найглибше вільне. Близько до дому й на землі — ще й перевіряє шлях;
     // здалеку гра шлях часто не знаходить, тому тоді бере найглибше без перевірки (перевірить, коли підійде)
+    // Бик довгий: навколо місця (у будь-який бік, бо не знаємо, як ляже) не має бути стін
+    private boolean bullFits(BlockPos p) {
+        double h = BULL_FIT_HALF * cow.sizeScale();
+        net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(p.getX() + 0.5 - h, p.getY() + 0.01, p.getZ() + 0.5 - h,
+                p.getX() + 0.5 + h, p.getY() + cow.getBbHeight(), p.getZ() + 0.5 + h);
+        return cow.level().noCollision(box);
+    }
+
     private BlockPos chooseSpotOnce(BlockPos base) {
         boolean building = CowHome.shelterScore(cow.level(), base) > 0;
         java.util.Set<BlockPos> interior = building ? interior(base) : null;
         java.util.List<BlockPos> spots = new java.util.ArrayList<>();
         for (BlockPos p : BlockPos.betweenClosed(base.offset(-SPOT_RADIUS, -1, -SPOT_RADIUS), base.offset(SPOT_RADIUS, 1, SPOT_RADIUS))) {
             if (!CowHome.standable(cow.level(), p)) continue;
+            if (cow.bullModel() && !bullFits(p)) continue;   // Fij: бик спав, а голова/зад крізь стіну загону
             net.minecraft.world.level.block.state.BlockState floorState = cow.level().getBlockState(p.below());
             if (floorState.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
                     && floorState.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).spoiled()) continue;   // на пліснявому/гнилому сіні не спить

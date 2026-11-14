@@ -113,11 +113,11 @@ public class HungryCowConfrontDiseaseTests {
     public static void coughSpreadsToNeighbours(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow sick = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        HungryCow sick = TestWorld.cow(h, new BlockPos(7, 2, 7));
         sick.setAge(0);
         List<HungryCow> others = new ArrayList<>();
         for (BlockPos b : new BlockPos[]{new BlockPos(6, 2, 6), new BlockPos(8, 2, 6), new BlockPos(6, 2, 8), new BlockPos(8, 2, 8)}) {
-            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), b);
+            HungryCow c = TestWorld.cow(h, b);
             c.setAge(0);
             others.add(c);
         }

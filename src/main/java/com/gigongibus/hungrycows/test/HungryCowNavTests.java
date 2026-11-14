@@ -32,7 +32,7 @@ public class HungryCowNavTests {
     private static HungryCow cowWithoutGoals(GameTestHelper h, BlockPos at) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), at);
+        HungryCow cow = TestWorld.cow(h, at);
         cow.setAge(0);
         cow.goalSelector.removeAllGoals(g -> true);   // лише для тесту: ніхто, крім тесту, не веде корову
         return cow;

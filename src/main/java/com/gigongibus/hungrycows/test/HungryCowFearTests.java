@@ -109,7 +109,7 @@ public class HungryCowFearTests {
     private static HungryCow spawnCow(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), CENTER);
+        HungryCow cow = TestWorld.cow(h, CENTER);
         cow.setAge(0);
         return cow;
     }
@@ -261,8 +261,8 @@ public class HungryCowFearTests {
     public static void strongHitMakesPhobia(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
-        HungryCow strong = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
-        HungryCow weak = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(10, 2, 7));
+        HungryCow strong = TestWorld.cow(h, new BlockPos(4, 2, 7));
+        HungryCow weak = TestWorld.cow(h, new BlockPos(10, 2, 7));
         strong.setAge(0);
         weak.setAge(0);
         TestPlayer p = makePlayer(h);
@@ -284,7 +284,7 @@ public class HungryCowFearTests {
     public static void needlePricksCow(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 7));
         cow.setAge(0);
         TestPlayer p = makePlayer(h);
         p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(com.gigongibus.hungrycows.ModItems.NEEDLE.get()));
@@ -355,7 +355,7 @@ public class HungryCowFearTests {
     public static void cowReaderChain(GameTestHelper h) {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 7));
         cow.setAge(0);
         TestPlayer p = makePlayer(h);
         net.minecraft.world.item.ItemStack needle = com.gigongibus.hungrycows.BloodNeedleItem.prick(cow, p);

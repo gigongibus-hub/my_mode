@@ -388,6 +388,11 @@ public class CowReproduction {
 
     // ---------- для тестів (команда /hungrycows birth) ----------
 
+    // Тести: корова — самка (бик тепер великий, 1,4 бл., і не пролазить у вузькі проходи тестових майданчиків)
+    public void setFemaleForTest() {
+        sex = 1;
+    }
+
     // Самка одразу вагітна, пологи за seconds секунд; calves = 1 або 2
     public void startTestPregnancy(int seconds, int calves) {
         sex = 1;

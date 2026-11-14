@@ -23,7 +23,7 @@ public class HungryCowPsycheTests {
     private static HungryCow cow(GameTestHelper h, BlockPos at) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), at);
+        HungryCow c = TestWorld.cow(h, at);
         c.setAge(0);
         return c;
     }
@@ -54,7 +54,7 @@ public class HungryCowPsycheTests {
     @GameTest(template = "arena", batch = "psyche", timeoutTicks = 100)
     public static void motherGrievesCalf(GameTestHelper h) {
         HungryCow mother = cow(h, new BlockPos(5, 2, 7));
-        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(8, 2, 7));
+        HungryCow calf = TestWorld.cow(h, new BlockPos(8, 2, 7));
         calf.setAge(-24000);
         calf.family.setupNewborn(mother, null);
         double appetiteBefore = mother.psyche.appetiteFactor();

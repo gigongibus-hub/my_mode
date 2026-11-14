@@ -64,7 +64,7 @@ public class HungryCowInbreedingTests {
     public static void oldCowDiesOfAge(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 4));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 4));
         cow.setAge(0);
         double life = cow.aging.lifespanDays();
         h.assertTrue(!cow.aging.old() && cow.aging.ageDays() >= 100 && cow.aging.ageDays() <= 400, "нова корова не 100–400 діб: " + cow.aging.ageDays());

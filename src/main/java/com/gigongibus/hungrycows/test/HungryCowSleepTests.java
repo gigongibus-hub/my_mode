@@ -103,7 +103,7 @@ public class HungryCowSleepTests {
         TestWorld.calm(h);
         List<HungryCow> cows = new java.util.ArrayList<>();
         for (int i = 0; i < CORRIDOR_COWS_X.length; i++) {
-            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), COWS.get(i % COWS.size()));
+            HungryCow c = TestWorld.cow(h, COWS.get(i % COWS.size()));
             c.setAge(0);
             cows.add(c);
         }
@@ -200,7 +200,7 @@ public class HungryCowSleepTests {
         h.setBlock(new BlockPos(45, 2, 36), net.minecraft.world.level.block.Blocks.MELON);
         h.setBlock(new BlockPos(45, 2, 44), net.minecraft.world.level.block.Blocks.MELON);
         List<HungryCow> cows = IN_BARN.stream().map(p -> {
-            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), p);
+            HungryCow c = TestWorld.cow(h, p);
             c.setAge(0);
             return c;
         }).toList();
@@ -268,7 +268,7 @@ public class HungryCowSleepTests {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
         List<HungryCow> cows = spawns.stream().map(p -> {
-            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), p);
+            HungryCow c = TestWorld.cow(h, p);
             c.setAge(0);
             return c;
         }).toList();

@@ -27,7 +27,7 @@ public class HungryCowTouchTests {
     private static HungryCow cow(GameTestHelper h, BlockPos at) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), at);
+        HungryCow c = TestWorld.cow(h, at);
         c.setAge(0);
         return c;
     }
@@ -78,7 +78,7 @@ public class HungryCowTouchTests {
     @GameTest(template = "arena", batch = "touch", timeoutTicks = 6000)
     public static void motherAndCalfGroom(GameTestHelper h) {
         HungryCow mother = cow(h, new BlockPos(6, 2, 7));
-        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(8, 2, 7));
+        HungryCow calf = TestWorld.cow(h, new BlockPos(8, 2, 7));
         calf.setAge(-24000);
         calf.family.setupNewborn(mother, null);
         boolean[] cleared = { false };

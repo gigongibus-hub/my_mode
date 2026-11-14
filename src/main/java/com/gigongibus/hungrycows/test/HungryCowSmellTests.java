@@ -47,7 +47,7 @@ public class HungryCowSmellTests {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
         Wind.set(h.getLevel(), 0, true);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.goalSelector.removeAllGoals(g -> true);
         Pig pig = h.spawn(EntityType.PIG, new BlockPos(7, 2, 9));
@@ -88,7 +88,7 @@ public class HungryCowSmellTests {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
         Wind.set(h.getLevel(), 0, true);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.goalSelector.removeAllGoals(g -> true);
         Pig pig = h.spawn(EntityType.PIG, new BlockPos(7, 2, 9));
@@ -127,7 +127,7 @@ public class HungryCowSmellTests {
         }
         h.setBlock(new BlockPos(10, 2, 13), Blocks.AIR);   // вузький прохід у куток
         h.setBlock(new BlockPos(10, 3, 13), Blocks.AIR);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(3, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(3, 2, 3));
         cow.setAge(0);
         int[] smelledAt = { -1 };
         boolean[] cleared = { false };
@@ -164,7 +164,7 @@ public class HungryCowSmellTests {
         BlockPos hay = new BlockPos(7, 2, 3);   // 2 бл. від корови, але за стінкою (було: «дійшла» по прямій і спам)
         h.setBlock(hay, Blocks.HAY_BLOCK);
         for (int z = 1; z <= 12; z++) for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(6, y, z), Blocks.OAK_PLANKS);   // прохід при z 13
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(5, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(5, 2, 3));
         cow.setAge(0);
         int[] starts = { 0 };
         boolean[] cleared = { false };

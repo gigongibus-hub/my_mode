@@ -326,7 +326,7 @@
 - МОДЕЛЬ БИКА (Fij, Blockbench → GeckoLib 4.8.4, 14.11): залежність `software.bernie.geckolib:geckolib-forge-1.20.1`
   (`build.gradle`, maven dl.cloudsmith.io; `mods.toml` — обов'язкова: гравцям потрібен мод GeckoLib). Оригінали — `models_todo/bull/`
   (README Fij). Ресурси: `geo/bull.geo.json` (identifier `geometry.bull`), `animations/bull.animation.json` (усі 7 разом),
-  `textures/entity/bull.png` (128×128). Лише ДОРОСЛІ бики (`DATA_BULL` синхронізується з `isBull()` раз на с); корови й телята —
+  `textures/entity/bull.png` (128×128). Лише ДОРОСЛІ бики (`DATA_BULL` = `isBull()`); корови й телята —
   стара модель з мастями; бики всі коричневі (гени масті лишаються й передаються). `client/HungryCowDispatchRenderer` (зареєстрований у
   `ModEvents`) вибирає `BullRenderer` (GeoEntityRenderer, `MODEL_SCALE` 0,95 × ген розміру — Fij: «трохи більший за гравця», ≈2 бл.; хітбокс коров'ячий; без тями — на боці) або `HungryCowRenderer`; світіння зірочника — у диспетчері. `client/BullModel`: голова
   (`golowa`, жодна анімація її не крутить) за поглядом, коли немає дії; п'є — нахил 40° (`DRINK_PITCH`); кут ставити ЦІЛИЙ від
@@ -334,7 +334,15 @@
   Fij (14.11): погляд — лише кісткою `golowabez` (голова), шия `golowa` рівна; п'є — уся шия донизу. У GeckoLib нахил
   навпаки (`EntityModelData` дає −xRot): «донизу» = мінус — раніше бик, п'ючи, задирав голову. Під час «спокій 1» і
   «підготовки» голову веде анімація. `DATA_BULL` — щотіку й одразу після завантаження/генів (`refreshBullModel`): раніше щойно
-  викликаний бик секунду був коров'ячою моделлю. Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
+  викликаний бик секунду був коров'ячою моделлю.
+  ВЕЛИКИЙ БИК (Fij, 14.11, «спить за стіною загону, ванільний розмір у розрахунках»): для гри дорослий бик 1,4 × 1,95 бл.
+  (`BULL_WIDTH/HEIGHT`, `getDimensions` за `bullModel()`, × ген розміру; `refreshDimensions` при зміні) — як кінь: у двері
+  заввишки 2 пролазить, але потрібні проходи ШИРИНОЮ 2 (пошук шляху гри сам рахує ширину). Модель `MODEL_SCALE` 0,95 (≈2 бл.),
+  ім'я — звичайне (над хітбоксом). Їсть МОРДОЮ: `mouthPos` (1,2 бл. попереду), `reachesFood` — морда ближче 1 бл. (корови —
+  як було, середина ближче 2). Сон: `SleepGoal.bullFits` — навколо місця 1,35 бл. без стін (довга модель не крізь стіну), між
+  місцями біля бика 3 бл. (`BULL_CLAIM_SPACE`). `PersonalSpaceGoal`: «затісно» = пів ширин обох + 0,4. Стать: Sex 1 — самка,
+  2 — самець. ТЕСТИ: `TestWorld.cow(h, pos)` — завжди самка (раніше випадкова стать; великий бик не пролазив у тестові проходи
+  1 бл. — 8 провалів); биків тести беруть `HungryCowBullTests.spawnSex`. Тест `bullIsBigAndEatsWithMouth` (1,41 × 1,96, морда 1,2). Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
   (4 с, раз на 10–25 с); `is_standing2` — жує жуйку (`RuminateGoal`); `is_standing3` — п'є (`DrinkWaterGoal`); `pidhutovka_atak` —
   готується напасти (`ConfrontGoal` BULL_WARN; `BullFightGoal` перші 2 с — `PREPARE_TICKS`, `fightStart`); `atac` — біжить нападати
   (CHARGE/ATTACK, бійка, «бий» у `FearGoal`, `MushroomRageGoal`); `jty` хода, `bigh` біг (ноги ≥ 0,55; ×1,4 швидше). Дію ціль

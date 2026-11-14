@@ -46,7 +46,7 @@ public class HungryCowGameTests {
     private static HungryCow spawnCow(GameTestHelper h, BlockPos pos) {
         h.getLevel().setDayTime(NOON);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), pos);
+        HungryCow cow = TestWorld.cow(h, pos);
         cow.setAge(0);   // доросла (теля їсть лише молоко)
         return cow;
     }

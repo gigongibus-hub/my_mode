@@ -26,7 +26,7 @@ public class HungryCowTasteTests {
     private static HungryCow cow(GameTestHelper h, BlockPos at) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), at);
+        HungryCow c = TestWorld.cow(h, at);
         c.setAge(0);
         return c;
     }

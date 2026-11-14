@@ -10,7 +10,12 @@ import java.util.List;
 
 // Особистий простір: якщо корова стоїть майже впритул до іншої, слабша (нижчий ранг) трохи відходить
 public class PersonalSpaceGoal extends Goal {
-    private static final double TOO_CLOSE = 1.3;        // ближче цього — затісно
+    private static final double TOO_CLOSE = 1.3;        // ближче цього — затісно (дві корови)
+    private static final double GAP = 0.4;              // бик ширший: затісно, коли між боками менше 0,4 бл.
+
+    private double tooClose(HungryCow other) {
+        return Math.max(TOO_CLOSE, (cow.getBbWidth() + other.getBbWidth()) / 2.0 + GAP);
+    }
     private static final int CHECK_EVERY = 40;          // перевіряє раз на 2 с
     private final HungryCow cow;
     private int cooldown = 0;
@@ -31,8 +36,8 @@ public class PersonalSpaceGoal extends Goal {
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = CHECK_EVERY / 2;
         if (!cow.getNavigation().isDone() || cow.sleeping) return false;
-        List<HungryCow> near = cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(TOO_CLOSE),
-                c -> c != cow && c.isAlive() && c.distanceToSqr(cow) < TOO_CLOSE * TOO_CLOSE);
+        List<HungryCow> near = cow.level().getEntitiesOfClass(HungryCow.class, cow.getBoundingBox().inflate(TOO_CLOSE + 1),
+                c -> c != cow && c.isAlive() && c.distanceToSqr(cow) < tooClose(c) * tooClose(c));
         other = null;
         for (HungryCow c : near) {
             // відходить слабша; теля від своєї матері не відходить

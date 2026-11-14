@@ -807,13 +807,6 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         return i >= 0 && i < Anim.values().length ? Anim.values()[i] : Anim.NONE;
     }
 
-    public static final float BULL_NAME_HEIGHT = 2.3F;   // модель бика вища за хітбокс — ім'я над головою, а не в тілі
-
-    @Override
-    public float getNameTagOffsetY() {
-        return bullModel() ? BULL_NAME_HEIGHT * sizeScale() : super.getNameTagOffsetY();
-    }
-
     /** Дорослий бик — малюється моделлю бика (на клієнті стать не відома, тому синхронізується) */
     public boolean bullModel() {
         return this.entityData.get(DATA_BULL);
@@ -827,7 +820,10 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
     // Бик чи ні — одразу (Fij: щойно викликаний бик спершу був звичайною коровою, бо перевірялось раз на секунду)
     public void refreshBullModel() {
         if (this.level() == null || this.level().isClientSide || repro == null) return;
-        if (this.entityData.get(DATA_BULL) != isBull()) this.entityData.set(DATA_BULL, isBull());
+        if (this.entityData.get(DATA_BULL) != isBull()) {
+            this.entityData.set(DATA_BULL, isBull());
+            this.refreshDimensions();   // бик більший — розмір для руху теж (Fij)
+        }
     }
 
     @Override
@@ -877,9 +873,44 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         return super.getScale() * sizeScale();
     }
 
+    // Fij (14.11, «великий бик»): дорослий бик для гри 1,4 × 1,95 бл. (як кінь; модель ≈1,2 × 2 × 2,8) — потребує проходів
+    // шириною 2 бл., у двері заввишки 2 бл. пролазить; × ген розміру. Корови й телята — як були (0,9 × 1,4)
+    public static final float BULL_WIDTH = 1.4F, BULL_HEIGHT = 1.95F;
+    public static final double BULL_MOUTH_AHEAD = 1.2;   // морда бика на 1,2 бл. попереду середини (їсть те, що перед мордою)
+    public static final double BULL_MOUTH_REACH = 1.0;   // їсть, коли морда ближче 1 бл. до їжі
+    private static final net.minecraft.world.entity.EntityDimensions BULL_DIMENSIONS =
+            net.minecraft.world.entity.EntityDimensions.scalable(BULL_WIDTH, BULL_HEIGHT);
+
+    @Override
+    public net.minecraft.world.entity.EntityDimensions getDimensions(net.minecraft.world.entity.Pose pose) {
+        return bullModel() ? BULL_DIMENSIONS.scale(getScale()) : super.getDimensions(pose);
+    }
+
+    @Override
+    protected float getStandingEyeHeight(net.minecraft.world.entity.Pose pose, net.minecraft.world.entity.EntityDimensions dims) {
+        return bullModel() ? dims.height * 0.85F : super.getStandingEyeHeight(pose, dims);
+    }
+
+    /** Де морда: у бика далеко попереду (довга модель), у корови — сама корова */
+    public net.minecraft.world.phys.Vec3 mouthPos() {
+        if (!bullModel()) return this.position();
+        double a = Math.toRadians(this.yBodyRot);
+        double d = BULL_MOUTH_AHEAD * sizeScale();
+        return this.position().add(-Math.sin(a) * d, 0, Math.cos(a) * d);
+    }
+
+    /** Чи дістає до їжі в (x, y, z): корова — середина ближче 2 бл. (як було); бик — морда ближче 1 бл. */
+    public boolean reachesFood(double x, double y, double z) {
+        if (!bullModel()) return this.distanceToSqr(x, y, z) < 4.0;
+        net.minecraft.world.phys.Vec3 m = mouthPos();
+        double dx = m.x - x, dz = m.z - z;
+        return dx * dx + dz * dz < BULL_MOUTH_REACH * BULL_MOUTH_REACH && Math.abs(this.getY() - y) < 2.0
+                || this.distanceToSqr(x, y, z) < 1.0;   // стоїть просто на ній — теж дістає
+    }
+
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
-        if (DATA_SIZE.equals(key)) this.refreshDimensions();
+        if (DATA_SIZE.equals(key) || DATA_BULL.equals(key)) this.refreshDimensions();
         super.onSyncedDataUpdated(key);
     }
 

@@ -149,7 +149,7 @@ public class HungryCowHayTests {
         int dryDirty = CowHayBlock.nutrition(hay(Stage.DRY, Cond.VERY_DIRTY, true));
         int over = CowHayBlock.nutrition(hay(Stage.OVERDRIED, Cond.CLEAN, true));
         int rotten = CowHayBlock.nutrition(hay(Stage.DRY, Cond.ROTTEN, true));
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 4));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 4));
         cow.setAge(0);
         cow.setNoAi(true);
         cow.hunger = 50;
@@ -177,7 +177,7 @@ public class HungryCowHayTests {
         BlockPos mold = new BlockPos(6, 2, 7), clean = new BlockPos(10, 2, 7);
         h.setBlock(mold, hay(Stage.DRY, Cond.MOLD, true));
         h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 7));
         cow.setAge(0);
         cow.setYRot(-90);
         cow.setYHeadRot(-90);
@@ -203,7 +203,7 @@ public class HungryCowHayTests {
         BlockPos clean = new BlockPos(6, 2, 7), fungus = new BlockPos(10, 2, 4);   // не за чистим (інакше не видно)
         h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
         h.setBlock(fungus, hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 7));
         cow.setAge(0);
         cow.setYRot(-90);
         cow.setYHeadRot(-90);
@@ -231,7 +231,7 @@ public class HungryCowHayTests {
         BlockPos clean = new BlockPos(8, 2, 10), star = new BlockPos(8, 2, 4);   // однаково далеко від корови
         h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
         h.setBlock(star, hay(Stage.FRESH, Cond.STAR_FUNGUS, true));
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 7));
         cow.setAge(0);
         cow.setYRot(-90);
         cow.setYHeadRot(-90);
@@ -257,11 +257,11 @@ public class HungryCowHayTests {
     public static void mushroomRageHitsButSparesCalf(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 7));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 7));
         cow.setAge(0);
         Pig pig = h.spawn(EntityType.PIG, new BlockPos(9, 2, 7));
         pig.setNoAi(true);
-        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(5, 2, 7));
+        HungryCow calf = TestWorld.cow(h, new BlockPos(5, 2, 7));
         calf.setAge(-24000);
         calf.setNoAi(true);
         float pigHp = pig.getHealth(), calfHp = calf.getHealth();
@@ -285,10 +285,10 @@ public class HungryCowHayTests {
     public static void rageCowStaysAndIsFeared(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 4));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 4));
         cow.setAge(0);
         cow.hunger = 0;
-        HungryCow other = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 4));
+        HungryCow other = TestWorld.cow(h, new BlockPos(7, 2, 4));
         other.setAge(0);
         other.hunger = 0;
         other.setYRot(90);
@@ -326,7 +326,7 @@ public class HungryCowHayTests {
     public static void starFungusGlowsAndLures(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(2, 2, 2));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(2, 2, 2));
         cow.setAge(0);
         cow.setNoAi(true);
         cow.eatHay(hay(Stage.FRESH, Cond.STAR_FUNGUS, true));
@@ -380,7 +380,7 @@ public class HungryCowHayTests {
         TestWorld.calm(h);
         BlockPos fungus = new BlockPos(9, 2, 10);
         h.setBlock(fungus, hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(5, 2, 10));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(5, 2, 10));
         cow.setAge(0);
         cow.setYRot(-90);
         cow.setYHeadRot(-90);
@@ -489,7 +489,7 @@ public class HungryCowHayTests {
         player.setShiftKeyDown(true);
         boolean sneakShears = com.gigongibus.hungrycows.GrassHarvest.harvest(level, g2, level.getBlockState(g2), player);
         player.setShiftKeyDown(false);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(6, 2, 6));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(6, 2, 6));
         cow.setAge(0);
         cow.setNoAi(true);
         cow.hunger = 50;

@@ -29,7 +29,7 @@ public class HungryCowVisionTests {
     public static void seesThroughGlassNotStone(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.goalSelector.removeAllGoals(g -> true);   // лише для тесту: голова дивиться, куди поставили
         Pig front = h.spawn(EntityType.PIG, new BlockPos(7, 2, 9));
@@ -84,7 +84,7 @@ public class HungryCowVisionTests {
         for (int i = 4; i <= 10; i++) {
             for (int y = 2; y <= 4; y++) h.setBlock(new BlockPos(i, y, 8), Blocks.STONE);
         }
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
+        HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.hunger = 60;
         LOG.info("[тест] cowSearchesForHiddenFood: корова {}", cow.family.name);

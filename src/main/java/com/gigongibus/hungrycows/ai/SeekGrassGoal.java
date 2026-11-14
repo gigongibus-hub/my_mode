@@ -217,7 +217,7 @@ public class SeekGrassGoal extends Goal {
         double y = target.getY() + ((block == Blocks.GRASS_BLOCK || block == Blocks.MOSS_BLOCK) ? 1 : 0);
         double z = target.getZ() + 0.5;
 
-        if (cow.distanceToSqr(x, y, z) < 4.0) {
+        if (cow.reachesFood(x, y, z)) {   // бик — мордою (Fij: їв траву під животом)
             if (kind == Kind.PLACED) {
                 // блок, поставлений гравцем, корова їсть 10 секунд
                 cow.getNavigation().stop();

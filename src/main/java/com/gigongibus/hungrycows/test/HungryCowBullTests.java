@@ -41,6 +41,31 @@ public class HungryCowBullTests {
         return out;
     }
 
+    // 0. Fij «великий бик»: для гри 1,4 × 1,95 (× розмір), їсть мордою (попереду), а не тим, що під животом
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = 40)
+    public static void bullIsBigAndEatsWithMouth(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(7, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.setNoAi(true);
+        h.runAtTickTime(5, () -> {
+            float s = bull.sizeScale();
+            double w = bull.getBbWidth(), hh = bull.getBbHeight();
+            net.minecraft.world.phys.Vec3 mouth = bull.mouthPos();
+            net.minecraft.world.phys.Vec3 back = bull.position().add(bull.position().subtract(mouth));   // так само далеко позаду
+            boolean front = bull.reachesFood(mouth.x, bull.getY(), mouth.z);
+            boolean behind = bull.reachesFood(back.x, bull.getY(), back.z);
+            LOG.info("[тест] bullIsBigAndEatsWithMouth: розмір {} → {} × {}, морда попереду {} бл.: дістає {} / позаду {}",
+                    s, w, hh, mouth.distanceTo(bull.position()), front, behind);
+            bull.discard();
+            h.assertTrue(Math.abs(w - HungryCow.BULL_WIDTH * s) < 0.01 && Math.abs(hh - HungryCow.BULL_HEIGHT * s) < 0.01, "бик не великий: " + w + " × " + hh);
+            h.assertTrue(front && !behind, "бик їсть не мордою (попереду " + front + ", позаду " + behind + ")");
+            h.succeed();
+        });
+    }
+
     // 1. Шанс «бий або тікай»: бик більше за корову, теля 0
     @GameTest(template = ARENA, batch = BATCH, timeoutTicks = 100)
     public static void fightChanceBullOverCow(GameTestHelper h) {

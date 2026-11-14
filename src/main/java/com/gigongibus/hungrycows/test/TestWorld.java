@@ -67,4 +67,13 @@ final class TestWorld {
             }
         }
     }
+
+    /** Корова для тесту — завжди самка: бик тепер великий (1,4 бл.) і не пролазить у проходи на 1 блок тестових майданчиків.
+     *  Тести биків беруть биків самі (`HungryCowBullTests.spawnSex`). */
+    public static com.gigongibus.hungrycows.HungryCow cow(net.minecraft.gametest.framework.GameTestHelper h, net.minecraft.core.BlockPos pos) {
+        com.gigongibus.hungrycows.HungryCow c = h.spawn(com.gigongibus.hungrycows.ModEntities.HUNGRY_COW.get(), pos);
+        c.repro.setFemaleForTest();
+        c.refreshBullModel();
+        return c;
+    }
 }

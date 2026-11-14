@@ -26,7 +26,7 @@ public class HungryCowHearingTests {
     private static HungryCow still(GameTestHelper h, BlockPos at) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
-        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), at);
+        HungryCow cow = TestWorld.cow(h, at);
         cow.setAge(0);
         return cow;
     }
@@ -170,7 +170,7 @@ public class HungryCowHearingTests {
     @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 600)
     public static void calfCallsMotherComes(GameTestHelper h) {
         HungryCow mother = still(h, new BlockPos(2, 2, 2));
-        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(12, 2, 12));
+        HungryCow calf = TestWorld.cow(h, new BlockPos(12, 2, 12));
         calf.setAge(-24000);
         calf.family.setupNewborn(mother, null);
         calf.goalSelector.removeAllGoals(g -> true);   // лише для тесту: теля стоїть на місці (як на повідку)
@@ -194,7 +194,7 @@ public class HungryCowHearingTests {
     @GameTest(template = ARENA, batch = "hearing", timeoutTicks = 600)
     public static void calfGoesToMother(GameTestHelper h) {
         HungryCow mother = still(h, new BlockPos(2, 2, 2));
-        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(11, 2, 11));
+        HungryCow calf = TestWorld.cow(h, new BlockPos(11, 2, 11));
         calf.setAge(-24000);
         calf.family.setupNewborn(mother, null);
         Vec3 m0 = mother.position(), c0 = calf.position();
