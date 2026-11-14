@@ -94,6 +94,7 @@ public class DrinkWaterGoal extends Goal {
             return;
         }
         cow.getNavigation().stop();
+        cow.anim(HungryCow.Anim.DRINK);
         if (++drinkTicks % 20 == 0) cow.playSound(SoundEvents.GENERIC_DRINK, 0.8F, 0.9F);
         if (drinkTicks >= DRINK_TICKS) {
             boolean ok = !cauldron || (cow.level() instanceof ServerLevel sl && WaterSources.sip(sl, target));

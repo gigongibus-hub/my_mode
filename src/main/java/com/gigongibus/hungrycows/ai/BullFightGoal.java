@@ -36,6 +36,7 @@ public class BullFightGoal extends Goal {
     public static final double SPEED = 1.2;
     public static final int RETREAT_TICKS = 600;          // переможений тікає 30 с
     public static final double RETREAT_SPEED = 1.3;
+    public static final int PREPARE_TICKS = 40;           // Fij: перед бійкою 2 с «підготовка до атаки» (копає ногою), потім біжить
 
     private final HungryCow cow;
     private int cooldown;
@@ -89,6 +90,8 @@ public class BullFightGoal extends Goal {
         if (deadly) until = a.tickCount + DEADLY_MAX_TICKS;
         a.fightRival = b;
         b.fightRival = a;
+        a.fightStart = a.tickCount;
+        b.fightStart = b.tickCount;
         a.fightDeadly = deadly;
         b.fightDeadly = deadly;
         a.fightUntil = until;
@@ -119,6 +122,12 @@ public class BullFightGoal extends Goal {
         HungryCow r = cow.fightRival;
         if (r == null) return;
         cow.getLookControl().setLookAt(r, 30F, 30F);
+        if (cow.tickCount - cow.fightStart < PREPARE_TICKS) {   // готується: стоїть, копає ногою
+            cow.getNavigation().stop();
+            cow.anim(HungryCow.Anim.PREPARE);
+            return;
+        }
+        cow.anim(HungryCow.Anim.ATTACK);
         if (cow.tickCount % 5 == 0 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(r, SPEED);
         double gap = Math.sqrt(cow.distanceToSqr(r)) - (cow.getBbWidth() + r.getBbWidth()) / 2.0;
         if (gap <= BUTT_REACH && cow.tickCount >= nextButt) {

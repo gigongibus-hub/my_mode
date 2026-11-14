@@ -73,6 +73,7 @@ minecraft {
             // You can set various levels here.
             // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
             property 'forge.logging.console.level', 'debug'
+            if (project.hasProperty('quickPlay')) args '--quickPlaySingleplayer', project.property('quickPlay')   // -PquickPlay=світ: одразу у світ (перевірка моделі)
 
             mods {
                 "${mod_id}" {
@@ -122,6 +123,8 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+    // GeckoLib — модель і анімації бика з Blockbench (Fij)
+    maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
 }
 
 dependencies {
@@ -131,6 +134,7 @@ dependencies {
     // If the group id is "net.minecraft" and the artifact id is one of ["client", "server", "joined"],
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-1.20.1:${geckolib_version}")
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

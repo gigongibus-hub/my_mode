@@ -84,6 +84,7 @@ public class MushroomRageGoal extends Goal {
     public void tick() {
         if (target == null) return;
         cow.getLookControl().setLookAt(target, 30F, 30F);
+        cow.anim(HungryCow.Anim.ATTACK);
         if (cow.distanceTo(target) > REACH) {
             if (cow.tickCount % 10 == 0 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(target, SPEED);
             return;

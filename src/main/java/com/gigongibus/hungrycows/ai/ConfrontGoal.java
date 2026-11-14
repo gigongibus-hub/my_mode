@@ -229,6 +229,7 @@ public class ConfrontGoal extends Goal {
                 }
             }
             case ATTACK -> {
+                cow.anim(HungryCow.Anim.ATTACK);
                 cow.getLookControl().setLookAt(target, 30F, 30F);
                 if (phaseTicks % 5 == 1 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(target, ATTACK_SPEED);
                 if (gap() <= REACH && cow.tickCount >= nextRam) {
@@ -241,6 +242,7 @@ public class ConfrontGoal extends Goal {
             case BULL_WARN -> {
                 // опущена голова, не їсть, трохи боком
                 cow.getNavigation().stop();
+                cow.anim(HungryCow.Anim.PREPARE);
                 cow.headDown = true;
                 cow.getLookControl().setLookAt(target, 30F, 0F);
                 cow.setXRot(HEAD_DOWN);
@@ -254,6 +256,7 @@ public class ConfrontGoal extends Goal {
                 }
             }
             case CHARGE -> {
+                cow.anim(HungryCow.Anim.ATTACK);
                 cow.getLookControl().setLookAt(target, 30F, 30F);
                 if (phaseTicks % 4 == 1) cow.getNavigation().moveTo(target, CHARGE_SPEED);
                 if (gap() <= REACH) {

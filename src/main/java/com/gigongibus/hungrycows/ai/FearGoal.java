@@ -76,6 +76,7 @@ public class FearGoal extends Goal {
             if (cow.tickCount >= fightUntil || !scary.isAlive() || cow.getHealth() <= cow.getMaxHealth() * HungryCow.FIGHT_HEALTH_MIN) {
                 fighting = false;
             } else {
+                cow.anim(HungryCow.Anim.ATTACK);
                 if (cow.tickCount % 5 == 0 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(scary, HungryCow.FIGHT_SPEED);
                 double gap = Math.sqrt(cow.distanceToSqr(scary)) - (cow.getBbWidth() + scary.getBbWidth()) / 2.0;
                 if (gap <= HungryCow.RAM_REACH && cow.tickCount >= nextRam) {

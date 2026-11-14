@@ -323,6 +323,18 @@
   `rageCowStaysAndIsFeared`: «відбігла» ≥ 6 бл. (майданчик 15×15, було 8 — 1 провал 7,7). 88/88.
   Нестабільне (3 прогони після цього): calfGoesToMother 2 з 3 «час вийшов, відстань 1», fearFromHit 1, waterDoesNotClimbHay 1. Книга «Потреби»: «Зірочник: …», «Вогняний гриб: …». Тест `starFungusGlowsAndLures`. 87/87.
   НЕ ЗРОБЛЕНО: «грибна порода», зілля з грибів; комфорт в оцінці дому.
+- МОДЕЛЬ БИКА (Fij, Blockbench → GeckoLib 4.8.4, 14.11): залежність `software.bernie.geckolib:geckolib-forge-1.20.1`
+  (`build.gradle`, maven dl.cloudsmith.io; `mods.toml` — обов'язкова: гравцям потрібен мод GeckoLib). Оригінали — `models_todo/bull/`
+  (README Fij). Ресурси: `geo/bull.geo.json` (identifier `geometry.bull`), `animations/bull.animation.json` (усі 7 разом),
+  `textures/entity/bull.png` (128×128). Лише ДОРОСЛІ бики (`DATA_BULL` синхронізується з `isBull()` раз на с); корови й телята —
+  стара модель з мастями; бики всі коричневі (гени масті лишаються й передаються). `client/HungryCowDispatchRenderer` (зареєстрований у
+  `ModEvents`) вибирає `BullRenderer` (GeoEntityRenderer, `MODEL_SCALE` 0,75 × ген розміру — модель Fij 1,25 × 2,1 × 3 бл., СПИТАТИ
+  Fij про розмір; без тями — на боці) або `HungryCowRenderer`; світіння зірочника — у диспетчері. `client/BullModel`: голова
+  (`golowa`) за поглядом, коли немає дії. Анімації (`BullAnimations.predicate`, Fij): `is_standing` — час від часу, коли стоїть
+  (4 с, раз на 10–25 с); `is_standing2` — жує жуйку (`RuminateGoal`); `is_standing3` — п'є (`DrinkWaterGoal`); `pidhutovka_atak` —
+  готується напасти (`ConfrontGoal` BULL_WARN; `BullFightGoal` перші 2 с — `PREPARE_TICKS`, `fightStart`); `atac` — біжить нападати
+  (CHARGE/ATTACK, бійка, «бий» у `FearGoal`, `MushroomRageGoal`); `jty` хода, `bigh` біг (ноги ≥ 0,55; ×1,4 швидше). Дію ціль
+  ставить щотіку `cow.anim(Anim.X)` (`DATA_ANIM`, гасне за 5 тіків).
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.

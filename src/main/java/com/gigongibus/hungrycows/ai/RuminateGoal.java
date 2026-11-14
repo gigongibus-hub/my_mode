@@ -45,6 +45,7 @@ public class RuminateGoal extends Goal {
     public void tick() {
         ticks++;
         cow.getNavigation().stop();
+        cow.anim(HungryCow.Anim.CHEW);
         if (ticks % 20 == 0) cow.chem.onRuminate();
         if (ticks % FATIGUE_EVERY_TICKS == 0) cow.fatigue = Math.max(0, cow.fatigue - 1);
         if (ticks % CHEW_SOUND_TICKS == 0) cow.playSound(SoundEvents.GENERIC_EAT, 0.3F, 0.7F);

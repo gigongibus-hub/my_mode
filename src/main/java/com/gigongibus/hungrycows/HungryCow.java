@@ -78,7 +78,7 @@ import com.gigongibus.hungrycows.ai.SeekGrassGoal;
 
 import java.util.stream.Collectors;
 
-public class HungryCow extends Cow {
+public class HungryCow extends Cow implements software.bernie.geckolib.animatable.GeoEntity {
     public static final int TIME_SPEED = 1;              // у скільки разів швидше росте голод і втома (1 = звичайно)
     public static final int NIGHT_EAT_AT = 40;           // уночі голод 40+ — встає й іде їсти (Fij: раніше лише з 60 і гинули)
     public static final int NIGHT_DRINK_AT = 45;         // спрага 45+ — іде пити, навіть уночі зі сну
@@ -782,6 +782,51 @@ public class HungryCow extends Cow {
         return this.entityData.get(DATA_COAT);
     }
 
+    // ===================== МОДЕЛЬ БИКА (GeckoLib, Fij) =====================
+    // Що зараз робить бик — для анімації (сервер ставить, гра гравця програє)
+    public enum Anim { NONE, CHEW, DRINK, PREPARE, ATTACK }
+    public static final int ANIM_HOLD_TICKS = 5;          // дію треба підтверджувати щотіку; 5 тіків без неї — анімація скінчилась
+    private static final EntityDataAccessor<Integer> DATA_ANIM =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_BULL =
+            SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.BOOLEAN);
+    private int animUntil = 0;
+    public int idleAnimNext = 0, idleAnimUntil = 0;   // лише в грі гравця: коли грати «спокій 1»
+    private final software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache geoCache =
+            software.bernie.geckolib.util.GeckoLibUtil.createInstanceCache(this);
+
+    /** Ціль каже: «зараз я жую / п'ю / готуюсь / атакую» (щотіку, поки триває) */
+    public void anim(Anim a) {
+        if (this.level().isClientSide) return;
+        animUntil = this.tickCount + ANIM_HOLD_TICKS;
+        if (this.entityData.get(DATA_ANIM) != a.ordinal()) this.entityData.set(DATA_ANIM, a.ordinal());
+    }
+
+    public Anim animNow() {
+        int i = this.entityData.get(DATA_ANIM);
+        return i >= 0 && i < Anim.values().length ? Anim.values()[i] : Anim.NONE;
+    }
+
+    /** Дорослий бик — малюється моделлю бика (на клієнті стать не відома, тому синхронізується) */
+    public boolean bullModel() {
+        return this.entityData.get(DATA_BULL);
+    }
+
+    private void updateAnimState() {
+        if (animNow() != Anim.NONE && this.tickCount > animUntil) this.entityData.set(DATA_ANIM, Anim.NONE.ordinal());
+        if (this.tickCount % 20 == 0 && this.entityData.get(DATA_BULL) != isBull()) this.entityData.set(DATA_BULL, isBull());
+    }
+
+    @Override
+    public void registerControllers(software.bernie.geckolib.core.animation.AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new software.bernie.geckolib.core.animation.AnimationController<>(this, "main", 4, BullAnimations::predicate));
+    }
+
+    @Override
+    public software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache getAnimatableInstanceCache() {
+        return geoCache;
+    }
+
     // Світіння від зірочника: синхронізується, щоб гра гравця малювала корову яскравою в темряві
     private static final EntityDataAccessor<Integer> DATA_GLOW =
             SynchedEntityData.defineId(HungryCow.class, EntityDataSerializers.INT);
@@ -797,6 +842,8 @@ public class HungryCow extends Cow {
         this.entityData.define(DATA_UNCONSCIOUS, false);
         this.entityData.define(DATA_COAT, 0);
         this.entityData.define(DATA_GLOW, 0);
+        this.entityData.define(DATA_ANIM, 0);
+        this.entityData.define(DATA_BULL, false);
     }
 
     public boolean isUnconsciousVisual() {
@@ -1043,6 +1090,7 @@ public class HungryCow extends Cow {
         if (!this.level().isClientSide) brain.tick();
         if (!this.level().isClientSide) unstickPath();
         if (!this.level().isClientSide) updateStarLight();
+        if (!this.level().isClientSide) updateAnimState();
         if (!this.level().isClientSide && this.tickCount % 20 == 0) {
             // сіно мода під ногами: корова його брудить (лежить — удвічі швидше)
             CowHayBlock.trample(this.level(), this.getBlockPosBelowThatAffectsMyMovement(), sleeping ? 2 : 1);
@@ -1906,6 +1954,7 @@ public class HungryCow extends Cow {
 
     // Бійка биків (BullFightGoal): з ким б'ється й до якого тіку; переможений тікає від переможця
     public HungryCow fightRival = null;
+    public int fightStart = 0;           // тік, коли почалась бійка (спершу бики готуються — анімація)
     public boolean fightDeadly = false;   // серйозна бійка — до смерті (5%)
     public int fightUntil = 0;
     public HungryCow retreatFrom = null;

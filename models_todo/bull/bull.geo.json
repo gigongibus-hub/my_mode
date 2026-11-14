@@ -1,0 +1,188 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.unknown",
+				"texture_width": 128,
+				"texture_height": 128,
+				"visible_bounds_width": 4,
+				"visible_bounds_height": 3.5,
+				"visible_bounds_offset": [0, 1.25, 0]
+			},
+			"bones": [
+				{
+					"name": "byk",
+					"pivot": [0, 25, -2]
+				},
+				{
+					"name": "tilo",
+					"parent": "byk",
+					"pivot": [0, 0, -10],
+					"cubes": [
+						{"origin": [-10, 17, -2], "size": [20, 16, 19], "uv": [0, 0]}
+					]
+				},
+				{
+					"name": "tilo1",
+					"parent": "tilo",
+					"pivot": [0, 15, -10],
+					"cubes": [
+						{"origin": [-10, 16, -18], "size": [20, 18, 16], "uv": [0, 35]}
+					]
+				},
+				{
+					"name": "hwist",
+					"parent": "tilo",
+					"pivot": [0, 30, 17],
+					"cubes": [
+						{"origin": [-1, 16, 17], "size": [2, 14, 1], "uv": [78, 19]}
+					]
+				},
+				{
+					"name": "nogi",
+					"parent": "byk",
+					"pivot": [8, 2, -16]
+				},
+				{
+					"name": "peredni",
+					"parent": "nogi",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "prawa_perednr_kopyto",
+					"parent": "peredni",
+					"pivot": [-8, 16, -16],
+					"cubes": [
+						{"origin": [-10, 3, -18], "size": [5, 13, 5], "uv": [92, 37]}
+					]
+				},
+				{
+					"name": "bone5",
+					"parent": "prawa_perednr_kopyto",
+					"pivot": [-8, 2, -16],
+					"rotation": [2.5, 0, 0],
+					"cubes": [
+						{"origin": [-10, 0, -17], "size": [5, 3, 4], "pivot": [-7, 2, -15], "rotation": [-2.5, 0, 0], "uv": [90, 55]},
+						{"origin": [-10, 0, -18], "size": [2, 3, 4], "pivot": [-10, 2, -16], "rotation": [-2.5, 0, 0], "uv": [76, 92]},
+						{"origin": [-7, 0, -18], "size": [2, 3, 4], "pivot": [-7, 2, -16], "rotation": [-2.5, 0, 0], "uv": [92, 76]}
+					]
+				},
+				{
+					"name": "liwa_peredne_kopyto",
+					"parent": "peredni",
+					"pivot": [8, 16, -15],
+					"cubes": [
+						{"origin": [5, 3, -18], "size": [5, 13, 5], "uv": [92, 19]}
+					]
+				},
+				{
+					"name": "bone2",
+					"parent": "liwa_peredne_kopyto",
+					"pivot": [7, 2, -16],
+					"rotation": [2.5, 0, 0],
+					"cubes": [
+						{"origin": [5, 0, -17], "size": [5, 3, 4], "pivot": [8, 2, -15], "rotation": [-2.5, 0, 0], "uv": [72, 62]},
+						{"origin": [5, 0, -18], "size": [2, 3, 4], "pivot": [5, 2, -16], "rotation": [-2.5, 0, 0], "uv": [92, 69]},
+						{"origin": [8, 0, -18], "size": [2, 3, 4], "pivot": [8, 2, -16], "rotation": [-2.5, 0, 0], "uv": [64, 92]}
+					]
+				},
+				{
+					"name": "zadne",
+					"parent": "nogi",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "prawa_zadne_kopyto",
+					"parent": "zadne",
+					"pivot": [-8, 17, 15],
+					"cubes": [
+						{"origin": [-10, 3, 12], "size": [5, 14, 5], "uv": [78, 0]}
+					]
+				},
+				{
+					"name": "bone9",
+					"parent": "prawa_zadne_kopyto",
+					"pivot": [-8, 2, 14],
+					"rotation": [2.5, 0, 0],
+					"cubes": [
+						{"origin": [-10, 0, 13], "size": [5, 3, 4], "pivot": [-7, 2, 15], "rotation": [-2.5, 0, 0], "uv": [46, 92]},
+						{"origin": [-10, 0, 12], "size": [2, 3, 4], "pivot": [-10, 2, 14], "rotation": [-2.5, 0, 0], "uv": [0, 93]},
+						{"origin": [-7, 0, 12], "size": [2, 3, 4], "pivot": [-7, 2, 14], "rotation": [-2.5, 0, 0], "uv": [12, 93]}
+					]
+				},
+				{
+					"name": "liwe_zadne_kopyto",
+					"parent": "zadne",
+					"pivot": [8, 17, 15],
+					"cubes": [
+						{"origin": [5, 3, 12], "size": [5, 14, 5], "uv": [72, 35]}
+					]
+				},
+				{
+					"name": "bone7",
+					"parent": "liwe_zadne_kopyto",
+					"pivot": [7, 2, 14],
+					"rotation": [2.5, 0, 0],
+					"cubes": [
+						{"origin": [5, 0, 13], "size": [5, 3, 4], "pivot": [8, 2, 15], "rotation": [-2.5, 0, 0], "uv": [90, 62]},
+						{"origin": [5, 0, 12], "size": [2, 3, 4], "pivot": [5, 2, 14], "rotation": [-2.5, 0, 0], "uv": [92, 83]},
+						{"origin": [8, 0, 12], "size": [2, 3, 4], "pivot": [8, 2, 14], "rotation": [-2.5, 0, 0], "uv": [88, 92]}
+					]
+				},
+				{
+					"name": "golowa",
+					"parent": "byk",
+					"pivot": [0, 28, -21]
+				},
+				{
+					"name": "sija",
+					"parent": "golowa",
+					"pivot": [0, 0, 0],
+					"cubes": [
+						{"origin": [-7, 19, -21], "size": [14, 14.5, 9], "uv": [0, 69]}
+					]
+				},
+				{
+					"name": "golowabez",
+					"parent": "golowa",
+					"pivot": [0, 28, -21]
+				},
+				{
+					"name": "morda",
+					"parent": "golowabez",
+					"pivot": [0, 27, -22],
+					"cubes": [
+						{"origin": [-5, 23, -28], "size": [10, 10, 10], "uv": [49, 72]},
+						{"origin": [-7, 28, -24], "size": [2, 6, 2], "pivot": [-3, 26, -30], "rotation": [27.5, 0, 0], "uv": [98, 0]},
+						{"origin": [5, 28, -24], "size": [2, 6, 2], "pivot": [8, 26, -30], "rotation": [27.5, 0, 0], "uv": [32, 93]}
+					]
+				},
+				{
+					"name": "nis",
+					"parent": "morda",
+					"pivot": [0, 26, -27],
+					"cubes": [
+						{"origin": [-3, 23, -30], "size": [6, 5, 3], "uv": [72, 54]}
+					]
+				},
+				{
+					"name": "vuho2",
+					"parent": "golowabez",
+					"pivot": [-5, 29, -24],
+					"cubes": [
+						{"origin": [-5.9729, 23.32949, -26], "size": [1, 6, 3], "pivot": [-6, 29, -25], "rotation": [0, 0, 7.5], "uv": [24, 93]}
+					]
+				},
+				{
+					"name": "vuho1",
+					"parent": "golowabez",
+					"pivot": [5, 29, -24],
+					"cubes": [
+						{"origin": [5.06065, 23.66831, -26], "size": [1, 6, 3], "pivot": [6, 29, -24], "rotation": [0, 0, -7.5], "uv": [84, 19]}
+					]
+				}
+			]
+		}
+	]
+}
