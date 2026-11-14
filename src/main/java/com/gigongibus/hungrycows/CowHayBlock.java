@@ -74,6 +74,10 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
     public static final int[] BASE_FOOD = { 30, 25, 20, 5 };   // свіже, підсохле, сухе, пересохле
     public static final int FRUIT_BONUS = 5;               // з яблуком / морквою: 35 замість 30
     public static final int ROTTEN_FOOD = 5;               // гниле (і з грибами)
+    // вогняний гриб (Fij: «на запах воно їм дуже приємне і смачне»)
+    public static final double FIRE_FUNGUS_LIKE = 40;      // бали при виборі їжі: іде до нього, навіть коли поруч чисте сіно
+    public static final int FIRE_FUNGUS_SMELL = 2;         // запах приємний за двох (кортизол спадає)
+    public static final double FIRE_FUNGUS_TASTY = 15;     // з'їла — дофамін +15 («смачно»)
     // ефекти (Fij)
     public static final int HUNGER_SLIGHT_SECONDS = 10, HUNGER_VERY_SECONDS = 20, HUNGER_MOLD_DIRT_SECONDS = 10;
     public static final int POISON_MOLD_SECONDS = 5;
@@ -105,8 +109,10 @@ public class CowHayBlock extends HayBlock implements net.minecraft.world.level.b
         public boolean rotten() { return this == ROTTEN || this == STAR_FUNGUS || this == FIRE_FUNGUS; }
         public boolean dirty() { return this == SLIGHTLY_DIRTY || this == VERY_DIRTY || this == MOLD_DIRT; }
         public boolean cleanLike() { return this == CLEAN || this == APPLE || this == CARROT; }
-        /** Корова не їсть, поки не голодує (як черемшу) */
-        public boolean avoided() { return moldy() || rotten(); }
+        /** Корова не їсть, поки не голодує (як черемшу). Вогняний гриб — навпаки, приваблює (Fij) */
+        public boolean avoided() { return moldy() || rotten() && this != FIRE_FUNGUS; }
+        /** Зіпсоване (пліснява, гниле, гриби) — на такому не спить */
+        public boolean spoiled() { return moldy() || rotten(); }
     }
 
     // вода крізь сіно (Fij, варіант Б): сіно «живиться» водою — тоді всередині вода, і вона витікає з усіх боків

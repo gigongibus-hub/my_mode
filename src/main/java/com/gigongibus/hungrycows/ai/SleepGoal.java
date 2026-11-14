@@ -497,7 +497,7 @@ public class SleepGoal extends Goal {
             if (!CowHome.standable(cow.level(), p)) continue;
             net.minecraft.world.level.block.state.BlockState floorState = cow.level().getBlockState(p.below());
             if (floorState.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
-                    && floorState.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).avoided()) continue;   // на пліснявому/гнилому сіні не спить
+                    && floorState.getValue(com.gigongibus.hungrycows.CowHayBlock.COND).spoiled()) continue;   // на пліснявому/гнилому сіні не спить
             boolean inside = building ? interior.contains(p) || (interior.isEmpty() && CowHome.shelterScore(cow.level(), p) > 0)
                     : CowHome.shaded(cow.level(), p);
             if (!inside) continue;

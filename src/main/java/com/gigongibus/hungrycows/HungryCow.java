@@ -1534,6 +1534,7 @@ public class HungryCow extends Cow {
         if (c == CowHayBlock.Cond.FIRE_FUNGUS) {
             addEffect(new MobEffectInstance(ModEffects.MUSHROOM_RAGE.get(), MUSHROOM_RAGE_SECONDS * 20));
             rageCenter = this.blockPosition();
+            chem.onTasty(CowHayBlock.FIRE_FUNGUS_TASTY);   // смачно (Fij)
             tell(family.name + " з'їла вогняний гриб: грибна лють!");
         }
         tell(family.name + " з'їла сіно (" + CowHayBlock.describe(s.getValue(CowHayBlock.STAGE).id, c.id, null) + ")");

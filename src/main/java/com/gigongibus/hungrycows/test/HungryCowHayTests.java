@@ -181,6 +181,34 @@ public class HungryCowHayTests {
         });
     }
 
+    // 4б. Вогняний гриб пахне приємно й смачно (Fij): сита корова (не голодує) іде до нього повз чисте сіно
+    @GameTest(template = "arena", batch = "hay_eat", timeoutTicks = AVOID_TIMEOUT)
+    public static void cowPrefersFireFungus(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        BlockPos clean = new BlockPos(6, 2, 7), fungus = new BlockPos(10, 2, 4);   // не за чистим (інакше не видно)
+        h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
+        h.setBlock(fungus, hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
+        HungryCow cow = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(4, 2, 7));
+        cow.setAge(0);
+        cow.setYRot(-90);
+        cow.setYHeadRot(-90);
+        cow.hunger = 35;
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; cow.discard(); h.setBlock(clean, net.minecraft.world.level.block.Blocks.AIR); h.setBlock(fungus, net.minecraft.world.level.block.Blocks.AIR); };
+        h.runAfterDelay(AVOID_TIMEOUT - 1, clear);
+        h.succeedWhen(() -> {
+            h.assertFalse(cleared[0], "за 30 с не з'їла сіно з вогняним грибом (голод " + cow.hunger + ")");
+            boolean cleanLeft = h.getBlockState(clean).getBlock() instanceof CowHayBlock;
+            h.assertTrue(cleanLeft || h.getBlockState(fungus).isAir(), "з'їла чисте замість гриба");
+            h.assertTrue(h.getBlockState(fungus).isAir(), "ще не з'їла гриб");
+            LOG.info("[тест] cowPrefersFireFungus: з'їла гриб за {} с, чисте лишилось {}, лють {}", h.getTick() / 20.0, cleanLeft,
+                    cow.hasEffect(com.gigongibus.hungrycows.ModEffects.MUSHROOM_RAGE.get()));
+            h.assertTrue(cleanLeft, "спершу з'їла чисте, а не гриб");
+            clear.run();
+        });
+    }
+
     // 5. Грибна лють: б'є свиню поруч, теля не чіпає
     private static final int RAGE_TIMEOUT = 300;
 

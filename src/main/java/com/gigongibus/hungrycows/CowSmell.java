@@ -298,12 +298,14 @@ public class CowSmell {
 
     private int flowersNear = 0;
     private boolean hayNear = false;
+    private boolean fungusNear = false;   // вогняний гриб: дуже приємний запах (Fij)
 
     private void scanBlocks() {
         Level level = cow.level();
         BlockPos o = cow.blockPosition();
         flowersNear = 0;
         hayNear = false;
+        fungusNear = false;
         smokeNear = false;
         BlockPos smoke = null;
         for (BlockPos p : BlockPos.betweenClosed(o.offset(-SCAN_RADIUS, -SCAN_HEIGHT, -SCAN_RADIUS), o.offset(SCAN_RADIUS, SCAN_HEIGHT, SCAN_RADIUS))) {
@@ -316,6 +318,8 @@ public class CowSmell {
             } else if ((s.is(Blocks.HAY_BLOCK) || s.getBlock() instanceof CowHayBlock && !s.getValue(CowHayBlock.COND).avoided()) && !hayNear && reaches(Vec3.atCenterOf(p), 1.0, p.immutable())) {
                 hayNear = true;
             }
+            if (s.getBlock() instanceof CowHayBlock && s.getValue(CowHayBlock.COND) == CowHayBlock.Cond.FIRE_FUNGUS && !fungusNear
+                    && reaches(Vec3.atCenterOf(p), 1.0, p.immutable())) fungusNear = true;
         }
         if (smoke != null) {
             smokeNear = true;
@@ -342,6 +346,7 @@ public class CowSmell {
         }
         if (flowersNear >= FLOWERS_PLEASANT) pleasant++;
         if (hayNear) pleasant++;
+        if (fungusNear) pleasant += CowHayBlock.FIRE_FUNGUS_SMELL;
         if (cow.tickCount - lastRainTick < RAIN_GRASS_TICKS && cow.level().getBlockState(cow.blockPosition().below()).is(Blocks.GRASS_BLOCK)) pleasant++;
         pleasantNow = Math.min(PLEASANT_MAX, pleasant);
         if (fearGain > 0 && !cow.sleeping) {

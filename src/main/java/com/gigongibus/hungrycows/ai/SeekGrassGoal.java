@@ -387,6 +387,12 @@ public class SeekGrassGoal extends Goal {
         double field = cow.level().isDay() && cow.level().canSeeSky(stand) ? HungryCow.FIELD_BONUS : 0;
         double plant = (c.block == Blocks.GRASS || c.block == Blocks.TALL_GRASS) ? PLANT_BONUS : 0;
         double taste = com.gigongibus.hungrycows.CowTaste.SCORE * cow.taste.tastiness(foodItem(c.block));   // смак, набридання
+        if (c.block instanceof com.gigongibus.hungrycows.CowHayBlock) {   // вогняний гриб пахне приємно й смачно (Fij)
+            BlockState s = cow.level().getBlockState(c.pos);
+            if (s.getBlock() instanceof com.gigongibus.hungrycows.CowHayBlock
+                    && s.getValue(com.gigongibus.hungrycows.CowHayBlock.COND) == com.gigongibus.hungrycows.CowHayBlock.Cond.FIRE_FUNGUS)
+                taste += com.gigongibus.hungrycows.CowHayBlock.FIRE_FUNGUS_LIKE;
+        }
         return c.value + bonus - DISTANCE_PENALTY * distance + memory + field + plant + taste + socialScore(c.pos);
     }
 
