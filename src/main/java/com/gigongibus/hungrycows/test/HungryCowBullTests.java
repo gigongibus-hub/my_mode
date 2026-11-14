@@ -140,4 +140,33 @@ public class HungryCowBullTests {
             bulls.forEach(HungryCow::discard);
         });
     }
+
+    // 4. Fij «бики тікають, крутячи кола»: бик біжить (швидкість втечі) до точки ПОЗАДУ себе — має розвернутись і добігти, а не кружляти
+    @GameTest(template = ARENA, batch = "bulls_turn", timeoutTicks = 200)
+    public static void bullTurnsAndRunsNotCircles(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(3, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.goalSelector.removeAllGoals(g -> true);   // лише для тесту: бика веде тест
+        bull.setYRot(90F); bull.setYBodyRot(90F); bull.setYHeadRot(90F);   // дивиться на захід, ціль — на сході (позаду)
+        net.minecraft.world.phys.Vec3 t = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(new BlockPos(12, 2, 7)));
+        double[] walked = { 0 };
+        net.minecraft.world.phys.Vec3[] last = { null };
+        h.runAfterDelay(199, bull::discard);
+        h.onEachTick(() -> {
+            if (h.getTick() % 5 == 1) bull.getNavigation().moveTo(t.x, t.y, t.z, 2.2);   // як FearGoal: раз на 5 тіків, страх ~100
+            if (last[0] != null) walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
+            last[0] = bull.position();
+        });
+        h.succeedWhen(() -> {
+            double d = Math.hypot(bull.getX() - t.x, bull.getZ() - t.z);
+            h.assertTrue(d < 1.5, String.format("не добіг: до цілі %.2f бл., пробіг %.1f бл.", d, walked[0]));
+            LOG.info("[тест] bullTurnsAndRunsNotCircles: добіг за {} с, пробіг {} бл. (напряму 9)",
+                    String.format("%.1f", h.getTick() / 20.0), String.format("%.1f", walked[0]));
+            h.assertTrue(walked[0] < 14, String.format("бик кружляв: пробіг %.1f бл. замість 9", walked[0]));
+            bull.discard();
+        });
+    }
 }
