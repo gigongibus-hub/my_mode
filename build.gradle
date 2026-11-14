@@ -73,6 +73,9 @@ minecraft {
             // You can set various levels here.
             // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
             property 'forge.logging.console.level', 'debug'
+            // мод GeckoLib має mixin-и з SRG-назвами — у розробці їх треба перекладати (у справжній грі не потрібно)
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
             if (project.hasProperty('quickPlay')) args '--quickPlaySingleplayer', project.property('quickPlay')   // -PquickPlay=світ: одразу у світ (перевірка моделі)
 
             mods {

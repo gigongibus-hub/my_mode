@@ -335,6 +335,9 @@
   готується напасти (`ConfrontGoal` BULL_WARN; `BullFightGoal` перші 2 с — `PREPARE_TICKS`, `fightStart`); `atac` — біжить нападати
   (CHARGE/ATTACK, бійка, «бий» у `FearGoal`, `MushroomRageGoal`); `jty` хода, `bigh` біг (ноги ≥ 0,55; ×1,4 швидше). Дію ціль
   ставить щотіку `cow.anim(Anim.X)` (`DATA_ANIM`, гасне за 5 тіків).
+  Перевірено в справжній грі (runClient під Xvfb, `-PquickPlay=світ` у `build.gradle`; світ — копія `run/world` з датапаком, що
+  кличе бика й корову): бик малюється моделлю Fij, корова — старою. У розробці GeckoLib падав на mixin (`TextureManagerMixin`) —
+  потрібні `mixin.env.remapRefMap` + `refMapRemappingFile` у `runs` (у справжній грі не потрібно).
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
