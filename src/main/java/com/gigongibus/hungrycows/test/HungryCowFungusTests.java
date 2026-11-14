@@ -192,12 +192,16 @@ public class HungryCowFungusTests {
     public static void burnCaveSpiderPoisons(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
+        // ванільно печерний павук отруює лише на «Нормально» і «Складно» (тестовий світ — «Легко»)
+        var server = h.getLevel().getServer();
+        var was = server.getWorldData().getDifficulty();
+        server.setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
         var spider = h.spawn(EntityType.CAVE_SPIDER, new BlockPos(5, 2, 7));
         var pig = h.spawn(EntityType.PIG, new BlockPos(8, 2, 7));
         pig.setNoAi(true);
         spider.addEffect(new MobEffectInstance(ModEffects.FUNGUS_BURN.get(), 600));
         boolean[] cleared = { false };
-        Runnable clear = () -> { cleared[0] = true; spider.discard(); pig.discard(); };
+        Runnable clear = () -> { cleared[0] = true; spider.discard(); pig.discard(); server.setDifficulty(was, true); };
         h.runAfterDelay(199, clear);
         h.succeedWhen(() -> {
             h.assertFalse(cleared[0], "за 10 с печерний павук не отруїв свиню");
