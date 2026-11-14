@@ -399,6 +399,8 @@ public class HungryCow extends Cow {
             double d2 = m.distanceToSqr(this);
             if (m instanceof AbstractSkeleton || m instanceof Creeper) {   // ці — лише зблизька, але завжди
                 if (d2 <= close * close) m.setTarget(this);
+            } else if (m instanceof net.minecraft.world.entity.monster.Spider sp && !ModForgeEvents.spiderInDark(sp)) {
+                // павук на світлі (вдень) не агресивний — і зірочник його не приманює (Fij)
             } else if (full && d2 <= range * range && this.getRandom().nextDouble() < chance) {
                 m.setTarget(this);
             }

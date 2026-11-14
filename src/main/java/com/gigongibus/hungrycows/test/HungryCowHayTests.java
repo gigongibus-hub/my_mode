@@ -300,7 +300,7 @@ public class HungryCowHayTests {
                 if (h.getLevel().getBlockState(p).is(net.minecraft.world.level.block.Blocks.LIGHT))
                     lightSeen[0] = Math.max(lightSeen[0], h.getLevel().getBlockState(p).getValue(net.minecraft.world.level.block.LightBlock.LEVEL));
         });
-        // скелети й крипери (Fij): після 2 разів помічають з 4 бл. (3 + 1) і завжди йдуть; павуки — завжди, як зомбі (і вдень)
+        // скелети й крипери (Fij): після 2 разів помічають з 4 бл. (3 + 1) і завжди йдуть; павук удень — ні (Fij: вдень не агресивні)
         var near = h.spawn(EntityType.SKELETON, new BlockPos(2, 2, 5));
         var far = h.spawn(EntityType.SKELETON, new BlockPos(2, 2, 10));
         for (var sk : java.util.List.of(near, far)) {
@@ -317,12 +317,15 @@ public class HungryCowHayTests {
         };
         h.runAfterDelay(RAGE_TIMEOUT - 1, clear);
         h.succeedWhen(() -> {
-            h.assertFalse(cleared[0], "за 15 с: близький скелет " + (near.getTarget() == cow) + ", павук " + (spider.getTarget() == cow));
+            h.assertFalse(cleared[0], "за 15 с близький скелет не пішов на корову");
             h.assertTrue(near.getTarget() == cow, "близький скелет ще не приманений");
-            h.assertTrue(spider.getTarget() == cow, "павук ще не полює на корову");
+            h.assertTrue(h.getTick() >= 60, "чекаємо 3 с (павук удень не має напасти)");
             h.assertTrue(lightSeen[0] > 0, "навколо корови немає світла");
-            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет (3 бл.) і павук за {} с, світло {}, далекий скелет {}",
-                    glow1, glow2, h.getTick() / 20.0, lightSeen[0], far.getTarget() == cow);
+            LOG.info("[тест] starFungusGlowsAndLures: світіння {} -> {}, скелет (3 бл.) за {} с, світло {}, далекий скелет {}, павук удень {} (темно: {})",
+                    glow1, glow2, h.getTick() / 20.0, lightSeen[0], far.getTarget() == cow, spider.getTarget() == cow,
+                    com.gigongibus.hungrycows.ModForgeEvents.spiderInDark(spider));
+            if (com.gigongibus.hungrycows.ModForgeEvents.spiderInDark(spider)) LOG.warn("[тест] у тесті не пораховане світло — павук «у темряві»");
+            else h.assertFalse(spider.getTarget() == cow, "павук удень напав на корову");
             h.assertFalse(far.getTarget() == cow, "скелет за 8 бл. приманений (має лише з 4)");
             clear.run();
         });

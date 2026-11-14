@@ -72,12 +72,35 @@ public class ModForgeEvents {
                 targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(zombie, HungryCow.class, true));
             }
         }
-        // павуки (і печерні) — як зомбі, завжди полюють на корів (Fij), і вдень теж
+        // павуки (і печерні) полюють на корів, як зомбі (Fij), але як і на гравців — лише в темряві (вдень не агресивні)
         if (event.getEntity() instanceof net.minecraft.world.entity.monster.Spider spider) {
             GoalSelector targets = targetSelector(spider);
             if (targets != null) {
-                targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(spider, HungryCow.class, true));
+                targets.addGoal(ZOMBIE_TARGET_PRIORITY, new NearestAttackableTargetGoal<>(spider, HungryCow.class, true) {
+                    @Override
+                    public boolean canUse() {
+                        return spiderInDark(spider) && super.canUse();
+                    }
+                });
             }
+        }
+    }
+
+    // Як у ванільного павука: яскравість місця менше 0,5 — темно, агресивний; на світлі (вдень) — ні
+    public static final float SPIDER_DARK = 0.5F;
+    public static final int SPIDER_CALM_CHANCE = 100;   // на світлі павук кидає корову з шансом 1/100 за тік (як гравця)
+
+    public static boolean spiderInDark(net.minecraft.world.entity.monster.Spider spider) {
+        return spider.getLightLevelDependentMagicValue() < SPIDER_DARK;
+    }
+
+    // павук на світлі потроху кидає корову (ванільний SpiderAttackGoal робить так з гравцем)
+    @SubscribeEvent
+    public static void onLivingTick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
+        if (event.getEntity() instanceof net.minecraft.world.entity.monster.Spider spider && !spider.level().isClientSide
+                && spider.getTarget() instanceof HungryCow && !spiderInDark(spider)
+                && spider.getRandom().nextInt(SPIDER_CALM_CHANCE) == 0) {
+            spider.setTarget(null);
         }
     }
 
