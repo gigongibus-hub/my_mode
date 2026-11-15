@@ -67,6 +67,7 @@ public class ConfrontGoal extends Goal {
     public static final double DRAG = 2.2;                // або протягує по землі далеко
     public static final int SLOW_TICKS = 100;             // невидиме сповільнення 5 с
     public static final double REACH = 1.0;               // б'є, коли між ними менше 1 блока
+    public static final double STRAIGHT_GAP = 3.0;        // ближче 3 бл. (і бачить) — біжить прямо на ціль, не дорогою
 
     private enum Phase { NONE, LEADER_WARN, ATTACK, BULL_WARN, CHARGE }
 
@@ -231,7 +232,10 @@ public class ConfrontGoal extends Goal {
             case ATTACK -> {
                 cow.anim(HungryCow.Anim.ATTACK);
                 cow.getLookControl().setLookAt(target, 30F, 30F);
-                if (phaseTicks % 5 == 1 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(target, ATTACK_SPEED);
+                if (gap() < STRAIGHT_GAP && cow.hasLineOfSight(target)) {
+                    cow.getNavigation().stop();
+                    cow.getMoveControl().setWantedPosition(target.getX(), target.getY(), target.getZ(), ATTACK_SPEED);
+                } else if (phaseTicks % 5 == 1 || cow.getNavigation().isDone()) cow.getNavigation().moveTo(target, ATTACK_SPEED);
                 if (gap() <= REACH && cow.tickCount >= nextRam) {
                     cow.ram(target);
                     nextRam = cow.tickCount + CowTrust.ATTACK_COOLDOWN_TICKS;
@@ -258,7 +262,11 @@ public class ConfrontGoal extends Goal {
             case CHARGE -> {
                 cow.anim(HungryCow.Anim.ATTACK);
                 cow.getLookControl().setLookAt(target, 30F, 30F);
-                if (phaseTicks % 4 == 1) cow.getNavigation().moveTo(target, CHARGE_SPEED);
+                // останні блоки — прямо на ціль (дорога гри кінчається «біля» цілі, і широкий бик (1,4 бл.) зупинявся за 2,6 бл.)
+                if (gap() < STRAIGHT_GAP && cow.hasLineOfSight(target)) {
+                    cow.getNavigation().stop();
+                    cow.getMoveControl().setWantedPosition(target.getX(), target.getY(), target.getZ(), CHARGE_SPEED);
+                } else if (phaseTicks % 4 == 1) cow.getNavigation().moveTo(target, CHARGE_SPEED);
                 if (gap() <= REACH) {
                     hitHard();
                     phase = Phase.NONE;
