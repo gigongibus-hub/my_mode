@@ -24,6 +24,7 @@ public class ModEvents {
     public static void addToCreativeTab(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
             event.accept(ModBlocks.SALT_LICK_ITEM);   // соляний лизунець
+            if (event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_ORE_ITEM);
         }
         // сіно мода (Fij): лише 4 стадії — з нитками й без; і пучок свіжої трави
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
@@ -46,6 +47,8 @@ public class ModEvents {
         }
         // гриби й зілля з грибів (Fij): ванільна вкладка кладе кожне зілля в усі пляшки — зайві (не та тривалість) прибираємо
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
+            event.accept(com.gigongibus.hungrycows.salt.Salt.ROCK_SALT);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_DIRTY);
             event.accept(ModItems.FIRE_FUNGUS);
             event.accept(ModItems.STAR_FUNGUS);
         }

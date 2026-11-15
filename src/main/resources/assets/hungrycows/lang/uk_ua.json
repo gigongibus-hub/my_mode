@@ -27,5 +27,8 @@
   "item.minecraft.potion.effect.star_fungus": "Зілля грибного сяйва",
   "item.minecraft.splash_potion.effect.star_fungus": "Вибухове зілля грибного сяйва",
   "item.minecraft.lingering_potion.effect.star_fungus": "Осідаюче зілля грибного сяйва",
-  "item.minecraft.tipped_arrow.effect.star_fungus": "Стріла грибного сяйва"
+  "item.minecraft.tipped_arrow.effect.star_fungus": "Стріла грибного сяйва",
+  "block.hungrycows.salt_ore": "Сольова руда",
+  "item.hungrycows.rock_salt": "Рудна сіль",
+  "item.hungrycows.ground_salt_dirty": "Рудна сіль перемолена (не чиста)"
 }

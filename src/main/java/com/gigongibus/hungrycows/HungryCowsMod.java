@@ -19,6 +19,7 @@ public class HungryCowsMod {
         IEventBus modEventBus = context.getModEventBus();
         ModBlocks.init();
         ModItems.init();
+        com.gigongibus.hungrycows.salt.Salt.init();                    // сіль (план Fij)
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BloodPaperRecipe.SERIALIZERS.register(modEventBus);

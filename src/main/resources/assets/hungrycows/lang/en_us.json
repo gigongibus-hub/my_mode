@@ -27,5 +27,8 @@
   "item.minecraft.potion.effect.star_fungus": "Potion of Fungus Glow",
   "item.minecraft.splash_potion.effect.star_fungus": "Splash Potion of Fungus Glow",
   "item.minecraft.lingering_potion.effect.star_fungus": "Lingering Potion of Fungus Glow",
-  "item.minecraft.tipped_arrow.effect.star_fungus": "Arrow of Fungus Glow"
+  "item.minecraft.tipped_arrow.effect.star_fungus": "Arrow of Fungus Glow",
+  "block.hungrycows.salt_ore": "Salt Ore",
+  "item.hungrycows.rock_salt": "Rock Salt",
+  "item.hungrycows.ground_salt_dirty": "Ground Rock Salt (Dirty)"
 }

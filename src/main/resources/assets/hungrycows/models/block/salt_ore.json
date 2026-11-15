@@ -1,0 +1,1 @@
+{ "parent": "minecraft:block/cube_column", "textures": { "end": "hungrycows:block/salt/salt_ore_top", "side": "hungrycows:block/salt/salt_ore_side" } }

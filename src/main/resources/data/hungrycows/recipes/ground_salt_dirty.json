@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [ { "item": "hungrycows:mortar" }, { "item": "hungrycows:rock_salt" } ],
+  "result": { "item": "hungrycows:ground_salt_dirty", "count": 1 }
+}
