@@ -1,0 +1,77 @@
+{
+ "textures": {
+  "t": "hungrycows:item/wicker/wicker_bundle_wilted",
+  "particle": "hungrycows:item/wicker/wicker_bundle_wilted"
+ },
+ "elements": [
+  {
+   "from": [
+    1,
+    0,
+    1
+   ],
+   "to": [
+    15,
+    4,
+    15
+   ],
+   "faces": {
+    "up": {
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ],
+     "texture": "#t"
+    },
+    "down": {
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ],
+     "texture": "#t"
+    },
+    "north": {
+     "uv": [
+      1,
+      6,
+      15,
+      10
+     ],
+     "texture": "#t"
+    },
+    "south": {
+     "uv": [
+      1,
+      6,
+      15,
+      10
+     ],
+     "texture": "#t"
+    },
+    "east": {
+     "uv": [
+      1,
+      6,
+      15,
+      10
+     ],
+     "texture": "#t"
+    },
+    "west": {
+     "uv": [
+      1,
+      6,
+      15,
+      10
+     ],
+     "texture": "#t"
+    }
+   }
+  }
+ ],
+ "render_type": "minecraft:cutout"
+}

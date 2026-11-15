@@ -1,0 +1,80 @@
+{
+ "type": "minecraft:block",
+ "pools": [
+  {
+   "rolls": 1,
+   "entries": [
+    {
+     "type": "minecraft:alternatives",
+     "children": [
+      {
+       "type": "minecraft:item",
+       "name": "hungrycows:wicker_bundle",
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "hungrycows:wicker_bundle",
+         "properties": {
+          "stage": "fresh"
+         }
+        }
+       ]
+      },
+      {
+       "type": "minecraft:item",
+       "name": "hungrycows:wicker_bundle_wilted",
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "hungrycows:wicker_bundle",
+         "properties": {
+          "stage": "wilted"
+         }
+        }
+       ]
+      },
+      {
+       "type": "minecraft:item",
+       "name": "hungrycows:wicker_bundle_dry",
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "hungrycows:wicker_bundle",
+         "properties": {
+          "stage": "dry"
+         }
+        }
+       ]
+      },
+      {
+       "type": "minecraft:item",
+       "name": "hungrycows:wicker_bundle_wet",
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "hungrycows:wicker_bundle",
+         "properties": {
+          "stage": "wet"
+         }
+        }
+       ]
+      },
+      {
+       "type": "minecraft:item",
+       "name": "hungrycows:wicker_bundle_rotten",
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "hungrycows:wicker_bundle",
+         "properties": {
+          "stage": "rotten"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

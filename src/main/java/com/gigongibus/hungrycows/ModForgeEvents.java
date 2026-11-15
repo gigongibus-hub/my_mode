@@ -395,6 +395,8 @@ public class ModForgeEvents {
             CowHearing.onSound(level, event.getState().getSoundType().getBreakSound().getLocation().toString(), Vec3.atCenterOf(event.getPos()), event.getPlayer());
             // трава мотикою чи ножицями (не присівши) — пучок свіжої трави (Fij)
             if (GrassHarvest.harvest(level, event.getPos(), event.getState(), event.getPlayer())) event.setCanceled(true);
+            // ліани мечем чи ножицями (не присівши) — 1–4 лози (Fij, сіль)
+            if (com.gigongibus.hungrycows.salt.WickerHarvest.harvest(level, event.getPos(), event.getState(), event.getPlayer())) event.setCanceled(true);
             // трава (рослина) згодом відросте на тому самому місці (Fij); у творчому — ні (будують)
             net.minecraft.world.level.block.state.BlockState st = event.getState();
             if ((st.is(net.minecraft.world.level.block.Blocks.GRASS) || st.is(net.minecraft.world.level.block.Blocks.TALL_GRASS))

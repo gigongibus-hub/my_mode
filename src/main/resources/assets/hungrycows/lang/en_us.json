@@ -45,5 +45,13 @@
   "item.hungrycows.burlap": "Burlap",
   "item.hungrycows.ground_salt_half_purified": "Ground Rock Salt (Half-Purified)",
   "block.hungrycows.salt_pan": "Salt Pan",
-  "item.hungrycows.ground_salt_roasted": "Ground Rock Salt (Roasted)"
+  "item.hungrycows.ground_salt_roasted": "Ground Rock Salt (Roasted)",
+  "item.hungrycows.wicker": "Wicker",
+  "block.hungrycows.wicker_bundle": "Wicker Bundle",
+  "item.hungrycows.wicker_bundle_fresh": "Wicker Bundle",
+  "item.hungrycows.wicker_bundle_wilted": "Wilted Wicker Bundle",
+  "item.hungrycows.wicker_bundle_dry": "Dry Wicker Bundle",
+  "item.hungrycows.wicker_bundle_wet": "Wet Wicker Bundle",
+  "item.hungrycows.wicker_bundle_rotten": "Rotten Wicker Bundle",
+  "item.hungrycows.knitting_needle": "Knitting Needle"
 }

@@ -1,0 +1,20 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "WWW",
+  "WCW",
+  "WWW"
+ ],
+ "key": {
+  "W": {
+   "item": "hungrycows:wicker"
+  },
+  "C": {
+   "item": "minecraft:cobweb"
+  }
+ },
+ "result": {
+  "item": "hungrycows:wicker_bundle"
+ }
+}

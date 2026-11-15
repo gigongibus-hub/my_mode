@@ -25,6 +25,8 @@ public final class Salt {
     public static final float ORE_RESISTANCE = 3.0F;
     public static final int SIEVE_USES = 20;              // сито — 20 разів (Fij)
     public static final int SIEVE_OUTPUT = 5;             // 1 відро розчину → 5 недоочищеної (Fij, варіант 1)
+    public static final int NEEDLE_USES = 15;             // спиця — 15 разів (Fij)
+    public static final float ROTTEN_COMPOST = 0.65F;     // гнилий пучок у компостер — як сіно
 
     // 1. сольова руда (Fij: глибинносланцевий варіант — згодом, коли буде текстура)
     public static final RegistryObject<Block> SALT_ORE = HungryCowsMod.BLOCKS.register("salt_ore", () ->
@@ -71,11 +73,46 @@ public final class Salt {
     public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SaltPanBlockEntity>> SALT_PAN_BE = BLOCK_ENTITIES.register("salt_pan", () ->
             net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(SaltPanBlockEntity::new, SALT_PAN.get()).build(null));
 
+    // 6. лоза: з ліан мечем/ножицями; 8 лоз + павутина → пучок (блок на землі, сохне); спиця; мішковина
+    public static final RegistryObject<Item> WICKER = HungryCowsMod.ITEMS.register("wicker", () -> new Item(new Item.Properties()));
+    public static final RegistryObject<Block> WICKER_BUNDLE = HungryCowsMod.BLOCKS.register("wicker_bundle", () ->
+            new WickerBundleBlock(BlockBehaviour.Properties.of().mapColor(MapColor.PLANT).strength(0.3F).sound(SoundType.GRASS).noOcclusion()));
+    public static final RegistryObject<Item> WICKER_BUNDLE_ITEM = HungryCowsMod.ITEMS.register("wicker_bundle", () ->
+            new WickerBundleItem(WICKER_BUNDLE.get(), WickerBundleBlock.Stage.FRESH, new Item.Properties()));
+    public static final RegistryObject<Item> WICKER_BUNDLE_WILTED = HungryCowsMod.ITEMS.register("wicker_bundle_wilted", () ->
+            new WickerBundleItem(WICKER_BUNDLE.get(), WickerBundleBlock.Stage.WILTED, new Item.Properties()));
+    public static final RegistryObject<Item> WICKER_BUNDLE_DRY = HungryCowsMod.ITEMS.register("wicker_bundle_dry", () ->
+            new WickerBundleItem(WICKER_BUNDLE.get(), WickerBundleBlock.Stage.DRY, new Item.Properties()));
+    public static final RegistryObject<Item> WICKER_BUNDLE_WET = HungryCowsMod.ITEMS.register("wicker_bundle_wet", () ->
+            new WickerBundleItem(WICKER_BUNDLE.get(), WickerBundleBlock.Stage.WET, new Item.Properties()));
+    public static final RegistryObject<Item> WICKER_BUNDLE_ROTTEN = HungryCowsMod.ITEMS.register("wicker_bundle_rotten", () ->
+            new WickerBundleItem(WICKER_BUNDLE.get(), WickerBundleBlock.Stage.ROTTEN, new Item.Properties()));
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<WickerBundleBlockEntity>> WICKER_BUNDLE_BE = BLOCK_ENTITIES.register("wicker_bundle", () ->
+            net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(WickerBundleBlockEntity::new, WICKER_BUNDLE.get()).build(null));
+    public static final RegistryObject<Item> KNITTING_NEEDLE = HungryCowsMod.ITEMS.register("knitting_needle", () ->
+            new WornToolItem(new Item.Properties().durability(NEEDLE_USES)));
+
+    public static Item bundleItem(WickerBundleBlock.Stage stage) {
+        return switch (stage) {
+            case FRESH -> WICKER_BUNDLE_ITEM.get();
+            case WILTED -> WICKER_BUNDLE_WILTED.get();
+            case DRY -> WICKER_BUNDLE_DRY.get();
+            case WET -> WICKER_BUNDLE_WET.get();
+            case ROTTEN -> WICKER_BUNDLE_ROTTEN.get();
+        };
+    }
+
+    public static void commonSetup(net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> net.minecraft.world.level.block.ComposterBlock.COMPOSTABLES.put(WICKER_BUNDLE_ROTTEN.get(), ROTTEN_COMPOST));
+    }
+
     public static void init() {
     }
 
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         BLOCK_ENTITIES.register(bus);
         MENUS.register(bus);
+        bus.addListener(Salt::commonSetup);
     }
 }

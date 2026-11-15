@@ -241,4 +241,124 @@ public class HungryCowSaltTests {
             h.succeed();
         });
     }
+
+    // ---------- крок 5: лоза ----------
+    // 7. Ліана мечем → 1–4 лози (ліана зникає); ножицями присівши — ні (ванільно)
+    @GameTest(template = "arena", batch = "salt", timeoutTicks = 20)
+    public static void vineGivesWicker(GameTestHelper h) {
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        int min = 99, max = 0;
+        BlockPos wall = new BlockPos(7, 2, 7), vine = new BlockPos(7, 2, 8);
+        h.setBlock(wall, Blocks.STONE);
+        for (int i = 0; i < 30; i++) {
+            h.setBlock(vine, Blocks.VINE.defaultBlockState().setValue(net.minecraft.world.level.block.VineBlock.NORTH, true));
+            p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD));
+            p.setShiftKeyDown(false);
+            boolean done = com.gigongibus.hungrycows.salt.WickerHarvest.harvest(h.getLevel(), h.absolutePos(vine), h.getBlockState(vine), p);
+            int n = h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(vine)).inflate(2))
+                    .stream().filter(e -> e.getItem().is(Salt.WICKER.get())).mapToInt(e -> e.getItem().getCount()).sum();
+            h.getLevel().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(vine)).inflate(2)).forEach(e -> e.discard());
+            h.assertTrue(done && h.getBlockState(vine).isAir(), "ліана не зібрана");
+            min = Math.min(min, n); max = Math.max(max, n);
+        }
+        h.setBlock(vine, Blocks.VINE.defaultBlockState().setValue(net.minecraft.world.level.block.VineBlock.NORTH, true));
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new ItemStack(Items.SHEARS));
+        p.setShiftKeyDown(true);
+        boolean sneak = com.gigongibus.hungrycows.salt.WickerHarvest.harvest(h.getLevel(), h.absolutePos(vine), h.getBlockState(vine), p);
+        p.setShiftKeyDown(false);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        h.setBlock(vine, Blocks.AIR);
+        h.setBlock(wall, Blocks.AIR);
+        LOG.info("[тест] vineGivesWicker: меч — {}–{} лози, ножиці присівши — лоза {}", min, max, sneak);
+        h.assertTrue(min == 1 && max == 4, "не 1–4 лози: " + min + "–" + max);
+        h.assertTrue(!sneak, "присівши з ножицями — теж лоза");
+        h.succeed();
+    }
+
+    // 8. Пучок на сонці (×1000) → сухий за 2 «сонячні дні»; під дахом — свіжий; рецепти пучка, спиці, мішковини; гнилий — у компостер
+    @GameTest(template = "arena", batch = "salt", timeoutTicks = 200)
+    public static void bundleDriesInSun(GameTestHelper h) {
+        h.getLevel().setDayTime(1000);
+        TestWorld.calm(h);
+        BlockPos sun = new BlockPos(4, 2, 4), shade = new BlockPos(10, 2, 4);
+        h.setBlock(sun, Salt.WICKER_BUNDLE.get());
+        h.setBlock(shade, Salt.WICKER_BUNDLE.get());
+        h.setBlock(shade.above(3), Blocks.STONE);   // дах
+        com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), com.gigongibus.hungrycows.WorldClock.SPEED_MAX);
+        h.runAfterDelay(199, () -> com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1));
+        java.util.List<String> seen = new java.util.ArrayList<>();
+        h.onEachTick(() -> {
+            String st = h.getBlockState(sun).hasProperty(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE)
+                    ? h.getBlockState(sun).getValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE).getSerializedName() : "-";
+            if (seen.isEmpty() || !seen.get(seen.size() - 1).equals(st)) seen.add(st);
+        });
+        h.succeedWhen(() -> {
+            var sunState = h.getBlockState(sun);   // (після прибирання блока тут повітря — лише провал, без падіння сервера)
+            h.assertTrue(sunState.hasProperty(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE)
+                    && sunState.getValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE) == com.gigongibus.hungrycows.salt.WickerBundleBlock.Stage.DRY,
+                    "на сонці ще не сухий: " + seen);
+            com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1);
+            var shadeStage = h.getBlockState(shade).getValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE);
+            var drops = net.minecraft.world.level.block.Block.getDrops(h.getBlockState(sun), h.getLevel(), h.absolutePos(sun), h.getBlockEntity(sun));
+            // рецепти
+            var g = grid();
+            for (int i = 0; i < 9; i++) g.setItem(i, new ItemStack(i == 4 ? Salt.KNITTING_NEEDLE.get() : Salt.WICKER_BUNDLE_DRY.get()));
+            var r = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g, h.getLevel());
+            var g2 = grid();
+            for (int i = 0; i < 9; i++) g2.setItem(i, new ItemStack(i == 4 ? Items.COBWEB : Salt.WICKER.get()));
+            var r2 = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g2, h.getLevel());
+            var g3 = grid();
+            g3.setItem(1, new ItemStack(Items.OAK_BUTTON)); g3.setItem(4, new ItemStack(Items.STICK)); g3.setItem(7, new ItemStack(Items.STICK));
+            var r3 = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g3, h.getLevel());
+            float compost = net.minecraft.world.level.block.ComposterBlock.COMPOSTABLES.getFloat(Salt.WICKER_BUNDLE_ROTTEN.get());
+            LOG.info("[тест] bundleDriesInSun: на сонці {} за {} с (×1000), під дахом {}, випадає {}, мішковина {}, пучок {}, спиця {}, компостер {}",
+                    seen, h.getTick() / 20.0, shadeStage, drops, r.isPresent(), r2.isPresent(), r3.isPresent(), compost);
+            h.setBlock(sun, Blocks.AIR); h.setBlock(shade, Blocks.AIR); h.setBlock(shade.above(3), Blocks.AIR);
+            h.assertTrue(seen.contains("wilted"), "не був підсохлим: " + seen);
+            h.assertTrue(shadeStage == com.gigongibus.hungrycows.salt.WickerBundleBlock.Stage.FRESH, "під дахом сохне: " + shadeStage);
+            h.assertTrue(drops.size() == 1 && drops.get(0).is(Salt.WICKER_BUNDLE_DRY.get()), "сухий пучок не випадає сухим: " + drops);
+            h.assertTrue(r.isPresent() && r.get().assemble(g, h.getLevel().registryAccess()).is(Salt.BURLAP.get())
+                    && r.get().getRemainingItems(g).get(4).getDamageValue() == 1, "мішковина: рецепт або спиця не зношується");
+            h.assertTrue(r2.isPresent() && r2.get().assemble(g2, h.getLevel().registryAccess()).is(Salt.WICKER_BUNDLE_ITEM.get()), "рецепт пучка");
+            h.assertTrue(r3.isPresent() && r3.get().assemble(g3, h.getLevel().registryAccess()).is(Salt.KNITTING_NEEDLE.get()), "рецепт спиці");
+            h.assertTrue(Math.abs(compost - 0.65F) < 0.001F, "гнилий не в компостер: " + compost);
+        });
+    }
+
+    // 9. Дощ: пучок мокне, ще доба мокрим — гниє; дощ «скінчився» раніше (переніс під дах) — свіжий, сохне з початку
+    @GameTest(template = "arena", batch = "salt_rain", timeoutTicks = 200)
+    public static void bundleRotsInRain(GameTestHelper h) {
+        h.getLevel().setDayTime(1000);
+        TestWorld.calm(h);
+        h.getLevel().setWeatherParameters(0, 24000, true, false);
+        BlockPos a = new BlockPos(4, 2, 4), b = new BlockPos(10, 2, 4);
+        h.setBlock(a, Salt.WICKER_BUNDLE.get());
+        h.setBlock(b, Salt.WICKER_BUNDLE.get().defaultBlockState().setValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE,
+                com.gigongibus.hungrycows.salt.WickerBundleBlock.Stage.DRY));
+        com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 500);   // за одну перевірку (1 с) — 10000 тіків: мокне, але ще не гниє
+        java.util.List<String> sa = new java.util.ArrayList<>(), sb = new java.util.ArrayList<>();
+        h.onEachTick(() -> {
+            for (var pair : java.util.List.of(java.util.Map.entry(a, sa), java.util.Map.entry(b, sb))) {
+                var st = h.getBlockState(pair.getKey());
+                if (!st.hasProperty(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE)) continue;
+                String n = st.getValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE).getSerializedName();
+                if (pair.getValue().isEmpty() || !pair.getValue().get(pair.getValue().size() - 1).equals(n)) pair.getValue().add(n);
+            }
+        });
+        // другий змок — дах над ним (дощ для нього «скінчився»)
+        h.runAfterDelay(45, () -> h.setBlock(b.above(3), Blocks.STONE));
+        h.runAfterDelay(199, () -> { com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1); h.getLevel().setWeatherParameters(24000, 0, false, false); });
+        h.succeedWhen(() -> {
+            h.assertTrue(sa.contains("rotten") && sb.size() >= 3, "ще не: " + sa + " / " + sb);
+            com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1);
+            h.getLevel().setWeatherParameters(24000, 0, false, false);
+            int sunB = h.getBlockEntity(b) instanceof com.gigongibus.hungrycows.salt.WickerBundleBlockEntity e ? e.sun() : -1;
+            LOG.info("[тест] bundleRotsInRain: під дощем {}, переніс під дах {} (сонця {})", sa, sb, sunB);
+            boolean okA = sa.equals(java.util.List.of("fresh", "wet", "rotten")), okB = sb.equals(java.util.List.of("dry", "wet", "fresh")) && sunB == 0;
+            h.setBlock(a, Blocks.AIR); h.setBlock(b, Blocks.AIR); h.setBlock(b.above(3), Blocks.AIR);
+            if (!okA) h.fail("під дощем не свіжий → мокрий → гнилий: " + sa);
+            if (!okB) h.fail("дощ скінчився — не «з початку»: " + sb + ", сонця " + sunB);
+            h.succeed();
+        });
+    }
 }

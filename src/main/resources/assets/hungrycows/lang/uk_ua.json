@@ -45,5 +45,13 @@
   "item.hungrycows.burlap": "Мішковина",
   "item.hungrycows.ground_salt_half_purified": "Рудна сіль перемолена (недоочищена)",
   "block.hungrycows.salt_pan": "Сольова сковорода",
-  "item.hungrycows.ground_salt_roasted": "Рудна сіль перемолена (прожарена)"
+  "item.hungrycows.ground_salt_roasted": "Рудна сіль перемолена (прожарена)",
+  "item.hungrycows.wicker": "Лоза",
+  "block.hungrycows.wicker_bundle": "Пучок лози",
+  "item.hungrycows.wicker_bundle_fresh": "Пучок лози",
+  "item.hungrycows.wicker_bundle_wilted": "Підсохлий пучок лози",
+  "item.hungrycows.wicker_bundle_dry": "Сухий пучок лози",
+  "item.hungrycows.wicker_bundle_wet": "Мокрий пучок лози",
+  "item.hungrycows.wicker_bundle_rotten": "Гнилий пучок лози",
+  "item.hungrycows.knitting_needle": "Спиця для в’язання"
 }

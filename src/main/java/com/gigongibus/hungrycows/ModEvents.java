@@ -48,6 +48,7 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_LID);
             event.accept(com.gigongibus.hungrycows.salt.Salt.SIEVE);
             event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_PAN_ITEM);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.KNITTING_NEEDLE);
         }
         // гриби й зілля з грибів (Fij): ванільна вкладка кладе кожне зілля в усі пляшки — зайві (не та тривалість) прибираємо
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
@@ -57,6 +58,12 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_HALF_PURIFIED);
             event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_ROASTED);
             event.accept(com.gigongibus.hungrycows.salt.Salt.BURLAP);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_ITEM);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_WILTED);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_DRY);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_WET);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_ROTTEN);
             event.accept(ModItems.FIRE_FUNGUS);
             event.accept(ModItems.STAR_FUNGUS);
         }

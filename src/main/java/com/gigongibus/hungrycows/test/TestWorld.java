@@ -34,6 +34,8 @@ final class TestWorld {
         level.getGameRules().getRule(GameRules.RULE_WEATHER_CYCLE).set(false, level.getServer());
         level.getGameRules().getRule(GameRules.RULE_DOFIRETICK).set(false, level.getServer());   // вогонь від лави не поширюється
         level.setWeatherParameters(CLEAR_TICKS, 0, false, false);
+        level.setRainLevel(0F);      // дощ у грі стихає поступово — без цього дощ попередньої партії «доходив» до наступної
+        level.setThunderLevel(0F);
         BlockPos a = h.absolutePos(new BlockPos(0, 1, 0)), c = h.absolutePos(new BlockPos(PLOT_SIZE, 1, PLOT_SIZE));
         int floor = a.getY();   // y=1 майданчика — підлога
         // Без гравця тестовий сервер обробляє тварин лише в чанках самого майданчика; корова, що перейшла межу чанка

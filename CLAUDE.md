@@ -458,6 +458,17 @@
   (`COOL_DOWN`). ПКМ порожньою рукою — забрати все (готове — `ground_salt_roasted`). Рецепт «П·П / З·З / ЗЗЗ» (тег
   `minecraft:wooden_slabs`), кайло. Тест `panRoastsSalt` (партія "salt_tub": 20 → 4 купки → 20 прожареної; згасле 5000 → 249 за
   ~1 с; на душ-багаття — ні).
+  КРОК 5 ЗРОБЛЕНО: ЛОЗА. `WickerHarvest` (з `ModForgeEvents.onBlockBreak`): ванільна ліана мечем або ножицями → 1–4 `wicker`
+  (ліана зникає, інструмент −1; присівши з ножицями — як ванільно). Рецепт 8 лоз + павутина → `wicker_bundle`. ПУЧОК — блок на
+  землі (`WickerBundleBlock`, стан `stage` fresh/wilted/dry/wet/rotten, низенька модель із текстури предмета; на твердий верх),
+  `WickerBundleBlockEntity` раз на секунду: дощ на нього (`HungryCow.rainReaches`) → мокрий, мокрим ще 24000 → гнилий; дощ скінчився
+  раніше — свіжий, сонце з нуля; сонце (день, без дощу, без даху `CowHome.hasRoof`) — +speed; підсохлий з 12000, сухий з 24000
+  (`WILT_DAYS` 1 / `DRY_DAYS` 2 «сонячні дні» по 12000 — Fij: «1-й день свіжий, 2-й підсохлий, 3-й сухий»; уточнити, чи не 3 дні
+  до сухого); покладений підсохлим/сухим — не «молодшає». П'ять предметів-стадій (`WickerBundleItem`, кладуть свою стадію; лут —
+  за стадією; «головний» предмет блока — свіжий). Гнилий — компостер 65% (`Salt.commonSetup`). Спиця `knitting_needle` (кнопка
+  з тегу `minecraft:wooden_buttons` над 2 палицями, 15 разів), 8 сухих пучків + спиця → 1 `burlap`. Тести `vineGivesWicker`,
+  `bundleDriesInSun` (партія "salt"), `bundleRotsInRain` (партія "salt_rain"). `TestWorld.calm` тепер ще й `setRainLevel(0)`:
+  дощ стихає поступово, і дощ попередньої партії «доходив» до наступної.
   ШВИДКІ ТЕСТИ: файл `run-gametest/only_batches.txt` (напр. `salt`) — запускаються лише ці партії (`test/OnlyBatches`, через
   `ServerAboutToStartEvent` відбирає `GameTestServer.testBatches`); прибрати файл — знову всі. Тека `run-gametest/` у .gitignore.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
