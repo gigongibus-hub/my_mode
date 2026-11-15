@@ -66,8 +66,9 @@ public class CowMoveControl extends MoveControl {
             float from = bull ? BULL_SLOW_FROM_DEG : COW_SLOW_FROM_DEG;
             if (off > from) {
                 float min = bull ? BULL_TURN_SPEED_MIN : COW_TURN_SPEED_MIN;
-                // косинус від «порогу»: на порозі — уся швидкість, на 90° і більше — найменша
-                float k = Mth.cos((off - from) / (90F - from) * ((float) Math.PI / 2F));
+                // бик: швидкість × косинус кута (перевірено тестом кіл); корова: косинус від «порогу» — м'якше
+                float k = bull ? Mth.cos(off * ((float) Math.PI / 180F))
+                        : Mth.cos((off - from) / (90F - from) * ((float) Math.PI / 2F));
                 target *= off >= 90F ? min : Math.max(min, k);
             }
         }
