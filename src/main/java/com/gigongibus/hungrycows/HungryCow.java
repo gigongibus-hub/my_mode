@@ -1105,7 +1105,9 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
 
     private final class LifeHost implements com.gigongibus.hungrycows.life.IdleLife.Host {
         @Override public boolean idleAllowed() {
-            return calmForLife() && getNavigation().isDone() && onlyGoals(IDLE_GOALS, java.util.Set.of());
+            // хоч одна ціль спокою справді працює (без жодної цілі — напр. у тестах, де корову веде тест, — нічого не додає)
+            return calmForLife() && getNavigation().isDone() && onlyGoals(IDLE_GOALS, java.util.Set.of())
+                    && goalSelector.getRunningGoals().anyMatch(w -> IDLE_GOALS.contains(w.getGoal().getClass()));
         }
         @Override public boolean pauseAllowed() {
             return calmForLife() && getMoveControl().getSpeedModifier() <= STROLL_PAUSE_MAX_SPEED

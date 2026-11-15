@@ -70,6 +70,7 @@ public class HungryCowLifeTests {
                 if (!b.equals(lastBrain[i])) { brainSw[i]++; seq[i].append(" → ").append(b).append(" (").append((t - WARMUP) / 20).append(" с)"); }
                 if (!g.equals(lastGoal[i])) goalSw[i]++;
                 lastBrain[i] = b; lastGoal[i] = g;
+                if (i == 0 && (t - WARMUP) % 300 == 0) LOG.info("[тест] lifeMetrics: шанси {}", c.brain.debugLine());
                 if (t % TURN_WINDOW == 0) {
                     if (Math.abs(Mth.wrapDegrees(c.yBodyRot - lastYaw[i])) > SHARP_TURN) sharp[i]++;
                     lastYaw[i] = c.yBodyRot;

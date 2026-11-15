@@ -757,7 +757,7 @@ public class CowBrain {
         StringBuilder sb = new StringBuilder(cow.family.name + ": " + current.title.toUpperCase()
                 + (cow.isDoing(current) ? "" : " (ще не почала)") + " | страх " + cow.chem.fearFelt() + "/" + cow.scaredAt()
                 + " | " + cow.home.debugText() + " |");
-        for (int k = 0; k < 4; k++) {
+        for (int k = 0; k < 6; k++) {
             int i = order.get(k);
             if (probs[i] <= 0) break;
             sb.append(" ").append(ACTIONS[i].title).append(" ").append(Math.round(probs[i] * 100)).append("%");
