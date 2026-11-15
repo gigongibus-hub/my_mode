@@ -37,6 +37,11 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double NEAR_GOAL = 2.5;       // ціль ближче 2,5 бл. (підходить їсти поруч з іншою) — не обходить
     // Ходіння за шляхом (followThePath): не зрізати кути
     public static final double WAYPOINT_REACH = 0.35; // точку пройдено, коли центр корови ближче 0,35 бл. до центру точки (по X і по Z)
+    // Fij «бики намотують кола»: бик за тік пробігає більше, ніж «віконце» ±0,35, — перескакував точку, вона опинялась позаду,
+    // і він розвертався до неї петлею (повільний поворот), аж поки за 3 с не спрацьовував запасний вихід. Тепер точка пройдена й тоді:
+    public static final double PASS_REACH = 0.5;      // ... коли дорогою за цей тік пробіг ближче 0,5 бл. від неї ...
+    public static final double BEHIND_DIST = 1.6;     // ... або вона ближче 1,6 бл. (× ширина, якщо ширша за блок) ...
+    public static final float BEHIND_DEG = 100F;      // ... і вже позаду (понад 100° від того, куди повернутий тулуб), а далі є ще точки
     public static final double WAYPOINT_DY = 1.05;    // ... і різниця висоти до 1 блока включно (точкою буває сам блок під ногами:
                                                       // стежка, килим — рівно 1,0, і з «менше 1» корова стояла на ній назавжди)
     public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
@@ -100,6 +105,9 @@ public class CowNavigation extends GroundPathNavigation {
         double dz = Math.abs(this.mob.getZ() - at.z);
         double dy = Math.abs(this.mob.getY() - this.path.getNodePos(i).getY());
         boolean reached = dx < WAYPOINT_REACH && dz < WAYPOINT_REACH && dy < WAYPOINT_DY;
+        if (!reached && dy < WAYPOINT_DY) reached = passedThrough(at) || (i + 1 < this.path.getNodeCount() && behind(at));
+        prevX = this.mob.getX();
+        prevZ = this.mob.getZ();
         // запасний вихід: точка та сама, а корова 1 с не наближається — раз ванільне правило
         double dist = dx + dz;
         if (i != stuckNode) {
@@ -119,6 +127,28 @@ public class CowNavigation extends GroundPathNavigation {
         boolean straightSkip = !reached && dy < WAYPOINT_DY && dx < STRAIGHT_REACH && dz < STRAIGHT_REACH && straightAt(i);
         if (reached || straightSkip) this.path.advance();
         this.doStuckDetection(tempPos);   // як у ванільному
+    }
+
+    private double prevX = Double.NaN, prevZ = Double.NaN;
+
+    // дорогою за останній тік (від попередньої позиції до теперішньої) пробігла біля точки
+    private boolean passedThrough(Vec3 at) {
+        if (Double.isNaN(prevX)) return false;
+        double ax = prevX, az = prevZ, bx = this.mob.getX(), bz = this.mob.getZ();
+        double vx = bx - ax, vz = bz - az, len2 = vx * vx + vz * vz;
+        if (len2 < 1.0E-6 || len2 > 4) return false;   // стоїть або «перескочила» (телепорт) — не рахувати
+        double t = Math.max(0, Math.min(1, ((at.x - ax) * vx + (at.z - az) * vz) / len2));
+        double cx = ax + vx * t - at.x, cz = az + vz * t - at.z;
+        return cx * cx + cz * cz < PASS_REACH * PASS_REACH;
+    }
+
+    // точка вже позаду й зовсім близько — пробігла повз неї
+    private boolean behind(Vec3 at) {
+        double dx = at.x - this.mob.getX(), dz = at.z - this.mob.getZ();
+        double near = BEHIND_DIST * Math.max(1.0, this.mob.getBbWidth());
+        if (dx * dx + dz * dz > near * near) return false;
+        float yaw = (float) (net.minecraft.util.Mth.atan2(dz, dx) * (180F / Math.PI)) - 90F;
+        return Math.abs(net.minecraft.util.Mth.wrapDegrees(yaw - this.mob.getYRot())) > BEHIND_DEG;
     }
 
     // Точки i, i+1, i+2 на одній прямій і на одній висоті (тобто в точці i немає повороту)
