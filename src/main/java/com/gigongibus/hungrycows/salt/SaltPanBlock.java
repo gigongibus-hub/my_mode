@@ -36,7 +36,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class SaltPanBlock extends BaseEntityBlock {
     public static final IntegerProperty PILES = IntegerProperty.create("piles", 0, 4);
     public static final BooleanProperty ROASTED = BooleanProperty.create("roasted");
-    private static final VoxelShape SHAPE = box(0, -8, 0, 16, -3, 16);   // сковорода опущена на багаття
+    private static final VoxelShape SHAPE = box(0, -2, 0, 16, 3, 16);   // сковорода трохи опущена на багаття
 
     public SaltPanBlock(Properties p) {
         super(p);

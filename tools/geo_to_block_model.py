@@ -4,7 +4,7 @@
 import json, os
 
 SRC = 'tools/models_src'
-PAN_DY = -8   # сковорода на багатті — на 8 пікселів нижче своєї клітинки
+PAN_DY = -2   # сковорода на багатті — трохи нижче своєї клітинки (з −8 полум'я проходило крізь сіль)
 OUT = 'src/main/resources/assets/hungrycows/models/block'
 
 def faces(u, v, w, h, d, s):
