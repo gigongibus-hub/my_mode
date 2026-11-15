@@ -234,7 +234,7 @@ public class HungryCowFearTests {
         placePlayer(p, cow, cow.position().add(new Vec3(0, 0, -HIT_DISTANCE)));
         int[] before = new int[2];   // страх і довіра перед ударом
         h.startSequence()
-                .thenIdle(2 * SECOND)
+                .thenIdle(4 * SECOND)   // щойно доданий гравець 3 с невразливий: з 2 с корова, що вирішила битись, била «в порожнечу»
                 .thenExecute(() -> {
                     before[0] = cow.fear;
                     before[1] = cow.trustOf(p);
