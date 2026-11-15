@@ -28,7 +28,8 @@ public class HungryCowBullTests {
     private static final String ARENA = "arena";
     private static final String BATCH = "bulls";
     private static final int TRIES = 24;                 // скільки корів створити, щоб знайти потрібну стать
-    private static final int ZOMBIE_TIMEOUT = 600;       // 30 с, щоб хоч один бик ударив зомбі
+    private static final int ZOMBIE_TIMEOUT = 600;
+    private static final float LOOP_DEG = 420F;          // «петля» в тесті зигзагу       // 30 с, щоб хоч один бик ударив зомбі
 
     static List<HungryCow> spawnSex(GameTestHelper h, boolean bulls, int count, BlockPos... at) {
         List<HungryCow> out = new ArrayList<>();
@@ -175,7 +176,8 @@ public class HungryCowBullTests {
     }
 
     // 5. Fij «бики все одно часто намотують кола»: бик біжить зигзагом через 5 точок (як утеча, що часто міняє напрям);
-    //    петля = за 4 с тулуб повернувся в один бік більш ніж на 300°
+    //    петля = за 4 с тулуб повернувся в один бік більш ніж на 420° (більше за повне коло; два чесні розвороти поспіль в один бік —
+    //    до 360°: з межею 300° тест хибно рахував їх петлею)
     @GameTest(template = ARENA, batch = "bulls_turn", timeoutTicks = 500)
     public static void bullZigzagNoLoops(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
@@ -206,7 +208,7 @@ public class HungryCowBullTests {
             double sum = 0;
             for (float x : turns) sum += x;
             if (loopCooldown[0] > 0) loopCooldown[0]--;
-            else if (Math.abs(sum) > 300) { loops[0]++; loopCooldown[0] = 80; turns.clear(); }
+            else if (Math.abs(sum) > LOOP_DEG) { loops[0]++; loopCooldown[0] = 80; turns.clear(); }
             walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
             last[0] = bull.position();
             if (h.getTick() % 4 == 0 && trace.length() < 6000) {

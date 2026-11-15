@@ -32,6 +32,7 @@ public class SearchFoodGoal extends Goal {
     private static final double WANDER_MIN_CLOSE = 4;    // далеких немає (тісний загін) — годиться й ближче 4 бл.
     private static final int RETRY_TICKS = 20;           // не знайшла, куди йти, — наступна спроба за 1 с
     private static final double ARRIVED = 2.5;           // дійшла
+    private static final double REACH_END = 1.0;         // нове місце «досяжне», якщо дорога кінчається не далі 1 бл. від нього
     private static final int MAX_TICKS = 400;            // іде щонайдовше 20 с, потім вибирає інше місце
     private static final double SPEED = 1.0;
     private static final int SMELL_IGNORE_TICKS = 1200;  // на запах їжі, до якої немає дороги (чи дійшла, а їжі не видно), — 1 хв не йде
@@ -115,15 +116,13 @@ public class SearchFoodGoal extends Goal {
             if (v.distanceToSqr(cow.position()) < WANDER_MIN * WANDER_MIN) {
                 BlockPos c = BlockPos.containing(v);
                 if (close == null && !searchedNear(c)) {
-                    Path cp = cow.getNavigation().createPath(c, 0);   // саме туди (з точністю 1 «досяжним» було й місце за склом у кутку)
-                    if (cp != null && cp.canReach()) close = c;
+                    if (reallyReachable(c)) close = c;
                 }
                 continue;
             }
             BlockPos b = BlockPos.containing(v);
             if (searchedNear(b)) continue;                         // тут уже шукала — далі
-            Path path = cow.getNavigation().createPath(b, 0);
-            if (path == null || !path.canReach()) continue;        // туди не дійти (саме туди: з точністю 1 корова йшла в кут і стояла біля скла)
+            if (!reallyReachable(b)) continue;                     // туди не дійти
             if (!CowHome.hasRoof(cow.level(), b)) {
                 cow.tell(cow.family.name + " не бачить їжі — шукає");
                 return b;
@@ -137,6 +136,13 @@ public class SearchFoodGoal extends Goal {
         }
         else recent.clear();   // усе поруч обшукала — наступного разу шукатиме знову скрізь
         return any;
+    }
+
+    // дорога закінчується не далі 1 бл. від місця: «досяжним з точністю 1» було й місце за скляною стіною в кутку
+    // (кінець дороги в кутку всередині) — корова йшла в кут і стояла біля скла; точно (0) — майже нічого не проходило
+    private boolean reallyReachable(BlockPos b) {
+        Path p = cow.getNavigation().createPath(b, 1);
+        return p != null && p.canReach() && p.getEndNode() != null && p.getEndNode().asBlockPos().distSqr(b) <= REACH_END * REACH_END;
     }
 
     private boolean searchedNear(BlockPos b) {
