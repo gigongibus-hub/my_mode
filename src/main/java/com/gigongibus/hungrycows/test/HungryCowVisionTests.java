@@ -87,6 +87,7 @@ public class HungryCowVisionTests {
         HungryCow cow = TestWorld.cow(h, new BlockPos(7, 2, 3));
         cow.setAge(0);
         cow.hunger = 60;
+        TestWorld.Tracer trace = new TestWorld.Tracer(h, cow, 100);
         LOG.info("[тест] cowSearchesForHiddenFood: корова {}", cow.family.name);
         int[] notSeenAt = { -1 };
         boolean[] cleared = { false };
@@ -102,7 +103,7 @@ public class HungryCowVisionTests {
         });
         h.runAfterDelay(1799, clear);
         h.succeedWhen(() -> {
-            h.assertTrue(!cleared[0], "час вийшов");
+            h.assertTrue(!cleared[0], "час вийшов: " + cow.family.name + " " + trace);
             h.assertTrue(notSeenAt[0] >= 0, "корова одразу «побачила» їжу за стіною");
             h.assertTrue(!h.getLevel().getBlockState(h.absolutePos(grass)).is(Blocks.GRASS_BLOCK), "ще не знайшла й не з'їла траву за стіною");
             LOG.info("[тест] cowSearchesForHiddenFood: не бачила їжі на {} с, з'їла на {} с", notSeenAt[0] / 20.0, h.getTick() / 20.0);

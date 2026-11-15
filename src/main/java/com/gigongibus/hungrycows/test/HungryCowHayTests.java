@@ -204,6 +204,7 @@ public class HungryCowHayTests {
         h.setBlock(clean, hay(Stage.DRY, Cond.CLEAN, true));
         h.setBlock(fungus, hay(Stage.DRY, Cond.FIRE_FUNGUS, true));
         HungryCow cow = TestWorld.cow(h, new BlockPos(4, 2, 7));
+        TestWorld.Tracer trace = new TestWorld.Tracer(h, cow, 60);
         cow.setAge(0);
         cow.setYRot(-90);
         cow.setYHeadRot(-90);
@@ -212,9 +213,9 @@ public class HungryCowHayTests {
         Runnable clear = () -> { cleared[0] = true; cow.discard(); h.setBlock(clean, net.minecraft.world.level.block.Blocks.AIR); h.setBlock(fungus, net.minecraft.world.level.block.Blocks.AIR); };
         h.runAfterDelay(AVOID_TIMEOUT - 1, clear);
         h.succeedWhen(() -> {
-            h.assertFalse(cleared[0], "за 30 с не з'їла сіно з вогняним грибом (голод " + cow.hunger + ")");
+            h.assertFalse(cleared[0], "за 30 с не з'їла сіно з вогняним грибом (голод " + cow.hunger + "): " + cow.family.name + " " + trace);
             boolean cleanLeft = h.getBlockState(clean).getBlock() instanceof CowHayBlock;
-            h.assertTrue(cleanLeft || h.getBlockState(fungus).isAir(), "з'їла чисте замість гриба");
+            h.assertTrue(cleanLeft || h.getBlockState(fungus).isAir(), "з'їла чисте замість гриба: " + cow.family.name + " " + trace);
             h.assertTrue(h.getBlockState(fungus).isAir(), "ще не з'їла гриб");
             LOG.info("[тест] cowPrefersFireFungus: з'їла гриб за {} с, чисте лишилось {}, лють {}", h.getTick() / 20.0, cleanLeft,
                     cow.hasEffect(com.gigongibus.hungrycows.ModEffects.MUSHROOM_RAGE.get()));

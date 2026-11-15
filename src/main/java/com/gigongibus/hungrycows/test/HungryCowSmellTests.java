@@ -189,7 +189,7 @@ public class HungryCowSmellTests {
         });
         h.runAfterDelay(1199, clear);
         h.succeedWhen(() -> {
-            h.assertTrue(!cleared[0], "час вийшов (почала шукати " + starts[0] + " разів), " + trace[0]);
+            h.assertTrue(!cleared[0], "час вийшов (почала шукати " + starts[0] + " разів), " + cow.family.name + " " + trace[0]);
             boolean sameSide = Math.signum(cow.getX() - h.absoluteVec(new Vec3(6.5, 0, 0)).x) == Math.signum(h.absoluteVec(new Vec3(7.5, 0, 0)).x - h.absoluteVec(new Vec3(6.5, 0, 0)).x);
             h.assertTrue(sameSide && cow.distanceToSqr(Vec3.atCenterOf(h.absolutePos(hay))) < 3 * 3, "не обійшла стінку до сіна");
             h.assertTrue(starts[0] <= 10, "смикається: пошук починався " + starts[0] + " разів");

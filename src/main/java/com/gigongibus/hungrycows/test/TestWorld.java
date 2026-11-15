@@ -76,4 +76,24 @@ final class TestWorld {
         c.refreshBullModel();
         return c;
     }
+
+    /** Для налагодження нестабільних тестів: раз на everyTicks записує, де корова й що робить (дію мозку, цілі, голод) */
+    public static final class Tracer {
+        private final StringBuilder sb = new StringBuilder();
+
+        public Tracer(GameTestHelper h, com.gigongibus.hungrycows.HungryCow cow, int everyTicks) {
+            h.onEachTick(() -> {
+                if (h.getTick() % everyTicks != 0 || sb.length() > 4000 || !cow.isAlive()) return;
+                net.minecraft.world.phys.Vec3 o = h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO);
+                sb.append(String.format("[%d с (%.1f, %.1f) %s голод %d %s] ", h.getTick() / 20, cow.getX() - o.x, cow.getZ() - o.z,
+                        cow.brain.current(), cow.hunger,
+                        cow.goalSelector.getRunningGoals().map(g -> g.getGoal().getClass().getSimpleName()).toList()));
+            });
+        }
+
+        @Override
+        public String toString() {
+            return sb.toString();
+        }
+    }
 }
