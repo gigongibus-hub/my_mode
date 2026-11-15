@@ -351,6 +351,42 @@ public class HungryCowSaltTests {
         });
     }
 
+    // 8б. До 6 пучків на блок (Fij): ПКМ пучком по блоку — ще один, 7-й не лягає; лежать у різних місцях, на двох блоках — по-різному;
+    //     кожен зі своєю стадією (сухий не стає свіжим від сусіда) і випадає своєю стадією
+    @GameTest(template = "arena", batch = "salt", timeoutTicks = 20)
+    public static void sixBundlesOnBlock(GameTestHelper h) {
+        BlockPos a = new BlockPos(4, 2, 10), b = new BlockPos(6, 2, 10);
+        var dry = Salt.WICKER_BUNDLE.get().defaultBlockState().setValue(com.gigongibus.hungrycows.salt.WickerBundleBlock.STAGE,
+                com.gigongibus.hungrycows.salt.WickerBundleBlock.Stage.DRY);
+        h.setBlock(a, dry);
+        h.setBlock(b, dry);
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        int added = 0;
+        for (int i = 0; i < 7; i++) if (use(h, a, p, new ItemStack(Salt.WICKER_BUNDLE_ITEM.get()), false).consumesAction()) added++;
+        for (int i = 0; i < 5; i++) use(h, b, p, new ItemStack(Salt.WICKER_BUNDLE_ITEM.get()), false);
+        var ea = (com.gigongibus.hungrycows.salt.WickerBundleBlockEntity) h.getBlockEntity(a);
+        var eb = (com.gigongibus.hungrycows.salt.WickerBundleBlockEntity) h.getBlockEntity(b);
+        double minGap = 9;
+        var pa = ea.pieces();
+        for (int i = 0; i < pa.size(); i++) for (int j = i + 1; j < pa.size(); j++)
+            minGap = Math.min(minGap, Math.hypot(pa.get(i).x - pa.get(j).x, pa.get(i).z - pa.get(j).z));
+        boolean sameLayout = true;
+        for (int i = 0; i < 6; i++) if (Math.abs(pa.get(i).x - eb.pieces().get(i).x) > 0.001F) sameLayout = false;
+        var drops = net.minecraft.world.level.block.Block.getDrops(h.getBlockState(a), h.getLevel(), h.absolutePos(a), ea);
+        long dryN = drops.stream().filter(d -> d.is(Salt.WICKER_BUNDLE_DRY.get())).count();
+        long freshN = drops.stream().filter(d -> d.is(Salt.WICKER_BUNDLE_ITEM.get())).count();
+        StringBuilder where = new StringBuilder();
+        for (var x : pa) where.append(String.format("(%.2f %.2f %.0f°) ", x.x, x.z, x.rot));
+        LOG.info("[тест] sixBundlesOnBlock: доклала {} з 7, пучків {}, місця {}, найменша відстань {}, однаково на двох блоках {}, випадає сухих {} свіжих {}",
+                added, ea.count(), where, String.format("%.2f", minGap), sameLayout, dryN, freshN);
+        h.setBlock(a, Blocks.AIR); h.setBlock(b, Blocks.AIR);
+        h.assertTrue(added == 5 && ea.count() == 6, "не 6 на блок: доклала " + added + ", пучків " + ea.count());
+        h.assertTrue(minGap > 0.05, "пучки лежать в одному місці: " + minGap);
+        h.assertTrue(!sameLayout, "на двох блоках однаково — не випадково");
+        h.assertTrue(dryN == 1 && freshN == 5, "випадає не своєю стадією: " + drops);
+        h.succeed();
+    }
+
     // 9. Дощ: пучок мокне, ще доба мокрим — гниє; дощ «скінчився» раніше (переніс під дах) — свіжий, сохне з початку
     @GameTest(template = "arena", batch = "salt_rain", timeoutTicks = 200)
     public static void bundleRotsInRain(GameTestHelper h) {

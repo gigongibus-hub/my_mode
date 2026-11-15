@@ -21,7 +21,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * ПУЧОК ЛОЗИ на землі (сіль/лоза, Fij — «як у TerraFirmaCraft»): сохне на сонці (свіжий → підсохлий → сухий), уночі й під дахом
+ * ПУЧОК ЛОЗИ на землі (сіль/лоза, Fij — «як у TerraFirmaCraft»). На одному блоці до 6 пучків (ПКМ пучком по блоку), кожен лежить
+ * у випадковому місці й повернутий випадково (малює `client/WickerBundleRenderer`) і сохне окремо. Пучок сохне на сонці (свіжий → підсохлий → сухий), уночі й під дахом
  * стоїть; дощ — мокрий, ще доба мокрим — гнилий; дощ скінчився раніше — сохне з початку.
  */
 public class WickerBundleBlock extends BaseEntityBlock {
@@ -35,7 +36,7 @@ public class WickerBundleBlock extends BaseEntityBlock {
     }
 
     public static final EnumProperty<Stage> STAGE = EnumProperty.create("stage", Stage.class);
-    private static final VoxelShape SHAPE = box(4, 0, 4, 12, 1, 12);   // плаский, удвічі менший (Fij)
+    private static final VoxelShape SHAPE = box(1, 0, 1, 15, 1, 15);   // пласкі пучки по всьому блоку
 
     public WickerBundleBlock(Properties p) {
         super(p);
@@ -73,6 +74,30 @@ public class WickerBundleBlock extends BaseEntityBlock {
     @Override
     public ItemStack getCloneItemStack(BlockState state, HitResult target, BlockGetter level, BlockPos pos, net.minecraft.world.entity.player.Player player) {
         return new ItemStack(Salt.bundleItem(state.getValue(STAGE)));
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public net.minecraft.world.InteractionResult use(BlockState state, Level level, BlockPos pos, net.minecraft.world.entity.player.Player player,
+                                                     net.minecraft.world.InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
+        ItemStack held = player.getItemInHand(hand);
+        if (!(held.getItem() instanceof WickerBundleItem item) || !(level.getBlockEntity(pos) instanceof WickerBundleBlockEntity be))
+            return net.minecraft.world.InteractionResult.PASS;
+        if (be.count() >= WickerBundleBlockEntity.MAX_PIECES) return net.minecraft.world.InteractionResult.PASS;   // повний — кладе поруч
+        if (level.isClientSide) return net.minecraft.world.InteractionResult.SUCCESS;
+        be.add(item.stage());
+        level.playSound(null, pos, net.minecraft.sounds.SoundEvents.GRASS_PLACE, net.minecraft.sounds.SoundSource.BLOCKS, 1F, 0.9F);
+        if (!player.getAbilities().instabuild) held.shrink(1);
+        return net.minecraft.world.InteractionResult.CONSUME;
+    }
+
+    /** Ламання: кожен пучок своєю стадією (а не за станом блока) */
+    @Override
+    @SuppressWarnings("deprecation")
+    public java.util.List<ItemStack> getDrops(BlockState state, net.minecraft.world.level.storage.loot.LootParams.Builder b) {
+        if (b.getOptionalParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY) instanceof WickerBundleBlockEntity be)
+            return be.drops();
+        return super.getDrops(state, b);
     }
 
     @Override

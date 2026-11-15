@@ -20,6 +20,10 @@ public class WickerBundleItem extends BlockItem {
         return s == null ? null : s.setValue(WickerBundleBlock.STAGE, stage);
     }
 
+    public WickerBundleBlock.Stage stage() {
+        return stage;
+    }
+
     @Override
     public String getDescriptionId() {
         return "item.hungrycows.wicker_bundle_" + stage.getSerializedName();

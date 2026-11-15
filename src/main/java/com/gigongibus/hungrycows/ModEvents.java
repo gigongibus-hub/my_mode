@@ -88,6 +88,8 @@ public class ModEvents {
         @SubscribeEvent
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.HUNGRY_COW.get(), com.gigongibus.hungrycows.client.HungryCowDispatchRenderer::new);   // бик — модель Fij
+            event.registerBlockEntityRenderer(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_BE.get(),
+                    com.gigongibus.hungrycows.client.WickerBundleRenderer::new);   // пучки лози, розкидані по блоку
         }
 
         // Предмет «Сіно» виглядає так, як блок, що з нього поставиться (стадія, стан, нитки) — інакше всі були однакові (Fij)

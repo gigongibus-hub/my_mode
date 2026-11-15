@@ -1,42 +1,6 @@
 {
- "ambientocclusion": false,
  "textures": {
-  "t": "hungrycows:item/wicker/wicker_bundle_dry",
   "particle": "hungrycows:item/wicker/wicker_bundle_dry"
  },
- "elements": [
-  {
-   "from": [
-    4,
-    0.1,
-    4
-   ],
-   "to": [
-    12,
-    0.1,
-    12
-   ],
-   "faces": {
-    "up": {
-     "uv": [
-      0,
-      0,
-      16,
-      16
-     ],
-     "texture": "#t"
-    },
-    "down": {
-     "uv": [
-      0,
-      16,
-      16,
-      0
-     ],
-     "texture": "#t"
-    }
-   }
-  }
- ],
- "render_type": "minecraft:cutout"
+ "elements": []
 }
