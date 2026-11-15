@@ -22,6 +22,8 @@ public final class Commitment {
     public static final double SWITCH_THRESHOLD = 1.6;    // перемкнутись, коли кандидат набрав 1,6 (сильна перевага — за 0,5–1 с, слабка — за кілька с)
     public static final int BORED_TICKS = 400;            // одна справа довше 20 с — «набридає»: прихильність згасає й тоді, коли дія ще найкраща ...
     public static final double BORED_DECAY = 0.06;        // ... на 0,06 за рішення (з першою версією корова за хвилину не змінила дію жодного разу)
+    public static final double SPONTANEOUS_BELOW = 0.3;   // прихильність згасла нижче 0,3 — випадкова думка мозку (кубик) одразу стає справою:
+                                                          // так лишаються рідкісні дії (вилизати подругу, почухатися, помукати), але не кожні 5 с
     public static final int MIN_HOLD_TICKS = 40;          // перші 2 с нову дію не міняє ніщо, крім рефлексу (було 5 с жорстко)
     public static final double SUPPORT_GAP = 0.05;        // поточна дія «ще підтримана», якщо гірша за найкращу не більш ніж на 5 пунктів
     public static final double HESITATE_GAP = 0.08;       // кандидат майже такий самий (до 8 пунктів) ...
@@ -79,6 +81,9 @@ public final class Commitment {
         }
         hesitating = close || rivalAcc >= HESITATE_ACC;
         if (heldTicks >= MIN_HOLD_TICKS && rival >= 0 && rivalAcc >= SWITCH_THRESHOLD) return switchTo(rival);
+        if (heldTicks >= MIN_HOLD_TICKS && commitment < SPONTANEOUS_BELOW && sampled >= 0 && sampled != current && possible[sampled]) {
+            return switchTo(sampled);
+        }
         return current;
     }
 

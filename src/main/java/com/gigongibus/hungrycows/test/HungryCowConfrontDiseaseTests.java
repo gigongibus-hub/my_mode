@@ -92,15 +92,19 @@ public class HungryCowConfrontDiseaseTests {
             bull.moveTo(b.x, b.y, b.z, 270, 0);
             bull.confront.force(p);
         });
+        java.util.List<String> phases = new java.util.ArrayList<>();
         h.onEachTick(() -> {
             if (bull.headDown) sawHeadDown[0] = true;
             p.setOnGround(true);
+            String ph = bull.confront.phaseName();
+            if (phases.isEmpty() || !phases.get(phases.size() - 1).startsWith(ph))
+                phases.add(ph + String.format("@%.1fс/%.1fбл", h.getTick() / 20.0, bull.distanceTo(p)));
         });
         Runnable clear = () -> { bull.discard(); if (!p.isRemoved()) h.getLevel().removePlayerImmediately(p, Entity.RemovalReason.DISCARDED); };
         h.runAfterDelay(CHARGE_TIMEOUT - 1, clear);
         h.succeedWhen(() -> {
             h.assertTrue(sawHeadDown[0], "бик не опускав голову перед нападом");
-            h.assertTrue(p.hitBy == bull, "бик не вдарив");
+            h.assertTrue(p.hitBy == bull, "бик не вдарив: " + phases + String.format(", зараз %.1f бл.", bull.distanceTo(p)));
             h.assertTrue(p.hasEffect(MobEffects.MOVEMENT_SLOWDOWN), "немає сповільнення після удару");
             LOG.info("[тест] bullWarnsThenCharges: удар на {} с (урон {}), сповільнення {}", String.format("%.1f", h.getTick() / 20.0),
                     p.hitAmount, p.getEffect(MobEffects.MOVEMENT_SLOWDOWN).isVisible() ? "видиме" : "невидиме");
