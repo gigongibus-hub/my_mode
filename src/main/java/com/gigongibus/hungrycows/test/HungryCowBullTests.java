@@ -191,6 +191,7 @@ public class HungryCowBullTests {
         double[] walked = { 0 };
         net.minecraft.world.phys.Vec3[] last = { bull.position() };
         int[] loopCooldown = { 0 };
+        StringBuilder trace = new StringBuilder();
         h.runAfterDelay(499, bull::discard);
         h.onEachTick(() -> {
             if (next[0] >= pts.length) return;
@@ -207,10 +208,22 @@ public class HungryCowBullTests {
             else if (Math.abs(sum) > 300) { loops[0]++; loopCooldown[0] = 80; turns.clear(); }
             walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
             last[0] = bull.position();
+            if (h.getTick() % 4 == 0 && trace.length() < 6000) {
+                net.minecraft.world.phys.Vec3 o = h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO);
+                var path = bull.getNavigation().getPath();
+                String node = "-";
+                if (path != null && !path.isDone()) {
+                    net.minecraft.world.phys.Vec3 n = path.getEntityPosAtNode(bull, path.getNextNodeIndex());
+                    node = String.format("%d/%d(%.1f,%.1f)", path.getNextNodeIndex(), path.getNodeCount(), n.x - o.x, n.z - o.z);
+                }
+                trace.append(String.format("%d:(%.1f,%.1f)y%.0f v%.2f %s; ", h.getTick(), bull.getX() - o.x, bull.getZ() - o.z,
+                        net.minecraft.util.Mth.wrapDegrees(bull.getYRot()), bull.getSpeed(), node));
+            }
         });
         h.succeedWhen(() -> {
+            if (h.getTick() == 498 || (next[0] >= pts.length && loops[0] > 0)) LOG.info("[тест] bullZigzagNoLoops слід: {}", trace);
             h.assertTrue(next[0] >= pts.length, String.format("не пробіг усі точки: %d з %d, петель %d, пробіг %.1f бл.", next[0], pts.length, loops[0], walked[0]));
-            LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 37)",
+            if (loops[0] == 0) LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 37)",
                     String.format("%.1f", h.getTick() / 20.0), loops[0], String.format("%.1f", walked[0]));
             h.assertTrue(loops[0] == 0, "бик намотував кола: петель " + loops[0]);
             bull.discard();
