@@ -40,5 +40,8 @@
   "gui.hungrycows.tub.open": "Закрий кришкою, щоб почати",
   "gui.hungrycows.tub.missing": "Треба 30 солі й 10 відер води",
   "gui.hungrycows.tub.soaking": "Вимочується: %s%%",
-  "gui.hungrycows.tub.done": "Готово: набирай розчин відром"
+  "gui.hungrycows.tub.done": "Готово: набирай розчин відром",
+  "item.hungrycows.sieve": "Сито",
+  "item.hungrycows.burlap": "Мішковина",
+  "item.hungrycows.ground_salt_half_purified": "Рудна сіль перемолена (недоочищена)"
 }

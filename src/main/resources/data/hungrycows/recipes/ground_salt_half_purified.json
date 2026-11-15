@@ -1,0 +1,16 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "category": "misc",
+ "ingredients": [
+  {
+   "item": "hungrycows:salt_solution"
+  },
+  {
+   "item": "hungrycows:sieve"
+  }
+ ],
+ "result": {
+  "item": "hungrycows:ground_salt_half_purified",
+  "count": 5
+ }
+}

@@ -40,5 +40,8 @@
   "gui.hungrycows.tub.open": "Close the lid to start",
   "gui.hungrycows.tub.missing": "Needs 30 salt and 10 buckets of water",
   "gui.hungrycows.tub.soaking": "Soaking: %s%%",
-  "gui.hungrycows.tub.done": "Done: take the brine with a bucket"
+  "gui.hungrycows.tub.done": "Done: take the brine with a bucket",
+  "item.hungrycows.sieve": "Sieve",
+  "item.hungrycows.burlap": "Burlap",
+  "item.hungrycows.ground_salt_half_purified": "Ground Rock Salt (Half-Purified)"
 }

@@ -23,6 +23,8 @@ public final class Salt {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final float ORE_STRENGTH = 3.0F;        // міцність руди — як у залізної
     public static final float ORE_RESISTANCE = 3.0F;
+    public static final int SIEVE_USES = 20;              // сито — 20 разів (Fij)
+    public static final int SIEVE_OUTPUT = 5;             // 1 відро розчину → 5 недоочищеної (Fij, варіант 1)
 
     // 1. сольова руда (Fij: глибинносланцевий варіант — згодом, коли буде текстура)
     public static final RegistryObject<Block> SALT_ORE = HungryCowsMod.BLOCKS.register("salt_ore", () ->
@@ -52,6 +54,13 @@ public final class Salt {
             net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(TubBlockEntity::new, TUB.get()).build(null));
     public static final RegistryObject<net.minecraft.world.inventory.MenuType<TubMenu>> TUB_MENU = MENUS.register("tub", () ->
             net.minecraftforge.common.extensions.IForgeMenuType.create(TubMenu::new));
+
+    // 4. сито (текстура Fij) і недоочищена сіль; мішковина — для рецепта сита (її рецепт — крок 5, лоза)
+    public static final RegistryObject<Item> SIEVE = HungryCowsMod.ITEMS.register("sieve", () ->
+            new WornToolItem(new Item.Properties().durability(SIEVE_USES)));
+    public static final RegistryObject<Item> BURLAP = HungryCowsMod.ITEMS.register("burlap", () -> new Item(new Item.Properties()));
+    public static final RegistryObject<Item> GROUND_SALT_HALF_PURIFIED = HungryCowsMod.ITEMS.register("ground_salt_half_purified", () ->
+            new Item(new Item.Properties()));
 
     public static void init() {
     }

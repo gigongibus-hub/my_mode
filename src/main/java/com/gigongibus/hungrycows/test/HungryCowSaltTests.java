@@ -165,4 +165,39 @@ public class HungryCowSaltTests {
             p.setShiftKeyDown(false);
         });
     }
+
+    static net.minecraft.world.inventory.TransientCraftingContainer grid() {
+        var menu = new net.minecraft.world.inventory.AbstractContainerMenu(null, 0) {
+            @Override public ItemStack quickMoveStack(net.minecraft.world.entity.player.Player p, int i) { return ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player p) { return true; }
+        };
+        return new net.minecraft.world.inventory.TransientCraftingContainer(menu, 3, 3);
+    }
+
+    // 5. Відро розчину + сито → 5 недоочищеної; лишаються порожнє відро й сито −1; сито ламається на 20-й раз; рецепт сита
+    @GameTest(template = "arena", batch = "salt", timeoutTicks = 20)
+    public static void sieveFiltersBrine(GameTestHelper h) {
+        var g = grid();
+        ItemStack sieve = new ItemStack(Salt.SIEVE.get());
+        g.setItem(3, new ItemStack(Salt.SALT_SOLUTION.get()));
+        g.setItem(5, sieve);
+        var r = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g, h.getLevel());
+        h.assertTrue(r.isPresent(), "рецепт сита з розчином не знайдено");
+        ItemStack out = r.get().assemble(g, h.getLevel().registryAccess());
+        var left = r.get().getRemainingItems(g);
+        sieve.setDamageValue(Salt.SIEVE_USES - 1);
+        boolean broke = r.get().getRemainingItems(g).get(5).isEmpty();
+        var g2 = grid();
+        Object[] pat = { Items.STICK, Salt.BURLAP.get(), Items.STICK, Items.STRING, Salt.BURLAP.get(), Items.STRING, Items.STICK, Salt.BURLAP.get(), Items.STICK };
+        for (int i = 0; i < 9; i++) g2.setItem(i, new ItemStack((net.minecraft.world.item.Item) pat[i]));
+        var r2 = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g2, h.getLevel());
+        LOG.info("[тест] sieveFiltersBrine: {} x{}, лишилось: {} і {}, на 20-й раз сито зламалось {}, рецепт сита {}", out.getItem(), out.getCount(),
+                left.get(3), left.get(5), broke, r2.map(x -> x.assemble(g2, h.getLevel().registryAccess()).toString()).orElse("немає"));
+        h.assertTrue(out.is(Salt.GROUND_SALT_HALF_PURIFIED.get()) && out.getCount() == Salt.SIEVE_OUTPUT, "не 5 недоочищеної");
+        h.assertTrue(left.get(3).is(Items.BUCKET), "відро не повернулось");
+        h.assertTrue(left.get(5).is(Salt.SIEVE.get()) && left.get(5).getDamageValue() == 1, "сито не зношене на 1");
+        h.assertTrue(broke, "сито не зламалось після 20 разів");
+        h.assertTrue(r2.isPresent() && r2.get().assemble(g2, h.getLevel().registryAccess()).is(Salt.SIEVE.get()), "рецепт сита не працює");
+        h.succeed();
+    }
 }
