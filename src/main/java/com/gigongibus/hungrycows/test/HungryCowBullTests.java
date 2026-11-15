@@ -28,8 +28,10 @@ public class HungryCowBullTests {
     private static final String ARENA = "arena";
     private static final String BATCH = "bulls";
     private static final int TRIES = 24;                 // скільки корів створити, щоб знайти потрібну стать
-    private static final int ZOMBIE_TIMEOUT = 600;
-    private static final float LOOP_DEG = 420F;          // «петля» в тесті зигзагу       // 30 с, щоб хоч один бик ударив зомбі
+    private static final int ZOMBIE_TIMEOUT = 600;       // 30 с, щоб хоч один бик ударив зомбі
+    private static final float LOOP_DEG = 420F;          // «петля» в тесті зигзагу (лише в журнал)
+    private static final double ZIGZAG_DIRECT = 39;      // зигзаг: напряму ≈ 39 бл. ...
+    private static final double ZIGZAG_MAX_RATIO = 1.4;  // ... кружляє — якщо пробіг більше ніж у 1,4 раза
 
     static List<HungryCow> spawnSex(GameTestHelper h, boolean bulls, int count, BlockPos... at) {
         List<HungryCow> out = new ArrayList<>();
@@ -224,11 +226,14 @@ public class HungryCowBullTests {
             }
         });
         h.succeedWhen(() -> {
-            if (h.getTick() == 498 || (next[0] >= pts.length && loops[0] > 0)) LOG.info("[тест] bullZigzagNoLoops слід: {}", trace);
+            if (h.getTick() == 498 || (next[0] >= pts.length && walked[0] >= ZIGZAG_DIRECT * ZIGZAG_MAX_RATIO)) LOG.info("[тест] bullZigzagNoLoops слід: {}", trace);
             h.assertTrue(next[0] >= pts.length, String.format("не пробіг усі точки: %d з %d, петель %d, пробіг %.1f бл.", next[0], pts.length, loops[0], walked[0]));
-            if (loops[0] == 0) LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 39)",
+            LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 39)",
                     String.format("%.1f", h.getTick() / 20.0), loops[0], String.format("%.1f", walked[0]));
-            h.assertTrue(loops[0] == 0, "бик намотував кола: петель " + loops[0]);
+            // кола видно з довжини: до виправлення до точки за 9 бл. бик пробігав 60; кут (петлі) — лише в журналі: на цьому маршруті
+            // чесні розвороти часто всі в один бік і набирали «петлю» без жодного кола
+            h.assertTrue(walked[0] < ZIGZAG_DIRECT * ZIGZAG_MAX_RATIO, String.format("бик кружляв: пробіг %.1f бл. (напряму ≈ %.0f), петель %d",
+                    walked[0], ZIGZAG_DIRECT, loops[0]));
             bull.discard();
         });
     }
