@@ -431,6 +431,24 @@
    "apply": {
     "model": "hungrycows:block/salt_pan_fire_roasted_10"
    }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "stack": "2|3"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_stack_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "stack": "3"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_stack_3"
+   }
   }
  ]
 }

@@ -57,5 +57,11 @@
   "block.hungrycows.salt_basket": "Корзина для солі",
   "block.hungrycows.salt_block": "Рудна сіль перемолена (блок)",
   "item.hungrycows.clean_salt": "Чиста купка солі",
-  "block.hungrycows.tub_lid": "Кришка діжки"
+  "block.hungrycows.tub_lid": "Кришка діжки",
+  "gui.hungrycows.basket.salt": "Сіль: %s/%s",
+  "gui.hungrycows.basket.no_chain": "Повісь на ланцюг",
+  "gui.hungrycows.basket.no_air": "Під корзиною має бути порожньо",
+  "gui.hungrycows.basket.missing": "Треба 9 прожареної солі",
+  "gui.hungrycows.basket.dripping": "Стікає: %s%%",
+  "gui.hungrycows.basket.done": "Готово: забирай блок солі"
 }

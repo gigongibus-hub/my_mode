@@ -268,6 +268,44 @@ public class HungryCowSaltTests {
         });
     }
 
+    // 6б. Діжка порожня всередині (Fij: «залізти»): курка падає на дно; горить — у воді гасне. Корзина: інтерфейс (місце для солі,
+    //     готовий блок лише забрати). Сковороди стосом: до 3 порожніх, 4-та — ні, у стос сіль не кладеться, ламання — 3 сковороди
+    @GameTest(template = "arena", batch = "salt_tub", timeoutTicks = 60)
+    public static void tubBasketPanExtras(GameTestHelper h) {
+        BlockPos tub = new BlockPos(4, 2, 10), basket = new BlockPos(7, 2, 10), pan = new BlockPos(10, 2, 10);
+        h.setBlock(tub, Salt.TUB.get().defaultBlockState().setValue(com.gigongibus.hungrycows.salt.TubBlock.LEVEL, 5));
+        var chicken = h.spawn(net.minecraft.world.entity.EntityType.CHICKEN, new net.minecraft.world.phys.Vec3(4.5, 3.6, 10.5));
+        chicken.setRemainingFireTicks(200);
+        h.setBlock(basket, Salt.SALT_BASKET.get());
+        var bb = (com.gigongibus.hungrycows.salt.SaltBasketBlockEntity) h.getBlockEntity(basket);
+        var menu = (com.gigongibus.hungrycows.salt.SaltBasketMenu) bb.createMenu(1, new net.minecraft.world.entity.player.Inventory(
+                net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel())), null);
+        boolean saltSlot = menu.getSlot(0).mayPlace(new ItemStack(Salt.GROUND_SALT_ROASTED.get()));
+        boolean wrongSalt = menu.getSlot(0).mayPlace(new ItemStack(Salt.GROUND_SALT_HALF_PURIFIED.get()));
+        boolean blockSlot = menu.getSlot(1).mayPlace(new ItemStack(Salt.SALT_BLOCK_ITEM.get()));
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        for (int i = 0; i < 4; i++) placePan(h, p, i == 0 ? pan.below() : pan);
+        int stack = h.getBlockState(pan).getValue(com.gigongibus.hungrycows.salt.SaltPanBlock.STACK);
+        use(h, pan, p, new ItemStack(Salt.GROUND_SALT_HALF_PURIFIED.get(), 5), false);
+        int inStack = ((com.gigongibus.hungrycows.salt.SaltPanBlockEntity) h.getBlockEntity(pan)).count();
+        var drops = net.minecraft.world.level.block.Block.getDrops(h.getBlockState(pan), h.getLevel(), h.absolutePos(pan), h.getBlockEntity(pan));
+        h.runAtTickTime(40, () -> {
+            double depth = chicken.getY() - h.absolutePos(tub).getY();
+            boolean burning = chicken.isOnFire();
+            LOG.info("[тест] tubBasketPanExtras: курка в діжці на висоті {} (дно 0,06), горить {}; корзина: сіль {} не та {} блок {}; стос {}, сіль у стос {}, випадає {}",
+                    String.format("%.2f", depth), burning, saltSlot, wrongSalt, blockSlot, stack, inStack, drops);
+            chicken.discard();
+            h.setBlock(tub, Blocks.AIR); h.setBlock(basket, Blocks.AIR); h.setBlock(pan, Blocks.AIR);
+            h.assertTrue(depth < 0.2, "курка не залізла в діжку: " + depth);
+            h.assertTrue(!burning, "вода в діжці не гасить вогонь");
+            h.assertTrue(saltSlot && !wrongSalt && !blockSlot, "корзина: не ті місця в інтерфейсі");
+            h.assertTrue(stack == 3, "стос не 3: " + stack);
+            h.assertTrue(inStack == 0, "у стос поклалась сіль");
+            h.assertTrue(drops.size() == 1 && drops.get(0).getCount() == 3, "стос не дає 3 сковороди: " + drops);
+            h.succeed();
+        });
+    }
+
     // ---------- крок 5: лоза ----------
     // 7. Ліана мечем → 1–4 лози (ліана зникає); ножицями присівши — ні (ванільно)
     @GameTest(template = "arena", batch = "salt", timeoutTicks = 20)

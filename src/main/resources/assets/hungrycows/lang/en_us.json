@@ -57,5 +57,11 @@
   "block.hungrycows.salt_basket": "Salt Basket",
   "block.hungrycows.salt_block": "Block of Ground Salt",
   "item.hungrycows.clean_salt": "Pile of Clean Salt",
-  "block.hungrycows.tub_lid": "Tub Lid"
+  "block.hungrycows.tub_lid": "Tub Lid",
+  "gui.hungrycows.basket.salt": "Salt: %s/%s",
+  "gui.hungrycows.basket.no_chain": "Hang it on a chain",
+  "gui.hungrycows.basket.no_air": "Needs empty space below",
+  "gui.hungrycows.basket.missing": "Needs 9 roasted salt",
+  "gui.hungrycows.basket.dripping": "Dripping: %s%%",
+  "gui.hungrycows.basket.done": "Done: take the salt block"
 }

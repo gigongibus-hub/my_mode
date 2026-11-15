@@ -74,6 +74,9 @@ if __name__ == '__main__':
     # сковорода: на землі (dy 0) і прямо на полінах багаття (dy 7) — в одній клітинці з багаттям (Fij)
     convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan', dy=0)
     convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan_fire', dy=PAN_FIRE_DY)
+    # порожні сковороди стосом (Fij): 2-га на 5 пікс. вище, 3-тя на 10
+    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan_stack_2', dy=5)
+    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan_stack_3', dy=10)
     # поліна під сковородою: згасле — ванільна модель; горить — ванільні поліна + низенький вогонь лише під дном
     camp = json.load(open(os.path.join(os.path.dirname(__file__), 'models_src', 'template_campfire.json')))
     els = []

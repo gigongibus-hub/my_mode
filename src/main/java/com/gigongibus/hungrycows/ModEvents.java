@@ -101,6 +101,8 @@ public class ModEvents {
             // сіль: інтерфейс діжки
             event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(com.gigongibus.hungrycows.salt.Salt.TUB_MENU.get(),
                     com.gigongibus.hungrycows.client.TubScreen::new));
+            event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(com.gigongibus.hungrycows.salt.Salt.SALT_BASKET_MENU.get(),
+                    com.gigongibus.hungrycows.client.SaltBasketScreen::new));
         }
 
         // сіль: рідина в діжці — вода синя, розчин світлий

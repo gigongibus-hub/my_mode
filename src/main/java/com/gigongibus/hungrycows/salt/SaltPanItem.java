@@ -39,6 +39,16 @@ public class SaltPanItem extends BlockItem {
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
+        // порожня сковорода на землі — скласти стосом (Fij)
+        if (camp.is(getBlock()) && (player == null || !player.isSecondaryUseActive()) && SaltPanBlock.canStack(level, pos, camp)) {
+            if (!level.isClientSide) {
+                level.setBlock(pos, camp.setValue(SaltPanBlock.STACK, camp.getValue(SaltPanBlock.STACK) + 1), 3);
+                level.playSound(null, pos, SoundEvents.METAL_PLACE, SoundSource.BLOCKS, 1F, 1.1F);
+                level.gameEvent(player, GameEvent.BLOCK_PLACE, pos);
+                if (player == null || !player.getAbilities().instabuild) ctx.getItemInHand().shrink(1);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         return super.useOn(ctx);
     }
 }

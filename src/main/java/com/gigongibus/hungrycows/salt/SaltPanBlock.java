@@ -35,7 +35,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /**
  * СОЛЬОВА СКОВОРОДА (сіль, крок 5, модель Fij). Ставиться будь-де; ПКМ нею по звичайному багаттю (не душ) — стає прямо на
  * поліна, займаючи місце багаття (`CAMPFIRE` lit/unlit; Fij). Смажить лише на багатті, що горить (і по-старому — над ним).
- * Згасле — запалити кресалом / вогняним зарядом; погасити лопатою. Зламав — випадають сковорода, багаття й вміст. ПКМ недоочищеною сіллю — кладе ПО ОДНІЙ
+ * Згасле — запалити кресалом / вогняним зарядом; погасити лопатою. Зламав — випадають сковорода, багаття й вміст.
+ * Порожні сковороди на землі складаються стосом до 3 (ПКМ сковородою по порожній, Fij) — лише щоб зберігати; у стос сіль не кладеться. ПКМ недоочищеною сіллю — кладе ПО ОДНІЙ
  * (до 20; шар солі піднімається, як вода в діжці — 10 рівнів); 20 штук + багаття горить — за пів доби прожарюється; згасло — прогрес потроху спадає.
  * ПКМ порожньою рукою — забрати все (готову — прожарену).
  */
@@ -43,6 +44,9 @@ public class SaltPanBlock extends BaseEntityBlock {
     public static final IntegerProperty FILL = IntegerProperty.create("fill", 0, 10);
     public static final BooleanProperty ROASTED = BooleanProperty.create("roasted");
     public static final EnumProperty<Fire> CAMPFIRE = EnumProperty.create("campfire", Fire.class);
+    public static final int MAX_STACK = 3;                                  // порожні сковороди стосом (Fij): 3 × 5 пікс.
+    public static final IntegerProperty STACK = IntegerProperty.create("stack", 1, MAX_STACK);
+    private static final VoxelShape[] SHAPE_STACK = { box(0, 0, 0, 16, 5, 16), box(0, 0, 0, 16, 10, 16), box(0, 0, 0, 16, 15, 16) };
     private static final VoxelShape SHAPE = box(0, 0, 0, 16, 5, 16);        // на землі
     private static final VoxelShape SHAPE_FIRE = box(0, 0, 0, 16, 12, 16);  // поліна (7) + сковорода
     public static final float FIRE_DAMAGE = 1.0F;                           // хто стоїть на сковороді на вогні (як ванільне багаття)
@@ -59,12 +63,12 @@ public class SaltPanBlock extends BaseEntityBlock {
 
     public SaltPanBlock(Properties p) {
         super(p);
-        registerDefaultState(stateDefinition.any().setValue(FILL, 0).setValue(ROASTED, false).setValue(CAMPFIRE, Fire.NONE));
+        registerDefaultState(stateDefinition.any().setValue(FILL, 0).setValue(ROASTED, false).setValue(CAMPFIRE, Fire.NONE).setValue(STACK, 1));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) {
-        b.add(FILL, ROASTED, CAMPFIRE);
+        b.add(FILL, ROASTED, CAMPFIRE, STACK);
     }
 
     @Override
@@ -74,7 +78,7 @@ public class SaltPanBlock extends BaseEntityBlock {
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
-        return state.getValue(CAMPFIRE) == Fire.NONE ? SHAPE : SHAPE_FIRE;
+        return state.getValue(CAMPFIRE) != Fire.NONE ? SHAPE_FIRE : SHAPE_STACK[state.getValue(STACK) - 1];
     }
 
     @Override
@@ -99,6 +103,12 @@ public class SaltPanBlock extends BaseEntityBlock {
             level.addParticle(ParticleTypes.SMOKE, pos.getX() + 0.5 + r.nextDouble() / 2 - 0.25, pos.getY() + 0.8, pos.getZ() + 0.5 + r.nextDouble() / 2 - 0.25, 0, 0.03, 0);
     }
 
+    /** Чи можна покласти ще одну сковороду зверху: на землі, порожня, у стосі менше 3 */
+    public static boolean canStack(Level level, BlockPos pos, BlockState s) {
+        return s.getValue(CAMPFIRE) == Fire.NONE && s.getValue(FILL) == 0 && !s.getValue(ROASTED) && s.getValue(STACK) < MAX_STACK
+                && level.getBlockEntity(pos) instanceof SaltPanBlockEntity be && be.count() == 0;
+    }
+
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new SaltPanBlockEntity(pos, state);
@@ -115,7 +125,7 @@ public class SaltPanBlock extends BaseEntityBlock {
         if (hand != InteractionHand.MAIN_HAND || !(level.getBlockEntity(pos) instanceof SaltPanBlockEntity be)) return InteractionResult.PASS;
         ItemStack held = player.getItemInHand(hand);
         if (level.isClientSide) return InteractionResult.SUCCESS;
-        if (held.is(Salt.GROUND_SALT_HALF_PURIFIED.get()) && !state.getValue(ROASTED) && be.count() < SaltPanBlockEntity.CAPACITY) {
+        if (held.is(Salt.GROUND_SALT_HALF_PURIFIED.get()) && !state.getValue(ROASTED) && state.getValue(STACK) == 1 && be.count() < SaltPanBlockEntity.CAPACITY) {
             be.add();   // по одній (Fij)
             if (!player.getAbilities().instabuild) held.shrink(1);
             level.playSound(null, pos, SoundEvents.SAND_PLACE, SoundSource.BLOCKS, 0.6F, 1.3F);

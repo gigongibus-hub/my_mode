@@ -45,7 +45,10 @@ public class TubBlock extends BaseEntityBlock {
     public static final IntegerProperty LEVEL = IntegerProperty.create("level", 0, TubBlockEntity.MAX_WATER);
     public static final EnumProperty<Liquid> LIQUID = EnumProperty.create("liquid", Liquid.class);
     public static final BooleanProperty LID = BooleanProperty.create("lid");
-    private static final VoxelShape SHAPE = box(0, 0, 0, 16, 15, 16);
+    // порожня всередині, як котел (Fij: «щоб можна було залізти»): стінки 1 пікс., дно 1 пікс.
+    private static final VoxelShape SHAPE = net.minecraft.world.phys.shapes.Shapes.join(box(0, 0, 0, 16, 15, 16), box(1, 1, 1, 15, 15, 15),
+            net.minecraft.world.phys.shapes.BooleanOp.ONLY_FIRST);
+    private static final VoxelShape INSIDE = box(1, 1, 1, 15, 15, 15);   // куди можна клацнути всередині (як у котла)
     private static final VoxelShape SHAPE_LID = box(0, 0, 0, 16, 16, 16);
 
     public TubBlock(Properties p) {
@@ -66,6 +69,24 @@ public class TubBlock extends BaseEntityBlock {
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
         return state.getValue(LID) ? SHAPE_LID : SHAPE;
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public VoxelShape getInteractionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return INSIDE;
+    }
+
+    /** У діжці з водою вогонь гасне (як у котлі) */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void entityInside(BlockState state, Level level, BlockPos pos, net.minecraft.world.entity.Entity e) {
+        int lvl = state.getValue(LEVEL);
+        if (!level.isClientSide && lvl > 0 && e.isOnFire() && !state.getValue(LID)
+                && e.getY() < pos.getY() + (1 + 12 * lvl / (double) TubBlockEntity.MAX_WATER) / 16.0
+                && e.getBoundingBox().intersects(INSIDE.bounds().move(pos))) {
+            e.clearFire();
+        }
     }
 
     @Override

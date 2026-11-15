@@ -57,6 +57,8 @@ public final class Salt {
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<TubBlockEntity>> TUB_BE = BLOCK_ENTITIES.register("tub", () ->
             net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(TubBlockEntity::new, TUB.get()).build(null));
+    public static final RegistryObject<net.minecraft.world.inventory.MenuType<SaltBasketMenu>> SALT_BASKET_MENU = MENUS.register("salt_basket", () ->
+            net.minecraftforge.common.extensions.IForgeMenuType.create(SaltBasketMenu::new));
     public static final RegistryObject<net.minecraft.world.inventory.MenuType<TubMenu>> TUB_MENU = MENUS.register("tub", () ->
             net.minecraftforge.common.extensions.IForgeMenuType.create(TubMenu::new));
 
