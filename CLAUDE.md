@@ -421,6 +421,7 @@
   швидкості 2,2; петля = за 4 с понад 300° в один бік): старий код 1–2 петлі, тепер 0 петель, 36 бл. за 5,6 с. Утечу від справжнього
   страху тестом НЕ перевірено (бик здебільшого б'ється, а не тікає). `glowHostilesFromFarther` падав — зомбі за 25 бл. убивав залізний
   голем сусіднього тесту (тепер невразливий). Нове нестабільне: cowPrefersFireFungus 1 раз (з'їла чисте сіно).
+  Fij ПЕРЕВІРИВ У ГРІ (15.11): «усе працює» — кола й хвилі бика зникли.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
