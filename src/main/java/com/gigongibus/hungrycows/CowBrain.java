@@ -724,8 +724,8 @@ public class CowBrain {
         }
         // Fij «жвавість»: кубик лише ПРОПОНУЄ (дає трохи очок), а перемикає прихильність і накопичувачі (life.Commitment):
         // поточну справу корова не кидає, поки інша не стане стабільно бажанішою. Страх дійшов до порогу — рефлекс, одразу
-        boolean scaredNow = possible[Action.WARY.ordinal()] && cow.chem.fearFelt() >= cow.scaredAt()
-                && probs[Action.WARY.ordinal()] >= probs[current.ordinal()];
+        // (рефлекс — без умови «найбільший шанс»: з нею корова після удару, страх 100, не тікала — тест fearFromHit)
+        boolean scaredNow = possible[Action.WARY.ordinal()] && cow.chem.fearFelt() >= cow.scaredAt();
         int next = commit.decide(probs, possible, pick.ordinal(), scaredNow ? Action.WARY.ordinal() : -1);
         Action chosen = ACTIONS[next];
         if (chosen != current) {

@@ -184,7 +184,8 @@ public class HungryCowBullTests {
         h.assertTrue(bulls.size() == 1, "не знайшли бика");
         HungryCow bull = bulls.get(0);
         bull.goalSelector.removeAllGoals(g -> true);
-        BlockPos[] pts = { new BlockPos(11, 2, 3), new BlockPos(11, 2, 11), new BlockPos(3, 2, 11), new BlockPos(7, 2, 7), new BlockPos(3, 2, 3) };
+        // повороти по черзі вліво-вправо: маршрут, що весь повертає в один бік, сам набирав «300° за 4 с» без жодної петлі
+        BlockPos[] pts = { new BlockPos(11, 2, 3), new BlockPos(4, 2, 6), new BlockPos(11, 2, 9), new BlockPos(4, 2, 12), new BlockPos(11, 2, 12) };
         int[] next = { 0 }, loops = { 0 };
         java.util.ArrayDeque<Float> turns = new java.util.ArrayDeque<>();
         float[] lastYaw = { bull.getYRot() };
@@ -223,7 +224,7 @@ public class HungryCowBullTests {
         h.succeedWhen(() -> {
             if (h.getTick() == 498 || (next[0] >= pts.length && loops[0] > 0)) LOG.info("[тест] bullZigzagNoLoops слід: {}", trace);
             h.assertTrue(next[0] >= pts.length, String.format("не пробіг усі точки: %d з %d, петель %d, пробіг %.1f бл.", next[0], pts.length, loops[0], walked[0]));
-            if (loops[0] == 0) LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 37)",
+            if (loops[0] == 0) LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 39)",
                     String.format("%.1f", h.getTick() / 20.0), loops[0], String.format("%.1f", walked[0]));
             h.assertTrue(loops[0] == 0, "бик намотував кола: петель " + loops[0]);
             bull.discard();
