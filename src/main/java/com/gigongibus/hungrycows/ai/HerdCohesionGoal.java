@@ -16,6 +16,11 @@ public class HerdCohesionGoal extends Goal {
     private static final double BUMP = 1.3;             // інша корова ближче цього — зупиняється
     private static final int REPATH_TICKS = 20;
     private static final int MAX_TICKS = 600;           // щонайбільше 30 с за раз
+    // Fij «жвавість»: не смикатись, щойно на мить вийшла за межу — повертається, лише коли далеко вже 3 с ...
+    private static final int STEADY_TICKS = 60;
+    private static final int STEADY_GAP = 15;           // (перевірка раз на 10 тіків — коротша перерва не скидає)
+    private static final double FAR_NOW = 1.5;          // ... а відбилась далеко (у 1,5 раза далі межі) — одразу
+    private final com.gigongibus.hungrycows.life.Steady steady = new com.gigongibus.hungrycows.life.Steady(STEADY_TICKS, STEADY_GAP);
     private final HungryCow cow;
     private Vec3 point;
     private int ticks = 0;
@@ -41,7 +46,9 @@ public class HerdCohesionGoal extends Goal {
         if (!applies()) return false;
         if (cooldown > 0) { cooldown--; return false; }
         cooldown = 5;   // перевіряє раз на ~10 тіків (canUse викликається раз на 2 тіки, тож не через tickCount %)
-        return cow.herd.distanceToLeader() > cow.herd.farFromLeader();
+        double d = cow.herd.distanceToLeader(), far = cow.herd.farFromLeader();
+        boolean wants = steady.test(d > far, cow.tickCount);
+        return wants || d > far * FAR_NOW;
     }
 
     @Override

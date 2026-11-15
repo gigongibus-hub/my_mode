@@ -17,6 +17,8 @@ public class PersonalSpaceGoal extends Goal {
         return Math.max(TOO_CLOSE, (cow.getBbWidth() + other.getBbWidth()) / 2.0 + GAP);
     }
     private static final int CHECK_EVERY = 40;          // перевіряє раз на 2 с
+    // Fij «жвавість»: відходить, лише коли затісно двічі поспіль (2 с), а не від того, що сусідка на мить підійшла
+    private final com.gigongibus.hungrycows.life.Steady steady = new com.gigongibus.hungrycows.life.Steady(CHECK_EVERY, CHECK_EVERY + 10);
     private final HungryCow cow;
     private int cooldown = 0;
     private HungryCow other;
@@ -47,7 +49,7 @@ public class PersonalSpaceGoal extends Goal {
                 break;
             }
         }
-        return other != null;
+        return steady.test(other != null, cow.tickCount);
     }
 
     @Override

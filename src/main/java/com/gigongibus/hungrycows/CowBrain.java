@@ -31,8 +31,7 @@ public class CowBrain {
     // ================= ЯК ЧАСТО =================
     public static final int DECIDE_EVERY_TICKS = 10;     // вибір дії раз на пів секунди
     public static final int SENSE_EVERY_TICKS = 20;      // огляд навколо раз на секунду
-    public static final int MIN_HOLD_TICKS = 100;        // вибрану дію робить хоча б 5 с ...
-    public static final double SWITCH_MARGIN = 0.25;     // ... якщо нова дія не більш ніж на 25% імовірніша
+    // скільки тримати дію й коли перемикатись — тепер у life.Commitment (прихильність і накопичувачі; було «5 с, потім кубик»)
     public static final double TEMPERATURE = 1.0;        // більше = вибір випадковіший
     public static final int STUCK_TICKS = 40;            // якщо вибрана дія 2 с не виходить (немає їжі, друга тощо) ...
     public static final int BLOCK_TICKS = 200;           // ... мозок відкладає її на 10 с і вибирає іншу
@@ -155,6 +154,8 @@ public class CowBrain {
 
     private final HungryCow cow;
     private Action current = Action.WANDER;
+    private final com.gigongibus.hungrycows.life.Commitment commit =
+            new com.gigongibus.hungrycows.life.Commitment(Action.values().length, Action.WANDER.ordinal());
     private int heldTicks = 0;
     private int lastDoingTick = 0;                       // коли востаннє справді виконувала вибрану дію
     private final int[] blockedUntil = new int[Action.values().length];
@@ -249,6 +250,7 @@ public class CowBrain {
     public void tick() {
         if (!enabled) return;
         heldTicks++;
+        commit.tick();
         if (cow.tickCount % SENSE_EVERY_TICKS == 0) sense();
         if (cow.tickCount % DECIDE_EVERY_TICKS == 0) decide();
     }
@@ -720,20 +722,29 @@ public class CowBrain {
                 break;
             }
         }
-        // щоб не смикалась: тримає дію, поки вона можлива, хоча б MIN_HOLD_TICKS
-        // страх дійшов до порогу — різка подія: можна одразу перейти на «стерегтися»
-        boolean scaredNow = pick == Action.WARY && cow.chem.fearFelt() >= cow.scaredAt();
-        if (pick != current && possible[current.ordinal()] && heldTicks < MIN_HOLD_TICKS && !scaredNow
-                && probs[pick.ordinal()] < probs[current.ordinal()] + SWITCH_MARGIN) {
-            return;
-        }
-        if (pick != current) {
+        // Fij «жвавість»: кубик лише ПРОПОНУЄ (дає трохи очок), а перемикає прихильність і накопичувачі (life.Commitment):
+        // поточну справу корова не кидає, поки інша не стане стабільно бажанішою. Страх дійшов до порогу — рефлекс, одразу
+        boolean scaredNow = possible[Action.WARY.ordinal()] && cow.chem.fearFelt() >= cow.scaredAt()
+                && probs[Action.WARY.ordinal()] >= probs[current.ordinal()];
+        int next = commit.decide(probs, possible, pick.ordinal(), scaredNow ? Action.WARY.ordinal() : -1);
+        Action chosen = ACTIONS[next];
+        if (chosen != current) {
             endEpisode();   // попередня дія закінчилась: чи стало краще?
-            current = pick;
+            current = chosen;
             heldTicks = 0;
             lastDoingTick = cow.tickCount;
             startEpisode();
         }
+    }
+
+    /** Мозок вагається між двома близькими справами (для шару простою й ходи) */
+    public boolean hesitating() {
+        return enabled && commit.hesitating();
+    }
+
+    /** Прихильність до поточної справи 0…1,5 (для книги й налагодження) */
+    public double commitment() {
+        return commit.commitment();
     }
 
     // ---------- для палиці налагодження й книги ----------
@@ -761,7 +772,8 @@ public class CowBrain {
             out.add("Вимкнено: корова діє за старими правилами (/hungrycows brain on)");
             return out;
         }
-        out.add("Зараз: " + current.title + " (" + heldTicks / 20 + " с)");
+        out.add("Зараз: " + current.title + " (" + heldTicks / 20 + " с), прихильність " + Math.round(commit.commitment() * 100) + "%"
+                + (commit.hesitating() && commit.rival() >= 0 ? ", вагається: " + ACTIONS[commit.rival()].title : ""));
         LobeNet n = net();
         out.add("Мозок із часток: " + LobeNet.TOTAL + " нейронів, " + n.connections() + " зв'язків");
         StringBuilder lb = new StringBuilder();

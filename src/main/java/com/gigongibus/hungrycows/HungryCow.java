@@ -268,6 +268,13 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
     public static final boolean DEBUG_MESSAGES = false;  // писати в чат про подавлення, довіру, напади та пологи
 
     public int hunger = 0;
+    public int microActions = 0;   // скільки мікро-дій (шар простою) зробила — для заміру «живості» в тестах
+    public final com.gigongibus.hungrycows.life.IdleLife life = new com.gigongibus.hungrycows.life.IdleLife(this, new LifeHost());
+    private int chewUntil = 0;
+
+    public int microCount() {
+        return microActions;
+    }
     public int thirst = 0;                          // спрага (ідея 10)
     private double thirstCarry = 0;
     private int dehydrateTimer = 0;
@@ -1075,14 +1082,76 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
             Items.MELON, Items.PUMPKIN, Items.MELON_SLICE, Items.APPLE, Items.CARROT);
 
     // Прогулянка: з мозком — лише коли він вибрав «гуляти» (і тоді частіше), без мозку — як ванільна
+    // ---------- шар простою (life.IdleLife): що можна корові ----------
+    // цілі, під час яких корова «нічого термінового не робить» — можна переступати, озиратися, жувати
+    private static final java.util.Set<Class<?>> IDLE_GOALS = java.util.Set.of(RestGoal.class, RuminateGoal.class,
+            WatchGoal.class, ScanGoal.class, BrainStrollGoal.class, GrieveGoal.class);
+    // неспішна хода, яку можна на мить перервати зупинкою
+    private static final java.util.Set<Class<?>> STROLL_GOALS = java.util.Set.of(BrainStrollGoal.class, HerdUpGoal.class,
+            GoOutGoal.class, com.gigongibus.hungrycows.ai.SearchFoodGoal.class);
+    public static final double IDLE_FEAR_SHARE = 0.5;      // страх понад половину порогу — не до дрібниць
+    public static final double IDLE_PAIN_MAX = 30;         // болить понад 30 — теж
+    public static final double STROLL_PAUSE_MAX_SPEED = 1.05; // зупиняється лише неспішна хода (не біг)
+
+    private boolean calmForLife() {
+        return this.onGround() && !this.isInWater() && !sleeping && !heat.unconscious && !this.isPassenger()
+                && chem.fearFelt() < scaredAt() * IDLE_FEAR_SHARE && chem.feltPain() < IDLE_PAIN_MAX && !raging();
+    }
+
+    private boolean onlyGoals(java.util.Set<Class<?>> allowed, java.util.Set<Class<?>> alsoAllowed) {
+        return this.goalSelector.getRunningGoals().allMatch(w -> allowed.contains(w.getGoal().getClass())
+                || alsoAllowed.contains(w.getGoal().getClass()));
+    }
+
+    private final class LifeHost implements com.gigongibus.hungrycows.life.IdleLife.Host {
+        @Override public boolean idleAllowed() {
+            return calmForLife() && getNavigation().isDone() && onlyGoals(IDLE_GOALS, java.util.Set.of());
+        }
+        @Override public boolean pauseAllowed() {
+            return calmForLife() && getMoveControl().getSpeedModifier() <= STROLL_PAUSE_MAX_SPEED
+                    && goalSelector.getRunningGoals().anyMatch(w -> STROLL_GOALS.contains(w.getGoal().getClass()))
+                    && onlyGoals(IDLE_GOALS, STROLL_GOALS);
+        }
+        @Override public boolean lookAllowed() {
+            return calmForLife() && goalSelector.getRunningGoals().noneMatch(w -> w.getGoal() instanceof WatchGoal);
+        }
+        @Override public boolean hesitating() {
+            return brain.hesitating();
+        }
+        @Override public boolean canChew() {
+            return !isBaby() && recentlyAte(CowBrain.RUMINATE_AFTER_MEAL_TICKS);
+        }
+        @Override public void chew(int ticks) {
+            chewUntil = tickCount + ticks;
+        }
+        @Override public void onMicro(String kind) {
+            microActions++;
+        }
+    }
+
     private static class BrainStrollGoal extends WaterAvoidingRandomStrollGoal {
-        private static final int BRAIN_INTERVAL = 20;    // з мозком: нова точка кожну ~секунду
+        private static final int BRAIN_INTERVAL = 40;    // з мозком: між прогулянками в середньому ~2 с постоїть (було ~1 с — ходила без упину)
         private static final int NORMAL_INTERVAL = 120;  // без мозку: як ванільна корова
+        private static final double STROLL_SPEED = 0.8;  // гуляє неспішно (було 1,0 — як іде по справі)
+        private static final float AHEAD_CHANCE = 0.75F; // Fij «жвавість»: 75% — далі приблизно туди, куди вже повернута ...
+        private static final float AHEAD_TURN = 60F;     // ... у межах ±60° (раніше щоразу будь-куди — різкі розвороти)
+        private static final int AHEAD_DIST = 8;
         private final HungryCow cow;
 
         BrainStrollGoal(HungryCow cow) {
-            super(cow, 1.0);
+            super(cow, STROLL_SPEED);
             this.cow = cow;
+        }
+
+        @Override
+        protected net.minecraft.world.phys.Vec3 getPosition() {
+            if (cow.getRandom().nextFloat() < AHEAD_CHANCE) {
+                double r = Math.toRadians(cow.yBodyRot + (cow.getRandom().nextFloat() * 2 - 1) * AHEAD_TURN);
+                net.minecraft.world.phys.Vec3 ahead = cow.position().add(-Math.sin(r) * AHEAD_DIST, 0, Math.cos(r) * AHEAD_DIST);
+                net.minecraft.world.phys.Vec3 p = net.minecraft.world.entity.ai.util.DefaultRandomPos.getPosTowards(cow, AHEAD_DIST, 4, ahead, Math.PI / 4);
+                if (p != null) return p;
+            }
+            return super.getPosition();
         }
 
         @Override
@@ -1137,6 +1206,8 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         if (!this.level().isClientSide) { vision.tick(); smell.tick(); hearing.tick(); }
         super.aiStep();
         if (!this.level().isClientSide) brain.tick();
+        if (!this.level().isClientSide) life.tick();       // шар простою: переступає, озирається, коротко зупиняється (Fij «жвавість»)
+        if (!this.level().isClientSide && this.tickCount < chewUntil) anim(Anim.CHEW);
         if (!this.level().isClientSide) unstickPath();
         if (!this.level().isClientSide) updateStarLight();
         if (!this.level().isClientSide) updateAnimState();
