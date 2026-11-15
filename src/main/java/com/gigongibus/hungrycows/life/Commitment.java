@@ -15,11 +15,13 @@ public final class Commitment {
     public static final double COMMIT_MAX = 1.5;          // більше не росте
     public static final double COMMIT_GAIN = 0.05;        // поки дія найкраща (або майже) — +0,05 за рішення
     public static final double COMMIT_DECAY = 0.08;       // бажання її вже не підтримує — −0,08 (від 1 до 0 за ~6 с)
-    public static final double COMMIT_WEIGHT = 0.15;      // прихильність 1 = +15 відсоткових пунктів до шансу поточної дії
-    public static final double ACCUMULATOR_GAIN = 4.0;    // кандидат: + 4 × (наскільки він кращий), напр. на 0,25 → +1
-    public static final double ACCUMULATOR_DECAY = 0.25;  // кандидат не кращий — накопичене −25% за рішення
-    public static final double SAMPLE_GAIN = 0.15;        // мозок «випадково подумав» про дію (кубик) — їй трохи очок (цікавість)
-    public static final double SWITCH_THRESHOLD = 2.0;    // перемкнутись, коли кандидат набрав 2 (сильна перевага — за 0,5–1 с, слабка — за кілька с)
+    public static final double COMMIT_WEIGHT = 0.10;      // прихильність 1 = +10 відсоткових пунктів до шансу поточної дії
+    public static final double ACCUMULATOR_GAIN = 5.0;    // кандидат: + 5 × (наскільки він кращий), напр. на 0,2 → +1
+    public static final double ACCUMULATOR_DECAY = 0.12;  // кандидат не кращий — накопичене −12% за рішення
+    public static final double SAMPLE_GAIN = 0.4;         // мозок «випадково подумав» про дію (кубик) — їй очки (так лишається різноманітність)
+    public static final double SWITCH_THRESHOLD = 1.6;    // перемкнутись, коли кандидат набрав 1,6 (сильна перевага — за 0,5–1 с, слабка — за кілька с)
+    public static final int BORED_TICKS = 400;            // одна справа довше 20 с — «набридає»: прихильність згасає й тоді, коли дія ще найкраща ...
+    public static final double BORED_DECAY = 0.06;        // ... на 0,06 за рішення (з першою версією корова за хвилину не змінила дію жодного разу)
     public static final int MIN_HOLD_TICKS = 40;          // перші 2 с нову дію не міняє ніщо, крім рефлексу (було 5 с жорстко)
     public static final double SUPPORT_GAP = 0.05;        // поточна дія «ще підтримана», якщо гірша за найкращу не більш ніж на 5 пунктів
     public static final double HESITATE_GAP = 0.08;       // кандидат майже такий самий (до 8 пунктів) ...
@@ -59,7 +61,8 @@ public final class Commitment {
         if (!possible[current]) return switchTo(sampled >= 0 && possible[sampled] ? sampled : best(probs, possible));
         int top = best(probs, possible);
         // прихильність: росте, поки дія ще (майже) найкраща, інакше згасає
-        if (probs[current] >= probs[top] - SUPPORT_GAP) commitment = Math.min(COMMIT_MAX, commitment + COMMIT_GAIN);
+        if (heldTicks > BORED_TICKS) commitment = Math.max(0, commitment - BORED_DECAY);
+        else if (probs[current] >= probs[top] - SUPPORT_GAP) commitment = Math.min(COMMIT_MAX, commitment + COMMIT_GAIN);
         else commitment = Math.max(0, commitment - COMMIT_DECAY);
         double hold = probs[current] + COMMIT_WEIGHT * commitment;
         rival = -1;

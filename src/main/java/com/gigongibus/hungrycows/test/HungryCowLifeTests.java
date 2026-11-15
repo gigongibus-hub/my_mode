@@ -52,6 +52,8 @@ public class HungryCowLifeTests {
         int n = cows.size();
         int[] brainSw = new int[n], goalSw = new int[n], sharp = new int[n], micro0 = new int[n];
         String[] lastBrain = new String[n], lastGoal = new String[n];
+        StringBuilder[] seq = new StringBuilder[n];
+        for (int i = 0; i < n; i++) seq[i] = new StringBuilder();
         float[] lastYaw = new float[n];
         h.onEachTick(() -> {
             long t = h.getTick();
@@ -61,10 +63,11 @@ public class HungryCowLifeTests {
                 if (!c.isAlive()) continue;
                 String b = c.brain.current().name(), g = moveGoal(c);
                 if (t == WARMUP) {
+                    seq[i].append(b);
                     lastBrain[i] = b; lastGoal[i] = g; lastYaw[i] = c.yBodyRot; micro0[i] = c.microCount();
                     continue;
                 }
-                if (!b.equals(lastBrain[i])) brainSw[i]++;
+                if (!b.equals(lastBrain[i])) { brainSw[i]++; seq[i].append(" → ").append(b).append(" (").append((t - WARMUP) / 20).append(" с)"); }
                 if (!g.equals(lastGoal[i])) goalSw[i]++;
                 lastBrain[i] = b; lastGoal[i] = g;
                 if (t % TURN_WINDOW == 0) {
@@ -80,6 +83,7 @@ public class HungryCowLifeTests {
                 int micro = c.microCount() - micro0[i];
                 LOG.info("[тест] lifeMetrics: {} — мозок змінив дію {} р/хв, ціль руху {} р/хв, різких поворотів {}, мікро-дій {}",
                         c.family.name, brainSw[i], goalSw[i], sharp[i], micro);
+                LOG.info("[тест] lifeMetrics: {} — дії мозку: {}", c.family.name, seq[i]);
                 bs += brainSw[i]; gs += goalSw[i]; sh += sharp[i]; mi += micro;
             }
             LOG.info("[тест] lifeMetrics: СЕРЕДНЄ за хвилину — мозок {}, ціль руху {}, різкі повороти {}, мікро-дії {}",
