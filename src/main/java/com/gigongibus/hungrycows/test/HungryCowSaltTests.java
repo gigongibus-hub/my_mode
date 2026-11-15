@@ -247,6 +247,16 @@ public class HungryCowSaltTests {
             p.getInventory().clearContent();
             LOG.info("[тест] panRoastsSalt: поклала {} (рівень шару {}), прожарилась {}, забрала прожареної {}; згасле: було {} → {}; на душ-багаття {}; на поліна {}; на землю {} (прогрес {})",
                     20, piles, roasted, got, peak[0], after, soulOk, onLogs, onGround, groundProgress);
+            // що випадає (Fij: як ванільне багаття): кайлом — сковорода + 2 деревні вугілля; шовковим дотиком — сковорода + багаття
+            var sl = h.getLevel();
+            BlockPos ap = h.absolutePos(pan2);
+            ItemStack pick = new ItemStack(net.minecraft.world.item.Items.IRON_PICKAXE), silk = pick.copy();
+            silk.enchant(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH, 1);
+            String plain = net.minecraft.world.level.block.Block.getDrops(sl.getBlockState(ap), sl, ap, null, null, pick).toString();
+            String silky = net.minecraft.world.level.block.Block.getDrops(sl.getBlockState(ap), sl, ap, null, null, silk).toString();
+            LOG.info("[тест] panRoastsSalt: зламати кайлом → {}, шовковим дотиком → {}", plain, silky);
+            h.assertTrue(plain.contains("2 charcoal") && plain.contains("salt_pan") && !plain.contains("campfire"), "кайлом не сковорода + 2 вугілля: " + plain);
+            h.assertTrue(silky.contains("campfire") && silky.contains("salt_pan") && !silky.contains("charcoal"), "шовковим не сковорода + багаття: " + silky);
             h.setBlock(pan, Blocks.AIR); h.setBlock(pan2, Blocks.AIR); h.setBlock(soul, Blocks.AIR); h.setBlock(soul.above(), Blocks.AIR); h.setBlock(ground, Blocks.AIR);
             h.assertTrue(onLogs, "сковорода не стала на поліна (на місце багаття)");
             h.assertTrue(onGround && groundProgress == 0, "на землю не ставиться або смажить без вогню: " + onGround + ", " + groundProgress);
