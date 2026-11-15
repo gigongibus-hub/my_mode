@@ -1,4 +1,5 @@
 {
+ "ambientocclusion": false,
  "textures": {
   "t": "hungrycows:item/wicker/wicker_bundle_wilted",
   "particle": "hungrycows:item/wicker/wicker_bundle_wilted"
@@ -6,67 +7,31 @@
  "elements": [
   {
    "from": [
-    1,
-    0,
-    1
+    4,
+    0.1,
+    4
    ],
    "to": [
-    15,
-    4,
-    15
+    12,
+    0.1,
+    12
    ],
    "faces": {
     "up": {
      "uv": [
-      1,
-      1,
-      15,
-      15
+      0,
+      0,
+      16,
+      16
      ],
      "texture": "#t"
     },
     "down": {
      "uv": [
-      1,
-      1,
-      15,
-      15
-     ],
-     "texture": "#t"
-    },
-    "north": {
-     "uv": [
-      1,
-      6,
-      15,
-      10
-     ],
-     "texture": "#t"
-    },
-    "south": {
-     "uv": [
-      1,
-      6,
-      15,
-      10
-     ],
-     "texture": "#t"
-    },
-    "east": {
-     "uv": [
-      1,
-      6,
-      15,
-      10
-     ],
-     "texture": "#t"
-    },
-    "west": {
-     "uv": [
-      1,
-      6,
-      15,
-      10
+      0,
+      16,
+      16,
+      0
      ],
      "texture": "#t"
     }

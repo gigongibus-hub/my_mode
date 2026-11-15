@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class SaltPanBlockEntity extends BlockEntity {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int CAPACITY = 20;          // 20 штук (Fij)
-    public static final int PER_PILE = 5;           // на моделі: купка за кожні 5
+    public static final int PER_LEVEL = 2;          // на моделі: рівень шару за кожні 2 (Fij: «заповнюється, як вода в діжці»)
     public static final int ROAST_TICKS = 12000;    // пів ігрової доби (прискорюється /hungrycows speed)
     public static final float COOL_DOWN = 0.25F;    // багаття згасло — прогрес спадає вчетверо повільніше, ніж ріс (Fij «потихеньку»)
     public static final int STEAM_EVERY = 20;       // пара над сковородою раз на секунду, поки смажиться
@@ -50,20 +50,23 @@ public class SaltPanBlockEntity extends BlockEntity {
         count = 0;
         progress = 0;
         if (level != null && !level.isClientSide && getBlockState().is(Salt.SALT_PAN.get()))
-            level.setBlock(worldPosition, getBlockState().setValue(SaltPanBlock.PILES, 0).setValue(SaltPanBlock.ROASTED, false), 3);
+            level.setBlock(worldPosition, getBlockState().setValue(SaltPanBlock.FILL, 0).setValue(SaltPanBlock.ROASTED, false), 3);
         setChanged();
         return out;
     }
 
     private void refresh() {
         if (level != null && !level.isClientSide) {
-            int piles = (count + PER_PILE - 1) / PER_PILE;
-            if (getBlockState().getValue(SaltPanBlock.PILES) != piles) level.setBlock(worldPosition, getBlockState().setValue(SaltPanBlock.PILES, piles), 3);
+            int fill = (count + PER_LEVEL - 1) / PER_LEVEL;
+            if (getBlockState().getValue(SaltPanBlock.FILL) != fill) level.setBlock(worldPosition, getBlockState().setValue(SaltPanBlock.FILL, fill), 3);
         }
         setChanged();
     }
 
     public static boolean fireLit(Level level, BlockPos pos) {
+        BlockState self = level.getBlockState(pos);
+        if (self.is(Salt.SALT_PAN.get()) && self.getValue(SaltPanBlock.CAMPFIRE) != SaltPanBlock.Fire.NONE)
+            return self.getValue(SaltPanBlock.CAMPFIRE) == SaltPanBlock.Fire.LIT;   // стоїть прямо на полінах (Fij)
         BlockState below = level.getBlockState(pos.below());
         return below.is(Blocks.CAMPFIRE) && below.getValue(CampfireBlock.LIT);
     }
@@ -74,7 +77,7 @@ public class SaltPanBlockEntity extends BlockEntity {
         if (fireLit(level, pos)) {
             be.progress += speed;
             if (level.getGameTime() % STEAM_EVERY == 0)
-                ((ServerLevel) level).sendParticles(ParticleTypes.WHITE_ASH, pos.getX() + 0.5, pos.getY() - 0.2, pos.getZ() + 0.5, 4, 0.3, 0.05, 0.3, 0.01);
+                ((ServerLevel) level).sendParticles(ParticleTypes.WHITE_ASH, pos.getX() + 0.5, pos.getY() + 0.8, pos.getZ() + 0.5, 4, 0.3, 0.05, 0.3, 0.01);
             if (be.progress >= ROAST_TICKS) {
                 be.progress = 0;
                 level.setBlock(pos, state.setValue(SaltPanBlock.ROASTED, true), 3);

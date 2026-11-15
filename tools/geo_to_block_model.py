@@ -4,7 +4,7 @@
 import json, os
 
 SRC = 'tools/models_src'
-PAN_DY = -2   # сковорода на багатті — трохи нижче своєї клітинки (з −8 полум'я проходило крізь сіль)
+PAN_FIRE_DY = 7   # сковорода на багатті (Fij): стоїть прямо на полінах (поліна багаття заввишки 7 пікс.), у тій самій клітинці
 OUT = 'src/main/resources/assets/hungrycows/models/block'
 
 def faces(u, v, w, h, d, s):
@@ -38,6 +38,28 @@ def convert(geo_file, texture, bones=None, name=None, dy=0):
     with open(os.path.join(OUT, name + '.json'), 'w') as o: json.dump(model, o, indent=1)
     print(name, len(elements), 'брусків')
 
+# предмет у руці й інвентарі — як звичайний блок (Fij: «велечезні»): модель блока + display ванільного block.json
+DISPLAY = {
+    'gui': {'rotation': [30, 225, 0], 'translation': [0, 0, 0], 'scale': [0.625, 0.625, 0.625]},
+    'ground': {'rotation': [0, 0, 0], 'translation': [0, 3, 0], 'scale': [0.25, 0.25, 0.25]},
+    'fixed': {'rotation': [0, 0, 0], 'translation': [0, 0, 0], 'scale': [0.5, 0.5, 0.5]},
+    'head': {'rotation': [0, 0, 0], 'translation': [0, 0, 0], 'scale': [0.6, 0.6, 0.6]},
+    'thirdperson_righthand': {'rotation': [75, 45, 0], 'translation': [0, 2.5, 0], 'scale': [0.375, 0.375, 0.375]},
+    'thirdperson_lefthand': {'rotation': [75, 45, 0], 'translation': [0, 2.5, 0], 'scale': [0.375, 0.375, 0.375]},
+    'firstperson_righthand': {'rotation': [0, 45, 0], 'translation': [0, 0, 0], 'scale': [0.4, 0.4, 0.4]},
+    'firstperson_lefthand': {'rotation': [0, 225, 0], 'translation': [0, 0, 0], 'scale': [0.4, 0.4, 0.4]}}
+ITEM_OUT = 'src/main/resources/assets/hungrycows/models/item'
+
+
+def item_from_block(name, dy=0):
+    """Модель предмета з моделі блока, зсунута на dy пікселів (щоб предмет був посередині)"""
+    d = json.load(open(os.path.join(OUT, f'{name}.json')))
+    for e in d.get('elements', []):
+        e['from'][1] += dy
+        e['to'][1] += dy
+    d['display'] = DISPLAY
+    json.dump(d, open(os.path.join(ITEM_OUT, f'{name}.json'), 'w'), indent=1)
+
 if __name__ == '__main__':
     convert('tub.geo.json', 'hungrycows:block/salt/tub', ['bone'], 'tub')
     convert('tub.geo.json', 'hungrycows:block/salt/tub', ['kry'], 'tub_lid')
@@ -49,18 +71,43 @@ if __name__ == '__main__':
         json.dump({'textures': {'liquid': 'minecraft:block/water_still', 'particle': 'minecraft:block/water_still'},
                    'elements': [el]}, open(os.path.join(OUT, f'tub_liquid_{lvl}.json'), 'w'), indent=1)
     print('рідина: 10 рівнів')
-    # сковорода стоїть на багатті: модель на 8 пікс. нижче (дно над полінами багаття, висота якого 7 пікс.)
-    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan', dy=PAN_DY)
-    # купки солі в сковороді: 1–4 купки (по 5 штук), сира (недоочищена) чи прожарена
-    spots = [(3, 3), (9, 3), (3, 9), (9, 9)]
-    for kind, tex in (('raw', 'hungrycows:item/salt/ground_salt_half_purified'), ('roasted', 'hungrycows:item/salt/ground_salt_roasted')):
-        for n in range(1, 5):
-            els = []
-            for (x, z) in spots[:n]:
-                els.append({'from': [x, PAN_DY + 1, z], 'to': [x + 4, PAN_DY + 3, z + 4],
-                            'faces': {f: {'uv': [4, 6, 12, 14] if f in ('up', 'down') else [4, 10, 12, 14], 'texture': '#salt'}
-                                      for f in ('up', 'down', 'north', 'south', 'east', 'west')}})
-            json.dump({'textures': {'salt': tex, 'particle': tex}, 'elements': els},
-                      open(os.path.join(OUT, f'salt_pan_{kind}_{n}.json'), 'w'), indent=1)
-    print('купки солі: 8 моделей')
+    # сковорода: на землі (dy 0) і прямо на полінах багаття (dy 7) — в одній клітинці з багаттям (Fij)
+    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan', dy=0)
+    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan_fire', dy=PAN_FIRE_DY)
+    # поліна під сковородою: згасле — ванільна модель; горить — ванільні поліна + низенький вогонь лише під дном
+    camp = json.load(open(os.path.join(os.path.dirname(__file__), 'models_src', 'template_campfire.json')))
+    els = []
+    for e in camp['elements']:
+        e = json.loads(json.dumps(e))
+        if '#fire' in json.dumps(e):
+            e['to'][1] = PAN_FIRE_DY          # полум'я 1–7 пікс. (до дна сковороди), нижня частина текстури
+            for f in e['faces'].values():
+                f['uv'] = [0, 16 - (PAN_FIRE_DY - 1), 16, 16]
+        els.append(e)
+    json.dump({'textures': {'particle': 'minecraft:block/campfire_log', 'log': 'minecraft:block/campfire_log',
+                            'lit_log': 'minecraft:block/campfire_log_lit', 'fire': 'minecraft:block/campfire_fire'},
+               'render_type': 'minecraft:cutout', 'elements': els},
+              open(os.path.join(OUT, 'salt_pan_campfire_lit.json'), 'w'), indent=1)
+    # сіль у сковороді — шар, що піднімається, як вода в діжці (Fij): 10 рівнів (по 2 штуки), сира чи прожарена
+    for where, base in (('', 1), ('fire_', PAN_FIRE_DY + 1)):
+        for kind in ('raw', 'roasted'):
+            tex = f'hungrycows:block/salt/salt_pan_layer_{kind}'
+            for lvl in range(1, 11):
+                top = base + 3.6 * lvl / 10.0
+                el = {'from': [1, base, 1], 'to': [15, round(top, 3), 15], 'faces': {
+                    'up': {'uv': [1, 1, 15, 15], 'texture': '#salt'}}}
+                json.dump({'textures': {'salt': tex, 'particle': tex}, 'elements': [el]},
+                          open(os.path.join(OUT, f'salt_pan_{where}{kind}_{lvl}.json'), 'w'), indent=1)
+    print('шар солі: 40 моделей')
+    # поставлена кришка (Fij: «щоб можна було ставити») — та сама, опущена на землю
+    lid = json.load(open(os.path.join(OUT, 'tub_lid.json')))
+    for e in lid['elements']:
+        e['from'][1] -= 13
+        e['to'][1] -= 13
+    json.dump(lid, open(os.path.join(OUT, 'tub_lid_placed.json'), 'w'), indent=1)
     convert('salt_basket.geo.json', 'hungrycows:block/salt/salt_basket', None, 'salt_basket')
+    item_from_block('tub')
+    item_from_block('tub_lid', dy=-6)          # кришка нагорі діжки — опущена до середини
+    item_from_block('salt_pan', dy=2)
+    item_from_block('salt_basket', dy=-1)
+    print('предмети: 4 моделі')

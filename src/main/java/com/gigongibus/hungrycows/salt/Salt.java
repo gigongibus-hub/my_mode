@@ -48,7 +48,10 @@ public final class Salt {
     public static final RegistryObject<Block> TUB = HungryCowsMod.BLOCKS.register("tub", () ->
             new TubBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).noOcclusion()));
     public static final RegistryObject<Item> TUB_ITEM = HungryCowsMod.ITEMS.register("tub", () -> new BlockItem(TUB.get(), new Item.Properties()));
-    public static final RegistryObject<Item> TUB_LID = HungryCowsMod.ITEMS.register("tub_lid", () -> new Item(new Item.Properties().stacksTo(16)));
+    // кришка — і предмет (закрити діжку), і блок (Fij: «щоб можна було ставити»)
+    public static final RegistryObject<Block> TUB_LID_BLOCK = HungryCowsMod.BLOCKS.register("tub_lid", () ->
+            new TubLidBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(1.0F).sound(SoundType.WOOD).noOcclusion()));
+    public static final RegistryObject<Item> TUB_LID = HungryCowsMod.ITEMS.register("tub_lid", () -> new BlockItem(TUB_LID_BLOCK.get(), new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> SALT_SOLUTION = HungryCowsMod.ITEMS.register("salt_solution", () ->
             new Item(new Item.Properties().stacksTo(1).craftRemainder(net.minecraft.world.item.Items.BUCKET)));
     @SuppressWarnings("DataFlowIssue")
@@ -66,8 +69,9 @@ public final class Salt {
 
     // 5. сольова сковорода (модель Fij) і прожарена сіль
     public static final RegistryObject<Block> SALT_PAN = HungryCowsMod.BLOCKS.register("salt_pan", () ->
-            new SaltPanBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(2.0F).sound(SoundType.METAL).noOcclusion()));
-    public static final RegistryObject<Item> SALT_PAN_ITEM = HungryCowsMod.ITEMS.register("salt_pan", () -> new BlockItem(SALT_PAN.get(), new Item.Properties()));
+            new SaltPanBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(2.0F).sound(SoundType.METAL).noOcclusion()
+                    .lightLevel(st -> st.getValue(SaltPanBlock.CAMPFIRE) == SaltPanBlock.Fire.LIT ? 15 : 0)));
+    public static final RegistryObject<Item> SALT_PAN_ITEM = HungryCowsMod.ITEMS.register("salt_pan", () -> new SaltPanItem(SALT_PAN.get(), new Item.Properties()));
     public static final RegistryObject<Item> GROUND_SALT_ROASTED = HungryCowsMod.ITEMS.register("ground_salt_roasted", () -> new Item(new Item.Properties()));
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SaltPanBlockEntity>> SALT_PAN_BE = BLOCK_ENTITIES.register("salt_pan", () ->

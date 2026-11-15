@@ -50,7 +50,7 @@ public class SaltBasketBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, SaltBasketBlockEntity be) {
-        if (be.done || be.count < CAPACITY || !airBelow(level, pos)) return;
+        if (be.done || be.count < CAPACITY || !SaltBasketBlock.hanging(level, pos) || !airBelow(level, pos)) return;   // лише на ланцюгу (Fij)
         be.progress += WorldClock.speed((ServerLevel) level);
         if (level.getGameTime() % DROP_EVERY == 0)
             ((ServerLevel) level).sendParticles(ParticleTypes.DRIPPING_WATER, pos.getX() + 0.3 + level.random.nextDouble() * 0.4, pos.getY() - 0.02,

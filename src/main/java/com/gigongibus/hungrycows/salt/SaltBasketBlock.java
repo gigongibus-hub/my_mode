@@ -25,7 +25,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * КОРЗИНА ДЛЯ СОЛІ (сіль, крок 6, модель Fij). Висить, як ліхтар: ставиться під блок. ПКМ прожареною сіллю — кладе (до 9);
+ * КОРЗИНА ДЛЯ СОЛІ (сіль, крок 6, модель Fij). Ставиться будь-де (на землю) або вішається під ЛАНЦЮГ (Fij: «обов'язково ланцюг,
+ * не інший блок»). Капає й робить блок солі, лише коли висить на ланцюгу. ПКМ прожареною сіллю — кладе (до 9);
  * 9 штук і під корзиною повітря — за ігрову добу знизу капає вода, всередині стає блок солі. ПКМ порожньою рукою — забрати.
  */
 public class SaltBasketBlock extends BaseEntityBlock {
@@ -48,7 +49,13 @@ public class SaltBasketBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("deprecation")
     public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
-        return Block.canSupportCenter(level, pos.above(), Direction.DOWN);   // висить (Fij, як ліхтар)
+        return hanging(level, pos) || Block.canSupportCenter(level, pos.below(), Direction.UP);   // на ланцюгу або на землі
+    }
+
+    /** Висить на ланцюгу (вертикальному) — лише так сіль стікає */
+    public static boolean hanging(LevelReader level, BlockPos pos) {
+        BlockState up = level.getBlockState(pos.above());
+        return up.is(net.minecraft.world.level.block.Blocks.CHAIN) && up.getValue(net.minecraft.world.level.block.ChainBlock.AXIS) == Direction.Axis.Y;
     }
 
     @Override
@@ -59,7 +66,7 @@ public class SaltBasketBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("deprecation")
     public BlockState updateShape(BlockState state, Direction dir, BlockState other, net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockPos otherPos) {
-        if (dir == Direction.UP && !canSurvive(state, level, pos) && level instanceof Level l && !l.isClientSide) l.scheduleTick(pos, this, 1);
+        if ((dir == Direction.UP || dir == Direction.DOWN) && !canSurvive(state, level, pos) && level instanceof Level l && !l.isClientSide) l.scheduleTick(pos, this, 1);
         return state;
     }
 

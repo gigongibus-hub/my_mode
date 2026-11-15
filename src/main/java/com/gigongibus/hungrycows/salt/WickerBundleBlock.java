@@ -35,7 +35,7 @@ public class WickerBundleBlock extends BaseEntityBlock {
     }
 
     public static final EnumProperty<Stage> STAGE = EnumProperty.create("stage", Stage.class);
-    private static final VoxelShape SHAPE = box(1, 0, 1, 15, 4, 15);
+    private static final VoxelShape SHAPE = box(4, 0, 4, 12, 1, 12);   // плаский, удвічі менший (Fij)
 
     public WickerBundleBlock(Properties p) {
         super(p);
