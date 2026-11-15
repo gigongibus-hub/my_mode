@@ -175,15 +175,21 @@ public class HungryCowSmellTests {
             h.setBlock(hay, Blocks.AIR);
         };
         BlockPos[] lastTarget = { null };
+        String[] trace = { "" };
         h.onEachTick(() -> {
             cow.hunger = Math.max(cow.hunger, 60);
+            if (h.getTick() % 200 == 0) {
+                Vec3 o = h.absoluteVec(Vec3.ZERO);
+                trace[0] += String.format("[%d с: (%.1f, %.1f) %s %s] ", h.getTick() / 20, cow.getX() - o.x, cow.getZ() - o.z,
+                        cow.brain.current(), cow.goalSelector.getRunningGoals().map(g -> g.getGoal().getClass().getSimpleName()).toList());
+            }
             boolean searching = cow.goalSelector.getRunningGoals().anyMatch(g -> g.getGoal() instanceof com.gigongibus.hungrycows.ai.SearchFoodGoal);
             if (searching && lastTarget[0] == null) starts[0]++;
             lastTarget[0] = searching ? hay : null;
         });
         h.runAfterDelay(1199, clear);
         h.succeedWhen(() -> {
-            h.assertTrue(!cleared[0], "час вийшов (почала шукати " + starts[0] + " разів)");
+            h.assertTrue(!cleared[0], "час вийшов (почала шукати " + starts[0] + " разів), " + trace[0]);
             boolean sameSide = Math.signum(cow.getX() - h.absoluteVec(new Vec3(6.5, 0, 0)).x) == Math.signum(h.absoluteVec(new Vec3(7.5, 0, 0)).x - h.absoluteVec(new Vec3(6.5, 0, 0)).x);
             h.assertTrue(sameSide && cow.distanceToSqr(Vec3.atCenterOf(h.absolutePos(hay))) < 3 * 3, "не обійшла стінку до сіна");
             h.assertTrue(starts[0] <= 10, "смикається: пошук починався " + starts[0] + " разів");
