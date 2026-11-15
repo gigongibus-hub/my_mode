@@ -179,6 +179,7 @@ public class HungryCowFungusTests {
         var chicken = h.spawn(EntityType.CHICKEN, new BlockPos(7, 2, 7));
         var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 32));
         var pig = h.spawn(EntityType.PIG, new BlockPos(27, 2, 7));
+        zombie.setInvulnerable(true);   // залізний голем сусіднього тесту (glowLuresMobsNotGolem) за ~2 с убивав цього зомбі
         for (var m : java.util.List.of(chicken, zombie, pig)) m.setNoAi(true);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
         chicken.addEffect(new MobEffectInstance(ModEffects.FUNGUS_GLOW.get(), 600));
