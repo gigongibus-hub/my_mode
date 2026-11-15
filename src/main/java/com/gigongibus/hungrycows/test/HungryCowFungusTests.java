@@ -169,6 +169,13 @@ public class HungryCowFungusTests {
     public static void glowHostilesFromFarther(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
+        // зомбі й свиня — за межами майданчика, де бувають залишки інших тестів: розчистити місце (інакше задихались у блоці)
+        for (BlockPos b : new BlockPos[]{ new BlockPos(7, 2, 32), new BlockPos(27, 2, 7) }) {
+            for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+                h.setBlock(b.offset(dx, -1, dz), Blocks.STONE);
+                for (int dy = 0; dy <= 2; dy++) h.setBlock(b.offset(dx, dy, dz), Blocks.AIR);
+            }
+        }
         var chicken = h.spawn(EntityType.CHICKEN, new BlockPos(7, 2, 7));
         var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 32));
         var pig = h.spawn(EntityType.PIG, new BlockPos(27, 2, 7));
@@ -179,7 +186,8 @@ public class HungryCowFungusTests {
             boolean z = FungusEffects.isForcedOn(zombie, chicken), p = FungusEffects.isForcedOn(pig, chicken);
             LOG.info("[тест] glowHostilesFromFarther: зомбі за {} бл. — {}, свиня за {} бл. — {}", zombie.distanceTo(chicken), z, pig.distanceTo(chicken), p);
             chicken.discard(); zombie.discard(); pig.discard();
-            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p);
+            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p + " (зомбі живий " + zombie.isAlive() + ", ціль "
+                    + zombie.getTarget() + ", сяйво на курці " + chicken.hasEffect(ModEffects.FUNGUS_GLOW.get()) + ", тіків курки " + chicken.tickCount + ")");
             h.succeed();
         });
     }

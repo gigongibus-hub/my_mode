@@ -42,6 +42,13 @@ public class CowNavigation extends GroundPathNavigation {
     public static final double PASS_REACH = 0.5;      // ... коли дорогою за цей тік пробіг ближче 0,5 бл. від неї ...
     public static final double BEHIND_DIST = 1.6;     // ... або вона ближче 1,6 бл. (× ширина, якщо ширша за блок) ...
     public static final float BEHIND_DEG = 100F;      // ... і вже позаду (понад 100° від того, куди повернутий тулуб), а далі є ще точки
+    // Fij «вибігає хвилями вліво-вправо»: дорога гри навскіс — сходинки (крок убік, крок уперед), а без зрізання кутів бик із повільним
+    // поворотом біг по кожній сходинці хвилею. Коли біжить (або це бик), бере найдальшу з кількох наступних точок, до якої можна
+    // прямо, не зачепивши нічого всім тілом (із запасом) і по землі; неспішна хода — як була (щоб не битись об стіни у дверях).
+    public static final double DIRECT_FROM_SPEED = 1.2; // «біжить» — множник швидкості від 1,2
+    public static final int DIRECT_LOOKAHEAD = 5;      // дивиться до 5 точок уперед
+    public static final double DIRECT_MARGIN = 0.15;   // запас від стін з кожного боку
+    public static final double DIRECT_STEP = 0.4;      // перевіряє пряму кожні 0,4 бл.
     public static final double WAYPOINT_DY = 1.05;    // ... і різниця висоти до 1 блока включно (точкою буває сам блок під ногами:
                                                       // стежка, килим — рівно 1,0, і з «менше 1» корова стояла на ній назавжди)
     public static final double STRAIGHT_REACH = 0.6;  // на прямій (не поворот) точку можна пропустити раніше: ближче 0,6 бл.
@@ -126,10 +133,50 @@ public class CowNavigation extends GroundPathNavigation {
         }
         boolean straightSkip = !reached && dy < WAYPOINT_DY && dx < STRAIGHT_REACH && dz < STRAIGHT_REACH && straightAt(i);
         if (reached || straightSkip) this.path.advance();
+        if (!this.path.isDone() && (this.mob.tickCount & 1) == 0 && runsDirect()) skipAhead();
         this.doStuckDetection(tempPos);   // як у ванільному
     }
 
     private double prevX = Double.NaN, prevZ = Double.NaN;
+
+    private boolean runsDirect() {
+        return this.speedModifier >= DIRECT_FROM_SPEED || (this.mob instanceof HungryCow c && c.bullModel());
+    }
+
+    // найдальша з наступних точок (та сама висота), до якої можна прямо
+    private void skipAhead() {
+        int i = this.path.getNextNodeIndex(), n = this.path.getNodeCount();
+        int y = this.path.getNodePos(i).getY();
+        int last = i;
+        for (int j = i + 1; j < n && j <= i + DIRECT_LOOKAHEAD; j++) {
+            if (this.path.getNodePos(j).getY() != y) break;
+            last = j;
+        }
+        for (int k = last; k > i; k--) {
+            if (canGoStraight(this.path.getEntityPosAtNode(this.mob, k))) {
+                this.path.setNextNodeIndex(k);
+                return;
+            }
+        }
+    }
+
+    private boolean canGoStraight(Vec3 to) {
+        double dx = to.x - this.mob.getX(), dz = to.z - this.mob.getZ();
+        double len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 1.0E-3) return true;
+        AABB box = this.mob.getBoundingBox().inflate(DIRECT_MARGIN, 0, DIRECT_MARGIN);
+        int steps = (int) Math.ceil(len / DIRECT_STEP);
+        BlockPos.MutableBlockPos feet = new BlockPos.MutableBlockPos();
+        for (int s = 1; s <= steps; s++) {
+            double f = s / (double) steps;
+            double x = this.mob.getX() + dx * f, z = this.mob.getZ() + dz * f;
+            if (!this.level.noCollision(this.mob, box.move(dx * f, 0, dz * f))) return false;
+            feet.set(x, this.mob.getY() + 0.1, z);
+            if (net.minecraft.world.level.pathfinder.WalkNodeEvaluator.getBlockPathTypeStatic(this.level, feet.mutable())
+                    != net.minecraft.world.level.pathfinder.BlockPathTypes.WALKABLE) return false;
+        }
+        return true;
+    }
 
     // дорогою за останній тік (від попередньої позиції до теперішньої) пробігла біля точки
     private boolean passedThrough(Vec3 at) {
