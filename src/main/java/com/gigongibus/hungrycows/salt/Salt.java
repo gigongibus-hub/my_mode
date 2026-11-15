@@ -93,6 +93,21 @@ public final class Salt {
     public static final RegistryObject<Item> KNITTING_NEEDLE = HungryCowsMod.ITEMS.register("knitting_needle", () ->
             new WornToolItem(new Item.Properties().durability(NEEDLE_USES)));
 
+    // 7. корзина для солі (модель Fij), блок солі (лизунець для корів, як старий), чиста купка солі (на потім)
+    public static final RegistryObject<Block> SALT_BASKET = HungryCowsMod.BLOCKS.register("salt_basket", () ->
+            new SaltBasketBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(0.8F).sound(SoundType.WOOL).noOcclusion()));
+    public static final RegistryObject<Item> SALT_BASKET_ITEM = HungryCowsMod.ITEMS.register("salt_basket", () -> new BlockItem(SALT_BASKET.get(), new Item.Properties()));
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SaltBasketBlockEntity>> SALT_BASKET_BE = BLOCK_ENTITIES.register("salt_basket", () ->
+            net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(SaltBasketBlockEntity::new, SALT_BASKET.get()).build(null));
+    public static final RegistryObject<Block> SALT_BLOCK = HungryCowsMod.BLOCKS.register("salt_block", () ->
+            new Block(BlockBehaviour.Properties.of().mapColor(MapColor.QUARTZ).strength(1.5F).sound(SoundType.STONE)));
+    public static final RegistryObject<Item> SALT_BLOCK_ITEM = HungryCowsMod.ITEMS.register("salt_block", () -> new BlockItem(SALT_BLOCK.get(), new Item.Properties()));
+    public static final RegistryObject<Item> CLEAN_SALT = HungryCowsMod.ITEMS.register("clean_salt", () -> new Item(new Item.Properties()));
+    /** Що корови лижуть: старий лизунець і блок солі (`data/hungrycows/tags/blocks/salt_licks.json`) */
+    public static final net.minecraft.tags.TagKey<Block> SALT_LICKS = net.minecraft.tags.BlockTags.create(
+            new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "salt_licks"));
+
     public static Item bundleItem(WickerBundleBlock.Stage stage) {
         return switch (stage) {
             case FRESH -> WICKER_BUNDLE_ITEM.get();

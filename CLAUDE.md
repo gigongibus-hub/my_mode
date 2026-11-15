@@ -469,6 +469,13 @@
   з тегу `minecraft:wooden_buttons` над 2 палицями, 15 разів), 8 сухих пучків + спиця → 1 `burlap`. Тести `vineGivesWicker`,
   `bundleDriesInSun` (партія "salt"), `bundleRotsInRain` (партія "salt_rain"). `TestWorld.calm` тепер ще й `setRainLevel(0)`:
   дощ стихає поступово, і дощ попередньої партії «доходив» до наступної.
+  КРОК 6 ЗРОБЛЕНО: КОРЗИНА (`salt/SaltBasketBlock`, `SaltBasketBlockEntity`; модель Fij 7 брусків). Висить: `canSupportCenter` блока
+  над нею (без опори не ставиться; опору прибрали — падає з вмістом). ПКМ прожареною — кладе до 9 зі стосу; 9 штук + ПОВІТРЯ під нею →
+  +speed за тік до 24000, знизу капає (`DRIPPING_WATER`); готово — ПКМ порожньою рукою дає `salt_block` (не готово — назад сіль).
+  Рецепт «Пл Л Пл / Л·Л / Н Л Н» (Л = сухий пучок лози), сокира. БЛОК СОЛІ `salt_block` (текстура Fij `roasted_salt_block`) — лизунець:
+  тег `hungrycows:salt_licks` (старий `salt_lick` + новий; `LickSaltGoal` шукає за тегом), не зношується (Fij на «чи зношується»
+  відповів «так» разом з іншим — УТОЧНИТИ); блок → 9 `clean_salt` (чиста купка — «на потім»). Тести `basketMakesSaltBlock` (партія
+  "salt_tub"), `cowLicksSaltBlock` (партія "salt_lick"). Усі 14 тестів солі + смаку пройшли. НЕ ПЕРЕВІРЕНО В ГРІ.
   ШВИДКІ ТЕСТИ: файл `run-gametest/only_batches.txt` (напр. `salt`) — запускаються лише ці партії (`test/OnlyBatches`, через
   `ServerAboutToStartEvent` відбирає `GameTestServer.testBatches`); прибрати файл — знову всі. Тека `run-gametest/` у .gitignore.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).

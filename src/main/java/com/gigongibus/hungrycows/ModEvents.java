@@ -25,6 +25,7 @@ public class ModEvents {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
             event.accept(ModBlocks.SALT_LICK_ITEM);   // соляний лизунець
             if (event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_ORE_ITEM);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_BLOCK_ITEM);
         }
         // сіно мода (Fij): лише 4 стадії — з нитками й без; і пучок свіжої трави
         if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS || event.getTabKey() == CreativeModeTabs.NATURAL_BLOCKS) {
@@ -49,6 +50,7 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.salt.Salt.SIEVE);
             event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_PAN_ITEM);
             event.accept(com.gigongibus.hungrycows.salt.Salt.KNITTING_NEEDLE);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_BASKET_ITEM);
         }
         // гриби й зілля з грибів (Fij): ванільна вкладка кладе кожне зілля в усі пляшки — зайві (не та тривалість) прибираємо
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
@@ -57,6 +59,7 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_SOLUTION);
             event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_HALF_PURIFIED);
             event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_ROASTED);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.CLEAN_SALT);
             event.accept(com.gigongibus.hungrycows.salt.Salt.BURLAP);
             event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER);
             event.accept(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_ITEM);

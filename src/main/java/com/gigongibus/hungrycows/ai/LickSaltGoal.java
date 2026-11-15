@@ -40,7 +40,7 @@ public class LickSaltGoal extends Goal {
     }
 
     private boolean isLick(BlockPos p) {
-        return p != null && cow.level().getBlockState(p).is(ModBlocks.SALT_LICK.get());
+        return p != null && cow.level().getBlockState(p).is(com.gigongibus.hungrycows.salt.Salt.SALT_LICKS);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class LickSaltGoal extends Goal {
         BlockPos o = cow.blockPosition(), best = null;
         double bd = Double.MAX_VALUE;
         for (BlockPos p : BlockPos.betweenClosed(o.offset(-SEARCH_RADIUS, -SEARCH_HEIGHT, -SEARCH_RADIUS), o.offset(SEARCH_RADIUS, SEARCH_HEIGHT, SEARCH_RADIUS))) {
-            if (!cow.level().getBlockState(p).is(ModBlocks.SALT_LICK.get())) continue;
+            if (!cow.level().getBlockState(p).is(com.gigongibus.hungrycows.salt.Salt.SALT_LICKS)) continue;
             double d = p.distSqr(o);
             if (d >= bd) continue;
             if (!cow.vision.canSeeBlock(p, Vec3.atCenterOf(p)) && !cow.smell.smellsBlock(p)) continue;

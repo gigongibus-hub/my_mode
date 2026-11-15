@@ -63,3 +63,4 @@ if __name__ == '__main__':
             json.dump({'textures': {'salt': tex, 'particle': tex}, 'elements': els},
                       open(os.path.join(OUT, f'salt_pan_{kind}_{n}.json'), 'w'), indent=1)
     print('купки солі: 8 моделей')
+    convert('salt_basket.geo.json', 'hungrycows:block/salt/salt_basket', None, 'salt_basket')

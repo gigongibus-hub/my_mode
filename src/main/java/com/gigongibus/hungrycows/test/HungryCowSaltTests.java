@@ -361,4 +361,72 @@ public class HungryCowSaltTests {
             h.succeed();
         });
     }
+
+    // ---------- крок 6: корзина, блок солі ----------
+    // 10. Корзина висить під каменем, під нею повітря: 9 прожареної → доба (×1000) → блок солі; друга — під нею камінь — ні;
+    //     без опори зверху не ставиться; блок солі → 9 чистих купок
+    @GameTest(template = "arena", batch = "salt_tub", timeoutTicks = 200)
+    public static void basketMakesSaltBlock(GameTestHelper h) {
+        BlockPos b1 = new BlockPos(4, 4, 4), b2 = new BlockPos(10, 4, 4);
+        for (BlockPos b : new BlockPos[]{ b1, b2 }) h.setBlock(b.above(), Blocks.STONE);
+        h.setBlock(b2.below(), Blocks.STONE);
+        h.setBlock(b1, Salt.SALT_BASKET.get());
+        h.setBlock(b2, Salt.SALT_BASKET.get());
+        boolean floating = Salt.SALT_BASKET.get().defaultBlockState().canSurvive(h.getLevel(), h.absolutePos(new BlockPos(7, 4, 10)));
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        for (BlockPos b : new BlockPos[]{ b1, b2 }) use(h, b, p, new ItemStack(Salt.GROUND_SALT_ROASTED.get(), 12), false);
+        int left = p.getMainHandItem().getCount();
+        com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), com.gigongibus.hungrycows.WorldClock.SPEED_MAX);
+        h.runAfterDelay(199, () -> com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1));
+        h.succeedWhen(() -> {
+            var be1 = (com.gigongibus.hungrycows.salt.SaltBasketBlockEntity) h.getBlockEntity(b1);
+            h.assertTrue(be1 != null && be1.done(), "блок солі ще не готовий");
+            com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1);
+            var be2 = (com.gigongibus.hungrycows.salt.SaltBasketBlockEntity) h.getBlockEntity(b2);
+            int p2 = be2.progress();
+            boolean done2 = be2.done();
+            p.getInventory().clearContent();
+            use(h, b1, p, ItemStack.EMPTY, false);
+            boolean gotBlock = p.getInventory().countItem(Salt.SALT_BLOCK_ITEM.get()) == 1;
+            p.getInventory().clearContent();
+            var g = grid();
+            g.setItem(4, new ItemStack(Salt.SALT_BLOCK_ITEM.get()));
+            var r = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g, h.getLevel());
+            ItemStack piles = r.map(x -> x.assemble(g, h.getLevel().registryAccess())).orElse(ItemStack.EMPTY);
+            boolean lick = Salt.SALT_BLOCK.get().defaultBlockState().is(Salt.SALT_LICKS) && com.gigongibus.hungrycows.ModBlocks.SALT_LICK.get().defaultBlockState().is(Salt.SALT_LICKS);
+            LOG.info("[тест] basketMakesSaltBlock: блок солі за {} с (×1000), у руці лишилось {} з 12, друга (камінь знизу) прогрес {} готова {}, без опори ставиться {}, "
+                    + "забрала блок {}, блок → {}, лизунці {}", h.getTick() / 20.0, left, p2, done2, floating, gotBlock, piles, lick);
+            for (BlockPos b : new BlockPos[]{ b1, b2 }) { h.setBlock(b, Blocks.AIR); h.setBlock(b.above(), Blocks.AIR); }
+            h.setBlock(b2.below(), Blocks.AIR);
+            if (left != 3) h.fail("поклала не 9 з 12: лишилось " + left);
+            if (p2 != 0 || done2) h.fail("з каменем знизу теж іде");
+            if (floating) h.fail("без опори зверху ставиться");
+            if (!gotBlock) h.fail("не забрала блок солі");
+            if (!piles.is(Salt.CLEAN_SALT.get()) || piles.getCount() != 9) h.fail("блок не дає 9 чистих купок: " + piles);
+            if (!lick) h.fail("блок солі не в тезі лизунців");
+            h.succeed();
+        });
+    }
+
+    // 11. Корова з бажанням солі 80 лиже новий блок солі
+    @GameTest(template = "arena", batch = "salt_lick", timeoutTicks = 800)
+    public static void cowLicksSaltBlock(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        com.gigongibus.hungrycows.HungryCow c = TestWorld.cow(h, new BlockPos(3, 2, 7));
+        c.setAge(0);
+        c.taste.salt = 80;
+        BlockPos lick = new BlockPos(10, 2, 7);
+        h.setBlock(lick, Salt.SALT_BLOCK.get());
+        boolean[] cleared = { false };
+        Runnable clear = () -> { cleared[0] = true; c.discard(); h.setBlock(lick, Blocks.AIR); };
+        h.onEachTick(() -> c.hunger = 0);
+        h.runAfterDelay(799, clear);
+        h.succeedWhen(() -> {
+            h.assertTrue(!cleared[0], "час вийшов (сіль " + Math.round(c.taste.salt) + ")");
+            h.assertTrue(c.taste.salt < 40, "ще не лизала (сіль " + Math.round(c.taste.salt) + ")");
+            LOG.info("[тест] cowLicksSaltBlock: полизала блок солі на {} с, бажання солі 80 -> {}", h.getTick() / 20.0, Math.round(c.taste.salt));
+            clear.run();
+        });
+    }
 }

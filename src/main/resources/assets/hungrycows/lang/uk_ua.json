@@ -53,5 +53,8 @@
   "item.hungrycows.wicker_bundle_dry": "Сухий пучок лози",
   "item.hungrycows.wicker_bundle_wet": "Мокрий пучок лози",
   "item.hungrycows.wicker_bundle_rotten": "Гнилий пучок лози",
-  "item.hungrycows.knitting_needle": "Спиця для в’язання"
+  "item.hungrycows.knitting_needle": "Спиця для в’язання",
+  "block.hungrycows.salt_basket": "Корзина для солі",
+  "block.hungrycows.salt_block": "Рудна сіль перемолена (блок)",
+  "item.hungrycows.clean_salt": "Чиста купка солі"
 }

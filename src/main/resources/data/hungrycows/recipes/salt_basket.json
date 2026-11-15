@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "SWS",
+  "W W",
+  "TWT"
+ ],
+ "key": {
+  "S": {
+   "item": "minecraft:stick"
+  },
+  "W": {
+   "item": "hungrycows:wicker_bundle_dry"
+  },
+  "T": {
+   "item": "minecraft:string"
+  }
+ },
+ "result": {
+  "item": "hungrycows:salt_basket"
+ }
+}
