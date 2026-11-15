@@ -165,7 +165,8 @@ public class HungryCowFungusTests {
     }
 
     // 5. Сяйво: злі помічають удвічі далі (зомбі за 25 бл.), мирні — лише з 15 (свиня за 20 бл. — ні)
-    @GameTest(template = "arena", batch = "fungus_mobs", timeoutTicks = 60)
+    // окрема партія: курка під сяйвом із сусіднього тесту (glowLuresMobsNotGolem) приманювала цього зомбі (злі — до 64 бл.)
+    @GameTest(template = "arena", batch = "fungus_glow_far", timeoutTicks = 60)
     public static void glowHostilesFromFarther(GameTestHelper h) {
         h.getLevel().setDayTime(6000);
         TestWorld.calm(h);
@@ -179,16 +180,16 @@ public class HungryCowFungusTests {
         var chicken = h.spawn(EntityType.CHICKEN, new BlockPos(7, 2, 7));
         var zombie = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 32));
         var pig = h.spawn(EntityType.PIG, new BlockPos(27, 2, 7));
-        zombie.setInvulnerable(true);   // залізний голем сусіднього тесту (glowLuresMobsNotGolem) за ~2 с убивав цього зомбі
+        zombie.setInvulnerable(true);
         for (var m : java.util.List.of(chicken, zombie, pig)) m.setNoAi(true);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
         chicken.addEffect(new MobEffectInstance(ModEffects.FUNGUS_GLOW.get(), 600));
         h.runAtTickTime(45, () -> {
             boolean z = FungusEffects.isForcedOn(zombie, chicken), p = FungusEffects.isForcedOn(pig, chicken);
             LOG.info("[тест] glowHostilesFromFarther: зомбі за {} бл. — {}, свиня за {} бл. — {}", zombie.distanceTo(chicken), z, pig.distanceTo(chicken), p);
+            String why = "зомбі здалеку " + z + ", свиня здалеку " + p + " (ціль зомбі " + zombie.getTarget() + ", наша курка " + chicken.getId() + ")";
             chicken.discard(); zombie.discard(); pig.discard();
-            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p + " (зомбі живий " + zombie.isAlive() + ", прибрано " + zombie.getRemovalReason() + ", здоровʼя " + zombie.getHealth() + ", y " + zombie.getY() + ", ціль "
-                    + zombie.getTarget() + ", сяйво на курці " + chicken.hasEffect(ModEffects.FUNGUS_GLOW.get()) + ", тіків курки " + chicken.tickCount + ")");
+            h.assertTrue(z && !p, why);
             h.succeed();
         });
     }
