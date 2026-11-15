@@ -187,7 +187,7 @@ public class HungryCowFungusTests {
             boolean z = FungusEffects.isForcedOn(zombie, chicken), p = FungusEffects.isForcedOn(pig, chicken);
             LOG.info("[тест] glowHostilesFromFarther: зомбі за {} бл. — {}, свиня за {} бл. — {}", zombie.distanceTo(chicken), z, pig.distanceTo(chicken), p);
             chicken.discard(); zombie.discard(); pig.discard();
-            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p + " (зомбі живий " + zombie.isAlive() + ", ціль "
+            h.assertTrue(z && !p, "зомбі здалеку " + z + ", свиня здалеку " + p + " (зомбі живий " + zombie.isAlive() + ", прибрано " + zombie.getRemovalReason() + ", здоровʼя " + zombie.getHealth() + ", y " + zombie.getY() + ", ціль "
                     + zombie.getTarget() + ", сяйво на курці " + chicken.hasEffect(ModEffects.FUNGUS_GLOW.get()) + ", тіків курки " + chicken.tickCount + ")");
             h.succeed();
         });
