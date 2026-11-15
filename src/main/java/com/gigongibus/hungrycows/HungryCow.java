@@ -1087,8 +1087,8 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
     private static final java.util.Set<Class<?>> IDLE_GOALS = java.util.Set.of(RestGoal.class, RuminateGoal.class,
             WatchGoal.class, ScanGoal.class, BrainStrollGoal.class, GrieveGoal.class);
     // неспішна хода, яку можна на мить перервати зупинкою
-    private static final java.util.Set<Class<?>> STROLL_GOALS = java.util.Set.of(BrainStrollGoal.class, HerdUpGoal.class,
-            GoOutGoal.class, com.gigongibus.hungrycows.ai.SearchFoodGoal.class);
+    // (пошук їжі — справа з метою: зупинка ламала йому «чи дійшла», і він починав спочатку)
+    private static final java.util.Set<Class<?>> STROLL_GOALS = java.util.Set.of(BrainStrollGoal.class, HerdUpGoal.class, GoOutGoal.class);
     public static final double IDLE_FEAR_SHARE = 0.5;      // страх понад половину порогу — не до дрібниць
     public static final double IDLE_PAIN_MAX = 30;         // болить понад 30 — теж
     public static final double STROLL_PAUSE_MAX_SPEED = 1.05; // зупиняється лише неспішна хода (не біг)

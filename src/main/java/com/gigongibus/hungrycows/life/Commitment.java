@@ -81,7 +81,8 @@ public final class Commitment {
         }
         hesitating = close || rivalAcc >= HESITATE_ACC;
         if (heldTicks >= MIN_HOLD_TICKS && rival >= 0 && rivalAcc >= SWITCH_THRESHOLD) return switchTo(rival);
-        if (heldTicks >= MIN_HOLD_TICKS && commitment < SPONTANEOUS_BELOW && sampled >= 0 && sampled != current && possible[sampled]) {
+        // лише від нудьги (справа триває довше BORED_TICKS); інакше кидала пошук їжі посередині
+        if (heldTicks > BORED_TICKS && commitment < SPONTANEOUS_BELOW && sampled >= 0 && sampled != current && possible[sampled]) {
             return switchTo(sampled);
         }
         return current;
