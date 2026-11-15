@@ -173,4 +173,47 @@ public class HungryCowBullTests {
             bull.discard();
         });
     }
+
+    // 5. Fij «бики все одно часто намотують кола»: бик біжить зигзагом через 5 точок (як утеча, що часто міняє напрям);
+    //    петля = за 4 с тулуб повернувся в один бік більш ніж на 300°
+    @GameTest(template = ARENA, batch = "bulls_turn", timeoutTicks = 500)
+    public static void bullZigzagNoLoops(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(3, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.goalSelector.removeAllGoals(g -> true);
+        BlockPos[] pts = { new BlockPos(11, 2, 3), new BlockPos(11, 2, 11), new BlockPos(3, 2, 11), new BlockPos(7, 2, 7), new BlockPos(3, 2, 3) };
+        int[] next = { 0 }, loops = { 0 };
+        java.util.ArrayDeque<Float> turns = new java.util.ArrayDeque<>();
+        float[] lastYaw = { bull.getYRot() };
+        double[] walked = { 0 };
+        net.minecraft.world.phys.Vec3[] last = { bull.position() };
+        int[] loopCooldown = { 0 };
+        h.runAfterDelay(499, bull::discard);
+        h.onEachTick(() -> {
+            if (next[0] >= pts.length) return;
+            net.minecraft.world.phys.Vec3 t = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(pts[next[0]]));
+            if (Math.hypot(bull.getX() - t.x, bull.getZ() - t.z) < 1.5) { next[0]++; return; }
+            if (h.getTick() % 5 == 1) bull.getNavigation().moveTo(t.x, t.y, t.z, 2.2);
+            float d = net.minecraft.util.Mth.wrapDegrees(bull.getYRot() - lastYaw[0]);
+            lastYaw[0] = bull.getYRot();
+            turns.addLast(d);
+            if (turns.size() > 80) turns.removeFirst();
+            double sum = 0;
+            for (float x : turns) sum += x;
+            if (loopCooldown[0] > 0) loopCooldown[0]--;
+            else if (Math.abs(sum) > 300) { loops[0]++; loopCooldown[0] = 80; turns.clear(); }
+            walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
+            last[0] = bull.position();
+        });
+        h.succeedWhen(() -> {
+            h.assertTrue(next[0] >= pts.length, String.format("не пробіг усі точки: %d з %d, петель %d, пробіг %.1f бл.", next[0], pts.length, loops[0], walked[0]));
+            LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 37)",
+                    String.format("%.1f", h.getTick() / 20.0), loops[0], String.format("%.1f", walked[0]));
+            h.assertTrue(loops[0] == 0, "бик намотував кола: петель " + loops[0]);
+            bull.discard();
+        });
+    }
 }
