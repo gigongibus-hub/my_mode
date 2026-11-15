@@ -440,6 +440,14 @@
   у середньому 20; `placed_feature` 3 на чанк, висота −8…8; `forge/biome_modifier/add_salt_ore` — усі біоми Верхнього світу), рецепт
   ступка + рудна сіль → 1 (`SaltEvents.onCrafted`: +1 з шансом 50%). Тести `HungryCowSaltTests` (партія "salt"): oreVeinSize,
   oreDrops (1–4; удача III ~6; шовк — руда; дерев'яне кайло — ні), mortarGrindsSalt (+1 у ~50%).
+  КРОК 2 ЗРОБЛЕНО: ДІЖКА (`salt/TubBlock`, `TubBlockEntity`, `TubMenu`, `client/TubScreen`; модель Fij → `tools/geo_to_block_model.py`
+  з `tools/models_src/*.geo.json`: `tub` 5 брусків, `tub_lid` (кістка `kry`), `tub_liquid_1..10` — рідина, напівпрозора, колір з
+  `ModEvents.ClientEvents.blockColors`: вода 0x3F76E4, розчин 0xC9DDE6). Стан блока: `level` 0–10, `liquid` water/brine, `lid`.
+  ПКМ відром води — +1 (до 10); ПКМ кришкою — закрити; присівши ПКМ порожньою рукою — зняти; ПКМ порожнім відром (кришки немає,
+  розчин) — відро розчину (`salt_solution`, лишає відро в рецептах); інше ПКМ — інтерфейс (місце для 30 солі, під кришкою не
+  дістати; вода/розчин, стан, смуга прогресу; без картинки — малюється кольором). Відлік: кришка + 10 відер води + 30 солі,
+  +`WorldClock.speed` за тік до 24000; кришку зняли посеред справи — СТОЇТЬ (Fij не відповів; як у сковороди «спадає»? — спитати).
+  Рецепти `tub`, `tub_lid` (дошки — тег `minecraft:planks`). Сокира. Тест `tubMakesBrine` (партія "salt_tub").
   ШВИДКІ ТЕСТИ: файл `run-gametest/only_batches.txt` (напр. `salt`) — запускаються лише ці партії (`test/OnlyBatches`, через
   `ServerAboutToStartEvent` відбирає `GameTestServer.testBatches`); прибрати файл — знову всі. Тека `run-gametest/` у .gitignore.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).

@@ -20,6 +20,7 @@ public class HungryCowsMod {
         ModBlocks.init();
         ModItems.init();
         com.gigongibus.hungrycows.salt.Salt.init();                    // сіль (план Fij)
+        com.gigongibus.hungrycows.salt.Salt.register(modEventBus);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BloodPaperRecipe.SERIALIZERS.register(modEventBus);

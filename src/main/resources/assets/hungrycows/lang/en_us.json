@@ -30,5 +30,15 @@
   "item.minecraft.tipped_arrow.effect.star_fungus": "Arrow of Fungus Glow",
   "block.hungrycows.salt_ore": "Salt Ore",
   "item.hungrycows.rock_salt": "Rock Salt",
-  "item.hungrycows.ground_salt_dirty": "Ground Rock Salt (Dirty)"
+  "item.hungrycows.ground_salt_dirty": "Ground Rock Salt (Dirty)",
+  "block.hungrycows.tub": "Tub",
+  "item.hungrycows.tub_lid": "Tub Lid",
+  "item.hungrycows.salt_solution": "Bucket of Salt Solution",
+  "gui.hungrycows.tub.salt": "Salt: %s/%s",
+  "gui.hungrycows.tub.water": "Water: %s/%s",
+  "gui.hungrycows.tub.brine": "Brine: %s/%s",
+  "gui.hungrycows.tub.open": "Close the lid to start",
+  "gui.hungrycows.tub.missing": "Needs 30 salt and 10 buckets of water",
+  "gui.hungrycows.tub.soaking": "Soaking: %s%%",
+  "gui.hungrycows.tub.done": "Done: take the brine with a bucket"
 }

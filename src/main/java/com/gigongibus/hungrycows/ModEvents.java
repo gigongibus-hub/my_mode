@@ -44,11 +44,14 @@ public class ModEvents {
             event.accept(ModItems.BRAIN_STICK);
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_ITEM);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_LID);
         }
         // гриби й зілля з грибів (Fij): ванільна вкладка кладе кожне зілля в усі пляшки — зайві (не та тривалість) прибираємо
         if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
             event.accept(com.gigongibus.hungrycows.salt.Salt.ROCK_SALT);
             event.accept(com.gigongibus.hungrycows.salt.Salt.GROUND_SALT_DIRTY);
+            event.accept(com.gigongibus.hungrycows.salt.Salt.SALT_SOLUTION);
             event.accept(ModItems.FIRE_FUNGUS);
             event.accept(ModItems.STAR_FUNGUS);
         }
@@ -78,6 +81,19 @@ public class ModEvents {
             event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(ModBlocks.HAY_ITEM.get(),
                     new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "variant"),
                     (stack, level, entity, seed) -> CowHayBlock.variant(stack) * 0.01F + 0.001F));
+            // сіль: інтерфейс діжки
+            event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(com.gigongibus.hungrycows.salt.Salt.TUB_MENU.get(),
+                    com.gigongibus.hungrycows.client.TubScreen::new));
+        }
+
+        // сіль: рідина в діжці — вода синя, розчин світлий
+        public static final int TUB_WATER_COLOR = 0x3F76E4, TUB_BRINE_COLOR = 0xC9DDE6;
+
+        @SubscribeEvent
+        public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
+            event.register((state, level, pos, tint) -> state.getValue(com.gigongibus.hungrycows.salt.TubBlock.LIQUID)
+                    == com.gigongibus.hungrycows.salt.TubBlock.Liquid.BRINE ? TUB_BRINE_COLOR : TUB_WATER_COLOR,
+                    com.gigongibus.hungrycows.salt.Salt.TUB.get());
         }
     }
 }

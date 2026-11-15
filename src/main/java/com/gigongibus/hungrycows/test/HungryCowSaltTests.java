@@ -109,4 +109,60 @@ public class HungryCowSaltTests {
         h.assertTrue(extra > CRAFTS * 0.35 && extra < CRAFTS * 0.65, "додаткова не ~50%: " + extra + " з " + CRAFTS);
         h.succeed();
     }
+
+    // ---------- крок 3: діжка ----------
+    static net.minecraft.world.InteractionResult use(GameTestHelper h, BlockPos rel, net.minecraft.world.entity.player.Player p, ItemStack held, boolean sneak) {
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, held);
+        p.setShiftKeyDown(sneak);
+        BlockPos at = h.absolutePos(rel);
+        var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(at), net.minecraft.core.Direction.UP, at, false);
+        return h.getLevel().getBlockState(at).use(h.getLevel(), p, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+    }
+
+    // 4. 10 відер води + 30 «не чистої» + кришка → доба (прискорено ×1000) → 10 відер розчину; з 29 сіллю — нічого
+    @GameTest(template = "arena", batch = "salt_tub", timeoutTicks = 200)
+    public static void tubMakesBrine(GameTestHelper h) {
+        BlockPos tub = new BlockPos(5, 2, 7), tub2 = new BlockPos(9, 2, 7);
+        h.setBlock(tub, Salt.TUB.get());
+        h.setBlock(tub2, Salt.TUB.get());
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        for (BlockPos t : new BlockPos[]{ tub, tub2 }) {
+            for (int i = 0; i < 10; i++) use(h, t, p, new ItemStack(Items.WATER_BUCKET), false);
+            use(h, t, p, new ItemStack(Items.WATER_BUCKET), false);   // 11-те — не влазить
+        }
+        h.assertTrue(h.getBlockState(tub).getValue(com.gigongibus.hungrycows.salt.TubBlock.LEVEL) == 10, "не 10 відер води");
+        ((com.gigongibus.hungrycows.salt.TubBlockEntity) h.getBlockEntity(tub)).salt.setItem(0, new ItemStack(Salt.GROUND_SALT_DIRTY.get(), 30));
+        ((com.gigongibus.hungrycows.salt.TubBlockEntity) h.getBlockEntity(tub2)).salt.setItem(0, new ItemStack(Salt.GROUND_SALT_DIRTY.get(), 29));
+        use(h, tub, p, new ItemStack(Salt.TUB_LID.get()), false);
+        use(h, tub2, p, new ItemStack(Salt.TUB_LID.get()), false);
+        h.assertTrue(h.getBlockState(tub).getValue(com.gigongibus.hungrycows.salt.TubBlock.LID), "кришка не закрилась");
+        com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), com.gigongibus.hungrycows.WorldClock.SPEED_MAX);
+        h.runAfterDelay(199, () -> com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1));
+        h.succeedWhen(() -> {
+            h.assertTrue(h.getBlockState(tub).getValue(com.gigongibus.hungrycows.salt.TubBlock.LIQUID) == com.gigongibus.hungrycows.salt.TubBlock.Liquid.BRINE,
+                    "розчин ще не готовий: " + ((com.gigongibus.hungrycows.salt.TubBlockEntity) h.getBlockEntity(tub)).progress());
+            com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1);
+            int left = ((com.gigongibus.hungrycows.salt.TubBlockEntity) h.getBlockEntity(tub2)).progress();
+            boolean brine2 = h.getBlockState(tub2).getValue(com.gigongibus.hungrycows.salt.TubBlock.LIQUID) == com.gigongibus.hungrycows.salt.TubBlock.Liquid.BRINE;
+            var openTry = use(h, tub, p, new ItemStack(Items.BUCKET), false);   // під кришкою розчин не набрати
+            int levelAfterTry = h.getBlockState(tub).getValue(com.gigongibus.hungrycows.salt.TubBlock.LEVEL);
+            use(h, tub, p, ItemStack.EMPTY, true);                              // зняти кришку
+            int buckets = 0;
+            for (int i = 0; i < 12; i++) {
+                use(h, tub, p, new ItemStack(Items.BUCKET), false);
+                if (p.getMainHandItem().is(Salt.SALT_SOLUTION.get())) buckets++;
+            }
+            boolean empty = h.getBlockState(tub).getValue(com.gigongibus.hungrycows.salt.TubBlock.LEVEL) == 0
+                    && ((com.gigongibus.hungrycows.salt.TubBlockEntity) h.getBlockEntity(tub)).salt.isEmpty();
+            LOG.info("[тест] tubMakesBrine: розчин готовий за {} с (×1000), відер розчину {}, друга (29 солі) прогрес {} розчин {}, під кришкою відро: рівень {}",
+                    h.getTick() / 20.0, buckets, left, brine2, levelAfterTry);
+            h.assertTrue(levelAfterTry == 10, "набрала розчин під кришкою");
+            h.assertTrue(buckets == 10 && empty, "не 10 відер розчину (" + buckets + ") або сіль лишилась");
+            h.assertTrue(left == 0 && !brine2, "з 29 сіллю теж пішло");
+            h.setBlock(tub, Blocks.AIR);
+            h.setBlock(tub2, Blocks.AIR);
+            p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            p.setShiftKeyDown(false);
+        });
+    }
 }

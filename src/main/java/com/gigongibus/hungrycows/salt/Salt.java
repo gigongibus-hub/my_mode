@@ -35,6 +35,29 @@ public final class Salt {
     public static final RegistryObject<Item> ROCK_SALT = HungryCowsMod.ITEMS.register("rock_salt", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> GROUND_SALT_DIRTY = HungryCowsMod.ITEMS.register("ground_salt_dirty", () -> new Item(new Item.Properties()));
 
+    // 3. діжка (модель Fij), кришка (окремий предмет), відро сольового розчину
+    public static final net.minecraftforge.registries.DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES =
+            net.minecraftforge.registries.DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.BLOCK_ENTITY_TYPES, HungryCowsMod.MODID);
+    public static final net.minecraftforge.registries.DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS =
+            net.minecraftforge.registries.DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.MENU_TYPES, HungryCowsMod.MODID);
+
+    public static final RegistryObject<Block> TUB = HungryCowsMod.BLOCKS.register("tub", () ->
+            new TubBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F).sound(SoundType.WOOD).noOcclusion()));
+    public static final RegistryObject<Item> TUB_ITEM = HungryCowsMod.ITEMS.register("tub", () -> new BlockItem(TUB.get(), new Item.Properties()));
+    public static final RegistryObject<Item> TUB_LID = HungryCowsMod.ITEMS.register("tub_lid", () -> new Item(new Item.Properties().stacksTo(16)));
+    public static final RegistryObject<Item> SALT_SOLUTION = HungryCowsMod.ITEMS.register("salt_solution", () ->
+            new Item(new Item.Properties().stacksTo(1).craftRemainder(net.minecraft.world.item.Items.BUCKET)));
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<TubBlockEntity>> TUB_BE = BLOCK_ENTITIES.register("tub", () ->
+            net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(TubBlockEntity::new, TUB.get()).build(null));
+    public static final RegistryObject<net.minecraft.world.inventory.MenuType<TubMenu>> TUB_MENU = MENUS.register("tub", () ->
+            net.minecraftforge.common.extensions.IForgeMenuType.create(TubMenu::new));
+
     public static void init() {
+    }
+
+    public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
+        BLOCK_ENTITIES.register(bus);
+        MENUS.register(bus);
     }
 }

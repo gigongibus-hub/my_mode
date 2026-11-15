@@ -30,5 +30,15 @@
   "item.minecraft.tipped_arrow.effect.star_fungus": "Стріла грибного сяйва",
   "block.hungrycows.salt_ore": "Сольова руда",
   "item.hungrycows.rock_salt": "Рудна сіль",
-  "item.hungrycows.ground_salt_dirty": "Рудна сіль перемолена (не чиста)"
+  "item.hungrycows.ground_salt_dirty": "Рудна сіль перемолена (не чиста)",
+  "block.hungrycows.tub": "Діжка",
+  "item.hungrycows.tub_lid": "Кришка діжки",
+  "item.hungrycows.salt_solution": "Відро сольового розчину",
+  "gui.hungrycows.tub.salt": "Сіль: %s/%s",
+  "gui.hungrycows.tub.water": "Вода: %s/%s",
+  "gui.hungrycows.tub.brine": "Розчин: %s/%s",
+  "gui.hungrycows.tub.open": "Закрий кришкою, щоб почати",
+  "gui.hungrycows.tub.missing": "Треба 30 солі й 10 відер води",
+  "gui.hungrycows.tub.soaking": "Вимочується: %s%%",
+  "gui.hungrycows.tub.done": "Готово: набирай розчин відром"
 }
