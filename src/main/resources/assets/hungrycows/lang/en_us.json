@@ -43,5 +43,7 @@
   "gui.hungrycows.tub.done": "Done: take the brine with a bucket",
   "item.hungrycows.sieve": "Sieve",
   "item.hungrycows.burlap": "Burlap",
-  "item.hungrycows.ground_salt_half_purified": "Ground Rock Salt (Half-Purified)"
+  "item.hungrycows.ground_salt_half_purified": "Ground Rock Salt (Half-Purified)",
+  "block.hungrycows.salt_pan": "Salt Pan",
+  "item.hungrycows.ground_salt_roasted": "Ground Rock Salt (Roasted)"
 }

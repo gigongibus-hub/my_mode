@@ -1,0 +1,144 @@
+{
+ "textures": {
+  "salt": "hungrycows:item/salt/ground_salt_roasted",
+  "particle": "hungrycows:item/salt/ground_salt_roasted"
+ },
+ "elements": [
+  {
+   "from": [
+    3,
+    -7,
+    3
+   ],
+   "to": [
+    7,
+    -5,
+    7
+   ],
+   "faces": {
+    "up": {
+     "uv": [
+      4,
+      6,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "down": {
+     "uv": [
+      4,
+      6,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "north": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "south": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "east": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "west": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    }
+   }
+  },
+  {
+   "from": [
+    9,
+    -7,
+    3
+   ],
+   "to": [
+    13,
+    -5,
+    7
+   ],
+   "faces": {
+    "up": {
+     "uv": [
+      4,
+      6,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "down": {
+     "uv": [
+      4,
+      6,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "north": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "south": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "east": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    },
+    "west": {
+     "uv": [
+      4,
+      10,
+      12,
+      14
+     ],
+     "texture": "#salt"
+    }
+   }
+  }
+ ]
+}

@@ -43,5 +43,7 @@
   "gui.hungrycows.tub.done": "Готово: набирай розчин відром",
   "item.hungrycows.sieve": "Сито",
   "item.hungrycows.burlap": "Мішковина",
-  "item.hungrycows.ground_salt_half_purified": "Рудна сіль перемолена (недоочищена)"
+  "item.hungrycows.ground_salt_half_purified": "Рудна сіль перемолена (недоочищена)",
+  "block.hungrycows.salt_pan": "Сольова сковорода",
+  "item.hungrycows.ground_salt_roasted": "Рудна сіль перемолена (прожарена)"
 }

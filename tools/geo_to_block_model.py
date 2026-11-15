@@ -4,6 +4,7 @@
 import json, os
 
 SRC = 'tools/models_src'
+PAN_DY = -8   # сковорода на багатті — на 8 пікселів нижче своєї клітинки
 OUT = 'src/main/resources/assets/hungrycows/models/block'
 
 def faces(u, v, w, h, d, s):
@@ -18,7 +19,7 @@ def faces(u, v, w, h, d, s):
         'south': {'uv': r(u + 2 * d + w, v + d, u + 2 * d + 2 * w, v + d + h)},
     }
 
-def convert(geo_file, texture, bones=None, name=None):
+def convert(geo_file, texture, bones=None, name=None, dy=0):
     g = json.load(open(os.path.join(SRC, geo_file)))['minecraft:geometry'][0]
     s = 16.0 / g['description']['texture_width']
     elements = []
@@ -28,8 +29,8 @@ def convert(geo_file, texture, bones=None, name=None):
             (ox, oy, oz), (w, h, d) = c['origin'], c['size']
             u, v = c['uv']
             # Bedrock: вісь X дзеркальна до Java
-            frm = [8 - (ox + w), oy, oz + 8]
-            to = [8 - ox, oy + h, oz + d + 8]
+            frm = [8 - (ox + w), oy + dy, oz + 8]
+            to = [8 - ox, oy + h + dy, oz + d + 8]
             f = faces(u, v, w, h, d, s)
             for k in f: f[k]['texture'] = '#tex'
             elements.append({'from': frm, 'to': to, 'faces': f})
@@ -48,3 +49,17 @@ if __name__ == '__main__':
         json.dump({'textures': {'liquid': 'minecraft:block/water_still', 'particle': 'minecraft:block/water_still'},
                    'elements': [el]}, open(os.path.join(OUT, f'tub_liquid_{lvl}.json'), 'w'), indent=1)
     print('рідина: 10 рівнів')
+    # сковорода стоїть на багатті: модель на 8 пікс. нижче (дно над полінами багаття, висота якого 7 пікс.)
+    convert('salt_pan.geo.json', 'hungrycows:block/salt/salt_pan', None, 'salt_pan', dy=PAN_DY)
+    # купки солі в сковороді: 1–4 купки (по 5 штук), сира (недоочищена) чи прожарена
+    spots = [(3, 3), (9, 3), (3, 9), (9, 9)]
+    for kind, tex in (('raw', 'hungrycows:item/salt/ground_salt_half_purified'), ('roasted', 'hungrycows:item/salt/ground_salt_roasted')):
+        for n in range(1, 5):
+            els = []
+            for (x, z) in spots[:n]:
+                els.append({'from': [x, PAN_DY + 1, z], 'to': [x + 4, PAN_DY + 3, z + 4],
+                            'faces': {f: {'uv': [4, 6, 12, 14] if f in ('up', 'down') else [4, 10, 12, 14], 'texture': '#salt'}
+                                      for f in ('up', 'down', 'north', 'south', 'east', 'west')}})
+            json.dump({'textures': {'salt': tex, 'particle': tex}, 'elements': els},
+                      open(os.path.join(OUT, f'salt_pan_{kind}_{n}.json'), 'w'), indent=1)
+    print('купки солі: 8 моделей')

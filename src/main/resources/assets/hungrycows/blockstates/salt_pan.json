@@ -1,0 +1,81 @@
+{
+ "multipart": [
+  {
+   "apply": {
+    "model": "hungrycows:block/salt_pan"
+   }
+  },
+  {
+   "when": {
+    "piles": "1",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_1"
+   }
+  },
+  {
+   "when": {
+    "piles": "2",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_2"
+   }
+  },
+  {
+   "when": {
+    "piles": "3",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_3"
+   }
+  },
+  {
+   "when": {
+    "piles": "4",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_4"
+   }
+  },
+  {
+   "when": {
+    "piles": "1",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_1"
+   }
+  },
+  {
+   "when": {
+    "piles": "2",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_2"
+   }
+  },
+  {
+   "when": {
+    "piles": "3",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_3"
+   }
+  },
+  {
+   "when": {
+    "piles": "4",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_4"
+   }
+  }
+ ]
+}

@@ -62,6 +62,15 @@ public final class Salt {
     public static final RegistryObject<Item> GROUND_SALT_HALF_PURIFIED = HungryCowsMod.ITEMS.register("ground_salt_half_purified", () ->
             new Item(new Item.Properties()));
 
+    // 5. сольова сковорода (модель Fij) і прожарена сіль
+    public static final RegistryObject<Block> SALT_PAN = HungryCowsMod.BLOCKS.register("salt_pan", () ->
+            new SaltPanBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(2.0F).sound(SoundType.METAL).noOcclusion()));
+    public static final RegistryObject<Item> SALT_PAN_ITEM = HungryCowsMod.ITEMS.register("salt_pan", () -> new BlockItem(SALT_PAN.get(), new Item.Properties()));
+    public static final RegistryObject<Item> GROUND_SALT_ROASTED = HungryCowsMod.ITEMS.register("ground_salt_roasted", () -> new Item(new Item.Properties()));
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<net.minecraft.world.level.block.entity.BlockEntityType<SaltPanBlockEntity>> SALT_PAN_BE = BLOCK_ENTITIES.register("salt_pan", () ->
+            net.minecraft.world.level.block.entity.BlockEntityType.Builder.of(SaltPanBlockEntity::new, SALT_PAN.get()).build(null));
+
     public static void init() {
     }
 

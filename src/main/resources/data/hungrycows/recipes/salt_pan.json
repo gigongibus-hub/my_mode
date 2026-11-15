@@ -1,0 +1,20 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "S S",
+  "I I",
+  "III"
+ ],
+ "key": {
+  "S": {
+   "tag": "minecraft:wooden_slabs"
+  },
+  "I": {
+   "item": "minecraft:iron_ingot"
+  }
+ },
+ "result": {
+  "item": "hungrycows:salt_pan"
+ }
+}

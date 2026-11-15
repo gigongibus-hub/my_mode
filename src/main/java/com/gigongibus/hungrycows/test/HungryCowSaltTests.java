@@ -200,4 +200,45 @@ public class HungryCowSaltTests {
         h.assertTrue(r2.isPresent() && r2.get().assemble(g2, h.getLevel().registryAccess()).is(Salt.SIEVE.get()), "рецепт сита не працює");
         h.succeed();
     }
+
+    // 6. Сковорода на багатті: по одній до 20 → пів доби (×1000) → 20 прожареної; згасло — прогрес спадає повільно; на душ-багатті — ні
+    @GameTest(template = "arena", batch = "salt_tub", timeoutTicks = 200)
+    public static void panRoastsSalt(GameTestHelper h) {
+        BlockPos fire = new BlockPos(4, 2, 4), pan = fire.above(), fire2 = new BlockPos(10, 2, 4), pan2 = fire2.above(), soul = new BlockPos(7, 2, 10);
+        h.setBlock(fire, Blocks.CAMPFIRE);
+        h.setBlock(fire2, Blocks.CAMPFIRE);
+        h.setBlock(soul, Blocks.SOUL_CAMPFIRE);
+        h.setBlock(pan, Salt.SALT_PAN.get());
+        h.setBlock(pan2, Salt.SALT_PAN.get());
+        boolean soulOk = Salt.SALT_PAN.get().defaultBlockState().canSurvive(h.getLevel(), h.absolutePos(soul.above()));
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        for (BlockPos t : new BlockPos[]{ pan, pan2 }) for (int i = 0; i < 21; i++) use(h, t, p, new ItemStack(Salt.GROUND_SALT_HALF_PURIFIED.get(), 64), false);
+        var be = (com.gigongibus.hungrycows.salt.SaltPanBlockEntity) h.getBlockEntity(pan);
+        var be2 = (com.gigongibus.hungrycows.salt.SaltPanBlockEntity) h.getBlockEntity(pan2);
+        int piles = h.getBlockState(pan).getValue(com.gigongibus.hungrycows.salt.SaltPanBlock.PILES);
+        com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), com.gigongibus.hungrycows.WorldClock.SPEED_MAX);
+        int[] peak = { 0 };
+        // друга: 5 тіків горить (~5000), потім згасає
+        h.runAfterDelay(5, () -> {
+            peak[0] = be2.progress();
+            h.setBlock(fire2, Blocks.CAMPFIRE.defaultBlockState().setValue(net.minecraft.world.level.block.CampfireBlock.LIT, false));
+        });
+        h.runAfterDelay(199, () -> com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1));
+        h.runAtTickTime(30, () -> {
+            com.gigongibus.hungrycows.WorldClock.setSpeed(h.getLevel(), 1);
+            boolean roasted = h.getBlockState(pan).getValue(com.gigongibus.hungrycows.salt.SaltPanBlock.ROASTED);
+            int after = be2.progress();
+            use(h, pan, p, ItemStack.EMPTY, false);
+            int got = p.getInventory().countItem(Salt.GROUND_SALT_ROASTED.get());
+            p.getInventory().clearContent();
+            LOG.info("[тест] panRoastsSalt: поклала {} (купок {}), прожарилась {}, забрала прожареної {}; згасле: було {} → {}; на душ-багаття {}",
+                    20, piles, roasted, got, peak[0], after, soulOk);
+            h.setBlock(pan, Blocks.AIR); h.setBlock(pan2, Blocks.AIR); h.setBlock(fire, Blocks.AIR); h.setBlock(fire2, Blocks.AIR); h.setBlock(soul, Blocks.AIR);
+            h.assertTrue(piles == 4, "не 4 купки на 20 солі");
+            h.assertTrue(roasted && got == 20, "не 20 прожареної: " + roasted + ", " + got);
+            h.assertTrue(after < peak[0] && after > peak[0] - 25 * 1000 * 0.25 - 1, "прогрес згаслого не спадає повільно: " + peak[0] + " → " + after);
+            h.assertTrue(!soulOk, "сковорода стає на душ-багаття");
+            h.succeed();
+        });
+    }
 }
