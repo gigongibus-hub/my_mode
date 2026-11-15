@@ -115,15 +115,15 @@ public class SearchFoodGoal extends Goal {
             if (v.distanceToSqr(cow.position()) < WANDER_MIN * WANDER_MIN) {
                 BlockPos c = BlockPos.containing(v);
                 if (close == null && !searchedNear(c)) {
-                    Path cp = cow.getNavigation().createPath(c, 1);
+                    Path cp = cow.getNavigation().createPath(c, 0);   // саме туди (з точністю 1 «досяжним» було й місце за склом у кутку)
                     if (cp != null && cp.canReach()) close = c;
                 }
                 continue;
             }
             BlockPos b = BlockPos.containing(v);
             if (searchedNear(b)) continue;                         // тут уже шукала — далі
-            Path path = cow.getNavigation().createPath(b, 1);
-            if (path == null || !path.canReach()) continue;        // туди не дійти
+            Path path = cow.getNavigation().createPath(b, 0);
+            if (path == null || !path.canReach()) continue;        // туди не дійти (саме туди: з точністю 1 корова йшла в кут і стояла біля скла)
             if (!CowHome.hasRoof(cow.level(), b)) {
                 cow.tell(cow.family.name + " не бачить їжі — шукає");
                 return b;
