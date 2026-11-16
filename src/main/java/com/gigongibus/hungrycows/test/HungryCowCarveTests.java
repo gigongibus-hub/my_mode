@@ -139,6 +139,24 @@ public class HungryCowCarveTests {
         h.assertTrue(soft.carvedPixels > 0 && soft.carvedPixels <= 40, "легенько не підрізає тонко: " + soft.carvedPixels);
         h.assertTrue(hard.carvedPixels > 3 * soft.carvedPixels, "сильний удар не глибший за легенький: " + hard.carvedPixels);
         h.assertTrue(softTip <= ChiselSim.WOOD_Y + 2, "зубило провалилось у дерево: " + softTip);
+        // Fij: «проходить через пікселі» — тягну стоячe зубило збоку крізь колоду: має зупинитись біля краю
+        ChiselSim sweep = new ChiselSim(new CarveMask());
+        float sy = ChiselSim.WOOD_Y + 30;
+        sweep.place(ChiselSim.WOOD_X - 20, sy, 0, 0, 0);
+        sweep.grab(ChiselSim.WOOD_X - 20, sy);
+        for (int i = 0; i < 90; i++) { sweep.drag(ChiselSim.WOOD_X - 20 + Math.min(1, i / 30f) * 200, sy); sweep.step(1 / 60f); }
+        // Fij: «дьоргане» — притиснуте до дерева за 2 с майже не тремтить
+        ChiselSim press = new ChiselSim(new CarveMask());
+        float py0 = ChiselSim.WOOD_Y - ChiselSim.TIP - 1;
+        press.place(cx, py0, 0, 0, 0);
+        press.grab(cx, py0 - 50);
+        press.drag(cx + 3, py0 - 45);
+        float lx = press.x, ly = press.y, shake = 0;
+        for (int i = 0; i < 180; i++) { press.step(1 / 60f); if (i >= 60) shake += (float) Math.hypot(press.x - lx, press.y - ly); lx = press.x; ly = press.y; }
+        LOG.info("[тест] chiselPhysics: тягнув крізь колоду — зупинилось на x {} (колода з {}); притиснуте тремтить {} пікс. за 2 с",
+                String.format("%.1f", sweep.x), ChiselSim.WOOD_X, String.format("%.2f", shake));
+        h.assertTrue(sweep.x + ChiselSim.HALF_W <= ChiselSim.WOOD_X + 1, "пролізло крізь дерево: x " + sweep.x);
+        h.assertTrue(shake < 5, "притиснуте тремтить: " + shake);
         h.assertTrue(throwIt.thrown, "кинуте не вилетіло");
         h.assertTrue(drag.y < 90, "не йде за мишею: " + drag.y);
         h.succeed();

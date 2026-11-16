@@ -32,7 +32,8 @@ public class CarvingScreen extends Screen {
     private static final int TABLE = 0xFF3B2A1A, TABLE_TOP = 0xFF5A4028, BG = 0xFF1E1812;
     private static final float GRAIN = 0.10F, NOISE = 0.06F;   // прожилки й шум деревини
     // креслення під деревом (Fij: «що більше вирізаєш, то краще бачиш шаблон»): папір і намальована деталь (штрихування)
-    private static final int PAPER = 0xFFE6DAB8, PAPER_LINE = 0xFFCFC09A, PART = 0xFF6A5236, PART_HATCH = 0xFF8C7250;
+    // Fij: «не зрозумів, як робити форму» — коричнева деталь зливалась з деревом; тепер вона чорнилом: обвідка й густе штрихування
+    private static final int PAPER = 0xFFE6DAB8, PAPER_LINE = 0xFFCFC09A, PART = 0xFFD6C49A, INK = 0xFF1C140C;
 
     private final BlockPos pos;
     private final ChiselSim sim;
@@ -93,7 +94,9 @@ public class CarvingScreen extends Screen {
         if (img == null) return;
         for (int yy = 0; yy < CarveMask.SIZE; yy++)
             for (int xx = 0; xx < CarveMask.SIZE; xx++) {
-                int c = keep.get(xx, yy) ? ((xx + yy) % 6 < 2 ? PART_HATCH : PART) : (yy % 8 == 0 ? PAPER_LINE : PAPER);
+                boolean k = keep.get(xx, yy);
+                boolean edge = k && (!keep.get(xx - 1, yy) || !keep.get(xx + 1, yy) || !keep.get(xx, yy - 1) || !keep.get(xx, yy + 1));
+                int c = k ? (edge || (xx + yy) % 4 == 0 ? INK : PART) : (yy % 8 == 0 ? PAPER_LINE : PAPER);
                 img.setPixelRGBA(xx, yy, 0xFF000000 | (c & 255) << 16 | (c & 0xFF00) | (c >> 16 & 255));
             }
         paperTex.upload();

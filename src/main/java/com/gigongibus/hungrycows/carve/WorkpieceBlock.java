@@ -99,7 +99,7 @@ public class WorkpieceBlock extends BaseEntityBlock {
     public static ItemStack finish(Level level, WorkpieceBlockEntity be) {
         if (be.mask().untouched()) return new ItemStack(be.log());
         if (be.blueprint() instanceof BlueprintItem bp && level.getServer() != null) {
-            float q = Carving.quality(be.mask().match(CarveTemplates.keep(level.getServer(), bp.template)));
+            float q = Carving.quality(be.mask().match(CarveTemplates.keep(level.getServer(), bp.template), Carving.EDGE_TOLERANCE));
             if (q >= 0) return CarvedPartItem.withQuality(new ItemStack(bp.result.get()), q);
         }
         return new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED);

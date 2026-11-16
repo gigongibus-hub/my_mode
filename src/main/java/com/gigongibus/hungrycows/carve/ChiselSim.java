@@ -22,21 +22,25 @@ public class ChiselSim {
     public static final float MASS = 1, INERTIA = MASS * (120 * 120 + 18 * 18) / 12f;
     public static final float GRAVITY = 900;                        // пікс/с²
     // Fij (16.11): «усе занадто різко» — було 900 / 30 / 60000 / 1,0
-    public static final float GRAB_K = 450, GRAB_DAMP = 26;         // пружина й гасник «рука → зубило» (м'якше — плавніше йде за рукою)
+    // Fij (16.11, ще раз): «зубило дьоргане» — гасник 26 був замалий (перегойдувалось); 46 ≈ без перегойдування
+    public static final float GRAB_K = 450, GRAB_DAMP = 46;         // пружина й гасник «рука → зубило»
     public static final float MAX_GRAB_ACC = 20000;                 // щоб не рвало кудись у безмежність
     public static final float AIR_DRAG = 0.4f, SPIN_DRAG = 1.8f;    // опір повітря (за секунду)
-    public static final float HELD_SPIN_DRAG = 2.2f;                // у руці хитається й швидше заспокоюється (легше прицілитися)
+    public static final float HELD_SPIN_DRAG = 6f;                  // у руці гойдається й швидко заспокоюється (було 2,2)
     public static final float SCROLL_SPIN = 5f;                     // коліщатко: рад/с за один «клік»
     // Fij (16.11): спершу «занадто м'яко» (було 160 / 0,025 / 14), потім «не можна обережно підрізати» (було 260 / 0,01)
     public static final float CUT_MIN_SPEED = 60;                   // повільніше вздовж леза — лише стукає, не ріже
     public static final float CUT_DEPTH_PER_SPEED = 0.008f;         // глибина зрізу на кожен пікс/с понад поріг (легенько — 1 пікс.)
-    public static final int CUT_GAP_SUBSTEPS = 8 * 3;             // між зрізами щонайменше 0,05 с: тиснеш повільно — стругає потроху
+    public static final float CUT_GAP = 0.05f;                      // між зрізами щонайменше 0,05 с: тиснеш повільно — стругає потроху
     public static final float CUT_MAX_DEPTH = 7;                    // найглибший шматок за удар
     public static final float CUT_SPEED_LOSS = 0.9f;                // після зрізу лишається 10% швидкості — застрягає в дереві
     public static final float RESTITUTION = 0.25f, FRICTION = 0.35f;// відскок і тертя об дерево/стіл
     public static final float START_X = WORLD_W - 72;                // де лежить зубило, коли відкрив вікно
-    public static final int SUBSTEPS = 8;
-    public static final int HIT_GAP_SUBSTEPS = SUBSTEPS * 6;        // зрізи ближче 0,1 с — той самий удар
+    // Fij: «часто проходить через пікселі» — за під-крок точка зубила рухалась до 2 пікс. і перескакувала тонке дерево
+    public static final int SUBSTEPS = 8, MAX_SUBSTEPS = 96;        // під-кроки: щонайменше 8, швидко — більше
+    public static final float MAX_MOVE = 0.4f;                      // за під-крок жодна точка зубила не рухається далі (пікс.)
+    public static final float HIT_GAP = 0.1f;                       // зрізи ближче 0,1 с — той самий удар
+    public static final int PUSH_SEARCH = 6;                        // з дерева виштовхує до найближчої порожнечі, шукає до 6 пікс.
     public static final float MAX_DT = 1 / 30f;
 
     public final CarveMask mask;
@@ -46,8 +50,8 @@ public class ChiselSim {
     public boolean thrown;
     public int carvedPixels;                    // скільки вибито за цей раз (для тестів)
     public int strikes;                          // скільки ударів, що вибили дерево (знос зубила: −1 за удар, Fij)
-    private int cutGap;                         // зачекати між зрізами (стругання)
-    private int cutCooldown;                    // один удар — один знос, навіть якщо ріже кілька під-кроків
+    private float cutGap;                       // зачекати між зрізами (стругання), с
+    private float cutCooldown;                  // с: один удар — один знос, навіть якщо ріже кілька під-кроків
     public final List<float[]> chips = new ArrayList<>();   // стружка: x, y, vx, vy, життя, відтінок
     private final Random rnd = new Random();
     private final float[][] contour;            // точки обрису (u, v, вістря?)
@@ -58,9 +62,9 @@ public class ChiselSim {
         y = WORLD_H - HALF_W - 0.5f;
         angle = (float) (Math.PI / 2);
         List<float[]> pts = new ArrayList<>();
-        for (float u = -HALF_W; u <= HALF_W; u += 2) pts.add(new float[]{ u, TIP, 1 });          // вістря
-        for (float v = TOP; v < TIP; v += 4) { pts.add(new float[]{ -HALF_W, v, 0 }); pts.add(new float[]{ HALF_W, v, 0 }); }
-        for (float u = -HALF_W; u <= HALF_W; u += 3) pts.add(new float[]{ u, TOP, 0 });
+        for (float u = -HALF_W; u <= HALF_W; u += 1) pts.add(new float[]{ u, TIP, 1 });          // вістря (кожен піксель)
+        for (float v = TOP; v < TIP; v += 1) { pts.add(new float[]{ -HALF_W, v, 0 }); pts.add(new float[]{ HALF_W, v, 0 }); }
+        for (float u = -HALF_W; u <= HALF_W; u += 1.5f) pts.add(new float[]{ u, TOP, 0 });
         contour = pts.toArray(new float[0][]);
     }
 
@@ -118,8 +122,11 @@ public class ChiselSim {
     public void step(float dt) {
         if (thrown) return;
         dt = Math.min(dt, MAX_DT);
-        float h = dt / SUBSTEPS;
-        for (int i = 0; i < SUBSTEPS; i++) sub(h);
+        float reach = Math.max(Math.abs(TOP), TIP) + HALF_W;         // найдальша точка від центру мас
+        float fast = (float) Math.hypot(vx, vy) + Math.abs(omega) * reach + (held ? (float) Math.hypot(mouseX - x, mouseY - y) * 20 : 0);
+        int n = Math.max(SUBSTEPS, Math.min(MAX_SUBSTEPS, (int) Math.ceil(fast * dt / MAX_MOVE)));
+        float h = dt / n;
+        for (int i = 0; i < n; i++) sub(h);
         for (int i = chips.size() - 1; i >= 0; i--) {   // стружка падає й підстрибує
             float[] c = chips.get(i);
             c[3] += GRAVITY * dt;
@@ -133,7 +140,8 @@ public class ChiselSim {
     }
 
     private void sub(float h) {
-        if (cutCooldown > 0) cutCooldown--;
+        if (cutCooldown > 0) cutCooldown -= h;
+        if (cutGap > 0) cutGap -= h;
         // рука: пружина з гасником тягне точку хвату до курсора
         if (held) {
             float[] g = toWorld(grabU, grabV);
@@ -155,13 +163,25 @@ public class ChiselSim {
         vx *= 1 - AIR_DRAG * h;
         vy *= 1 - AIR_DRAG * h;
         omega *= 1 - SPIN_DRAG * h;
+        float px = x, py = y, pa = angle;
+        boolean wasInside = penetration() > 0;
         x += vx * h;
         y += vy * h;
         angle += omega * h;
-        collide();
+        collide(px, py, pa, wasInside);
     }
 
-    private void collide() {
+    /** Скільки точок обрису в дереві чи столі */
+    private int penetration() {
+        int n = 0;
+        for (float[] p : contour) {
+            float[] w = toWorld(p[0], p[1]);
+            if (solid(w[0], w[1])) n++;
+        }
+        return n;
+    }
+
+    private void collide(float px, float py, float pa, boolean wasInside) {
         float c = (float) Math.cos(angle), s = (float) Math.sin(angle);
         float axisX = -s, axisY = c;                 // напрям від ручки до вістря
         // 1) вістря в дереві й швидко вздовж леза — зріз
@@ -174,32 +194,34 @@ public class ChiselSim {
             float pvx = vx - omega * ry, pvy = vy + omega * rx;
             bestSpeed = Math.max(bestSpeed, pvx * axisX + pvy * axisY);
         }
-        if (cutGap > 0) cutGap--;
         if (bestSpeed > CUT_MIN_SPEED && cutGap <= 0) {
             float depth = Math.min(CUT_MAX_DEPTH, (bestSpeed - CUT_MIN_SPEED) * CUT_DEPTH_PER_SPEED + 1);
             int removed = cut(depth);
             if (removed > 0) {
                 // знос: новий удар — лише після перерви 0,1 с без зрізів; стругання поспіль — один удар
                 if (cutCooldown <= 0) strikes++;
-                cutCooldown = HIT_GAP_SUBSTEPS;
-                cutGap = CUT_GAP_SUBSTEPS;
+                cutCooldown = HIT_GAP;
+                cutGap = CUT_GAP;
                 float along = vx * axisX + vy * axisY;
                 vx -= axisX * along * CUT_SPEED_LOSS;
                 vy -= axisY * along * CUT_SPEED_LOSS;
             }
         }
-        // 2) будь-яка точка в дереві чи столі — відштовхнути й відскочити
+        // 2) будь-яка точка в дереві чи столі — відскок і виштовхування в бік найближчої порожнечі
+        //    (раніше: сусіди за 2 пікс., а глибше — завжди вгору, і кожна точка штовхала по 0,5 — зубило смикалось і пролазило крізь дерево)
+        float pushX = 0, pushY = 0, deepest = 0;
+        int inside = 0;
         for (float[] p : contour) {
             float[] w = toWorld(p[0], p[1]);
             if (!solid(w[0], w[1])) continue;
-            float nx, ny;
-            if (w[1] >= WORLD_H) { nx = 0; ny = -1; }
-            else {
-                nx = (solid(w[0] - 2, w[1]) ? 1 : 0) - (solid(w[0] + 2, w[1]) ? 1 : 0);
-                ny = (solid(w[0], w[1] - 2) ? 1 : 0) - (solid(w[0], w[1] + 2) ? 1 : 0);
-                float l = (float) Math.hypot(nx, ny);
-                if (l < 0.01f) { nx = 0; ny = -1; } else { nx /= l; ny /= l; }
-            }
+            float nx = 0, ny = -1, depth = 1;
+            if (w[1] < WORLD_H) {
+                float[] out = escape(w[0], w[1]);
+                nx = out[0]; ny = out[1]; depth = out[2];
+            } else depth = w[1] - WORLD_H + 1;
+            inside++;
+            pushX += nx; pushY += ny;
+            deepest = Math.max(deepest, depth);
             float rx = w[0] - x, ry = w[1] - y;
             float pvx = vx - omega * ry, pvy = vy + omega * rx;
             float vn = pvx * nx + pvy * ny;
@@ -212,9 +234,44 @@ public class ChiselSim {
                 vy += (j * ny + jt * ty) / MASS;
                 omega += (rn * j + (rx * ty - ry * tx) * jt) / INERTIA;
             }
-            x += nx * 0.5f;      // виштовхнути з дерева
-            y += ny * 0.5f;
         }
+        if (inside == 0) return;
+        if (!wasInside) {
+            // Fij: «проходить через пікселі» — дерево тверде: крок, що завів зубило в дерево (і лезо не вирізало), скасовується;
+            // по черзі пробує лишити хоч частину руху — так зубило ковзає вздовж дерева, але не входить у нього
+            float nx = x, ny = y, na = angle;
+            float[][] tries = { { px, ny, na }, { nx, py, na }, { nx, ny, pa }, { px, ny, pa }, { nx, py, pa }, { px, py, pa } };
+            for (float[] t : tries) {
+                x = t[0]; y = t[1]; angle = t[2];
+                if (penetration() == 0) return;
+            }
+            return;
+        }
+        // уже було в дереві (поклали так, щойно вирізане поруч) — легенько виштовхнути в бік найближчої порожнечі
+        float l = (float) Math.hypot(pushX, pushY);
+        if (l < 0.01f) { pushX = 0; pushY = -1; l = 1; }
+        float k = Math.min(deepest, 2f) * 0.5f / l;
+        x += pushX * k;
+        y += pushY * k;
+    }
+
+    /** Найближча порожнеча від точки в дереві: напрям (x, y) і відстань; не знайшло — угору */
+    private float[] escape(float wx, float wy) {
+        for (int d = 1; d <= PUSH_SEARCH; d++) {
+            float sx = 0, sy = 0;
+            int found = 0;
+            for (int i = 0; i < 16; i++) {
+                double a = i * Math.PI / 8;
+                float dx = (float) Math.cos(a), dy = (float) Math.sin(a);
+                if (!solid(wx + dx * d, wy + dy * d)) { sx += dx; sy += dy; found++; }
+            }
+            if (found > 0) {
+                float l = (float) Math.hypot(sx, sy);
+                if (l < 0.01f) return new float[]{ 0, -1, d };
+                return new float[]{ sx / l, sy / l, d };
+            }
+        }
+        return new float[]{ 0, -1, PUSH_SEARCH };
     }
 
     /** Вибити прямокутник під вістрям: ширина леза × глибина вздовж леза */

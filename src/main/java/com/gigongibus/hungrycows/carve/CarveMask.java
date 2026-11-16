@@ -55,10 +55,31 @@ public final class CarveMask {
 
     /** Схожість на шаблон (keep — що мало лишитись): спільне / разом (1 — точно, 0 — нічого спільного) */
     public float match(CarveMask keep) {
+        return match(keep, 0);
+    }
+
+    /** Схожість, але пікселі ближче tol до межі шаблону не рахуються (лезо широке — ідеально рівно не виріже ніхто) */
+    public float match(CarveMask keep, int tol) {
         BitSet and = (BitSet) solid.clone();
         and.and(keep.solid);
         BitSet or = (BitSet) solid.clone();
         or.or(keep.solid);
+        if (tol > 0) {
+            BitSet edge = new BitSet(SIZE * SIZE);
+            for (int y = 0; y < SIZE; y++)
+                for (int x = 0; x < SIZE; x++) {
+                    boolean k = keep.get(x, y);
+                    search:
+                    for (int dy = -tol; dy <= tol; dy++)
+                        for (int dx = -tol; dx <= tol; dx++) {
+                            int xx = x + dx, yy = y + dy;
+                            if (xx < 0 || yy < 0 || xx >= SIZE || yy >= SIZE) continue;
+                            if (keep.get(xx, yy) != k) { edge.set(y * SIZE + x); break search; }
+                        }
+                }
+            and.andNot(edge);
+            or.andNot(edge);
+        }
         int u = or.cardinality();
         return u == 0 ? 0 : and.cardinality() / (float) u;
     }

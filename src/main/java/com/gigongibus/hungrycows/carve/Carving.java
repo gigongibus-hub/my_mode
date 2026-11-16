@@ -40,6 +40,8 @@ public final class Carving {
     public static final int STICKS_WHEN_RUINED = 2;       // зламав почату заготовку / вийшло ні на що не схоже — палиці (Fij «поки просто палки»)
     public static final float MATCH_MIN = 0.55F;          // схожість на шаблон нижче — палиці (схожість = спільне / разом)
     public static final float MATCH_PERFECT = 0.95F;      // від цієї — найкраща якість (1,0)
+    // Fij (16.11): «ідеальну форму практично неможливо зробити» — пікселі ближче 2 до краю деталі не рахуються
+    public static final int EDGE_TOLERANCE = 2;
     public static final int MAX_STRIKES_PER_PACKET = 200; // більше ударів за секунду гравець не зробить — не вірити
 
     public static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES =
