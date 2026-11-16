@@ -722,6 +722,10 @@ Ruminate, Investigate, MotherCalf працюють лише з мозком.
   зі станом корів.
 - Нестабільне у свіжому світі: cowsSleepInBarn / cowsSleepInBigBarn / cowSleepsInBarnAlone — приблизно в 3 прогонах з 4 одна
   корова не заснула в хліві за 2,5 хв (і з обходом, і без — не від нього). Причину ще не досліджено.
+- Сайт Forge (maven.minecraftforge.net) 16.11 майже не відповідав → «Plugin net.minecraftforge.gradle was not found» (і в Fij, і тут).
+  ForgeGradle тепер точна версія `6.0.54` (діапазон `[6.0,6.2)` щодоби перепитував сайт), у `gradle.properties` — чекати до 2 хв.
+  Решта залежностей Forge теж «з діапазоном» (log4j 2.11.+) — коли сайт лежить, допомагає лише `--offline` (у IntelliJ — кнопка
+  «Toggle Offline Mode» у вкладці Gradle), бо все вже скачано.
 - Запуск: `./gradlew runGameTestServer -Porg.gradle.java.installations.paths=/usr/lib/jvm/java-17-openjdk-amd64`
   (потрібна Java 17: `apt-get install -y openjdk-17-jdk-headless`; українське в журналі — `JDK_JAVA_OPTIONS="-Dstdout.encoding=UTF-8"`).
   Maven Central іноді відповідає 429 — повторити. Тести нестабільні? Запускати кілька разів поспіль.

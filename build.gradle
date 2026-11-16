@@ -2,7 +2,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'net.minecraftforge.gradle' version '6.0.54'   // точна версія: з діапазоном Gradle щодоби перепитує сайт Forge, а він буває недоступний (16.11)
 }
 
 version = mod_version
