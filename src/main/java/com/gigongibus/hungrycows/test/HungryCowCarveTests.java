@@ -135,7 +135,9 @@ public class HungryCowCarveTests {
                 + "кинув — за {} кадрів; тягнув угору на 60 — центр з 100 до {}", hard.carvedPixels, hard.chips.size(), soft.carvedPixels,
                 String.format("%.1f", softTip), ChiselSim.WOOD_Y, t, String.format("%.1f", drag.y));
         h.assertTrue(hard.carvedPixels > 50, "сильний удар не ріже: " + hard.carvedPixels);
-        h.assertTrue(soft.carvedPixels == 0, "легенько теж ріже: " + soft.carvedPixels);
+        // Fij (16.11): «не можна обережно підрізати» — легенький дотик знімає тонкий рядок, сильний — набагато більше
+        h.assertTrue(soft.carvedPixels > 0 && soft.carvedPixels <= 40, "легенько не підрізає тонко: " + soft.carvedPixels);
+        h.assertTrue(hard.carvedPixels > 3 * soft.carvedPixels, "сильний удар не глибший за легенький: " + hard.carvedPixels);
         h.assertTrue(softTip <= ChiselSim.WOOD_Y + 2, "зубило провалилось у дерево: " + softTip);
         h.assertTrue(throwIt.thrown, "кинуте не вилетіло");
         h.assertTrue(drag.y < 90, "не йде за мишею: " + drag.y);

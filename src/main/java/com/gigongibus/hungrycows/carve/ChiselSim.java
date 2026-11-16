@@ -21,14 +21,16 @@ public class ChiselSim {
     public static final float HALF_W = 9, TOP = -70, TIP = 49;      // від центру мас: півширина, верх ручки, вістря
     public static final float MASS = 1, INERTIA = MASS * (120 * 120 + 18 * 18) / 12f;
     public static final float GRAVITY = 900;                        // пікс/с²
-    public static final float GRAB_K = 900, GRAB_DAMP = 30;         // пружина й гасник «рука → зубило»
-    public static final float MAX_GRAB_ACC = 60000;                 // щоб не рвало кудись у безмежність
+    // Fij (16.11): «усе занадто різко» — було 900 / 30 / 60000 / 1,0
+    public static final float GRAB_K = 450, GRAB_DAMP = 26;         // пружина й гасник «рука → зубило» (м'якше — плавніше йде за рукою)
+    public static final float MAX_GRAB_ACC = 20000;                 // щоб не рвало кудись у безмежність
     public static final float AIR_DRAG = 0.4f, SPIN_DRAG = 1.8f;    // опір повітря (за секунду)
-    public static final float HELD_SPIN_DRAG = 1.0f;                // у руці хитається й потроху заспокоюється
+    public static final float HELD_SPIN_DRAG = 2.2f;                // у руці хитається й швидше заспокоюється (легше прицілитися)
     public static final float SCROLL_SPIN = 5f;                     // коліщатко: рад/с за один «клік»
-    // Fij (16.11): «зубило занадто м'яко проходить через дерево» — було 160 / 0,025 / 14 / 0,55
-    public static final float CUT_MIN_SPEED = 260;                  // повільніше вздовж леза — лише стукає, не ріже
-    public static final float CUT_DEPTH_PER_SPEED = 0.01f;          // глибина зрізу на кожен пікс/с понад поріг
+    // Fij (16.11): спершу «занадто м'яко» (було 160 / 0,025 / 14), потім «не можна обережно підрізати» (було 260 / 0,01)
+    public static final float CUT_MIN_SPEED = 60;                   // повільніше вздовж леза — лише стукає, не ріже
+    public static final float CUT_DEPTH_PER_SPEED = 0.008f;         // глибина зрізу на кожен пікс/с понад поріг (легенько — 1 пікс.)
+    public static final int CUT_GAP_SUBSTEPS = 8 * 3;             // між зрізами щонайменше 0,05 с: тиснеш повільно — стругає потроху
     public static final float CUT_MAX_DEPTH = 7;                    // найглибший шматок за удар
     public static final float CUT_SPEED_LOSS = 0.9f;                // після зрізу лишається 10% швидкості — застрягає в дереві
     public static final float RESTITUTION = 0.25f, FRICTION = 0.35f;// відскок і тертя об дерево/стіл
@@ -44,6 +46,7 @@ public class ChiselSim {
     public boolean thrown;
     public int carvedPixels;                    // скільки вибито за цей раз (для тестів)
     public int strikes;                          // скільки ударів, що вибили дерево (знос зубила: −1 за удар, Fij)
+    private int cutGap;                         // зачекати між зрізами (стругання)
     private int cutCooldown;                    // один удар — один знос, навіть якщо ріже кілька під-кроків
     public final List<float[]> chips = new ArrayList<>();   // стружка: x, y, vx, vy, життя, відтінок
     private final Random rnd = new Random();
@@ -171,11 +174,15 @@ public class ChiselSim {
             float pvx = vx - omega * ry, pvy = vy + omega * rx;
             bestSpeed = Math.max(bestSpeed, pvx * axisX + pvy * axisY);
         }
-        if (bestSpeed > CUT_MIN_SPEED) {
+        if (cutGap > 0) cutGap--;
+        if (bestSpeed > CUT_MIN_SPEED && cutGap <= 0) {
             float depth = Math.min(CUT_MAX_DEPTH, (bestSpeed - CUT_MIN_SPEED) * CUT_DEPTH_PER_SPEED + 1);
             int removed = cut(depth);
-            if (removed > 0 && cutCooldown <= 0) { strikes++; cutCooldown = HIT_GAP_SUBSTEPS; }
             if (removed > 0) {
+                // знос: новий удар — лише після перерви 0,1 с без зрізів; стругання поспіль — один удар
+                if (cutCooldown <= 0) strikes++;
+                cutCooldown = HIT_GAP_SUBSTEPS;
+                cutGap = CUT_GAP_SUBSTEPS;
                 float along = vx * axisX + vy * axisY;
                 vx -= axisX * along * CUT_SPEED_LOSS;
                 vy -= axisY * along * CUT_SPEED_LOSS;
@@ -213,7 +220,7 @@ public class ChiselSim {
     /** Вибити прямокутник під вістрям: ширина леза × глибина вздовж леза */
     private int cut(float depth) {
         int removed = 0;
-        for (float v = TIP - 1; v <= TIP + depth; v += 0.5f) {
+        for (float v = TIP - 0.5f; v < TIP + depth - 0.5f; v += 0.5f) {   // depth 1 — рівно один рядок пікселів
             for (float u = -HALF_W; u <= HALF_W; u += 0.5f) {
                 float[] w = toWorld(u, v);
                 if (w[1] >= WORLD_H) continue;
