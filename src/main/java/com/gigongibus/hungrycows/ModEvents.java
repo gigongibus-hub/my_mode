@@ -45,6 +45,7 @@ public class ModEvents {
             event.accept(ModItems.BRAIN_STICK);
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL);
             event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_ITEM);
             event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_LID);
             event.accept(com.gigongibus.hungrycows.salt.Salt.SIEVE);
@@ -89,7 +90,9 @@ public class ModEvents {
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.HUNGRY_COW.get(), com.gigongibus.hungrycows.client.HungryCowDispatchRenderer::new);   // бик — модель Fij
             event.registerBlockEntityRenderer(com.gigongibus.hungrycows.salt.Salt.WICKER_BUNDLE_BE.get(),
-                    com.gigongibus.hungrycows.client.WickerBundleRenderer::new);   // пучки лози, розкидані по блоку
+                    com.gigongibus.hungrycows.client.WickerBundleRenderer::new);
+            event.registerBlockEntityRenderer(com.gigongibus.hungrycows.carve.Carving.WORKPIECE_BE.get(),
+                    com.gigongibus.hungrycows.client.WorkpieceRenderer::new);   // колода на верстаку   // пучки лози, розкидані по блоку
         }
 
         // Предмет «Сіно» виглядає так, як блок, що з нього поставиться (стадія, стан, нитки) — інакше всі були однакові (Fij)

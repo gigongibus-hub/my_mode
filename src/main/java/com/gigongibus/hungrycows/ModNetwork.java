@@ -18,5 +18,10 @@ public final class ModNetwork {
         int id = 0;
         CHANNEL.registerMessage(id++, OpenCowBookPacket.class,
                 OpenCowBookPacket::encode, OpenCowBookPacket::decode, OpenCowBookPacket::handle);
+        // ремесло (Fij): вікно різьблення
+        CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.carve.OpenCarvingPacket.class, com.gigongibus.hungrycows.carve.OpenCarvingPacket::encode,
+                com.gigongibus.hungrycows.carve.OpenCarvingPacket::decode, com.gigongibus.hungrycows.carve.OpenCarvingPacket::handle);
+        CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.carve.CarveUpdatePacket.class, com.gigongibus.hungrycows.carve.CarveUpdatePacket::encode,
+                com.gigongibus.hungrycows.carve.CarveUpdatePacket::decode, com.gigongibus.hungrycows.carve.CarveUpdatePacket::handle);
     }
 }

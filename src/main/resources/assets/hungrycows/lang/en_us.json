@@ -63,5 +63,7 @@
   "gui.hungrycows.basket.no_air": "The water has nowhere to drip…",
   "gui.hungrycows.basket.missing": "The basket is still half empty…",
   "gui.hungrycows.basket.dripping": "Dripping: %s%%",
-  "gui.hungrycows.basket.done": "The salt has hardened…"
+  "gui.hungrycows.basket.done": "The salt has hardened…",
+  "item.hungrycows.chisel": "Chisel",
+  "block.hungrycows.workpiece": "Workpiece"
 }

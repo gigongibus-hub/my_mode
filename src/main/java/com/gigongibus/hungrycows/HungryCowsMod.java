@@ -21,6 +21,8 @@ public class HungryCowsMod {
         ModItems.init();
         com.gigongibus.hungrycows.salt.Salt.init();                    // сіль (план Fij)
         com.gigongibus.hungrycows.salt.Salt.register(modEventBus);
+        com.gigongibus.hungrycows.carve.Carving.init();               // ремесло: зубило й заготовка (Fij)
+        com.gigongibus.hungrycows.carve.Carving.register(modEventBus);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BloodPaperRecipe.SERIALIZERS.register(modEventBus);
