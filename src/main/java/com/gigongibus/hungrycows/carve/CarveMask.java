@@ -53,6 +53,25 @@ public final class CarveMask {
         return solidCount() == SIZE * SIZE;
     }
 
+    /** Схожість на шаблон (keep — що мало лишитись): спільне / разом (1 — точно, 0 — нічого спільного) */
+    public float match(CarveMask keep) {
+        BitSet and = (BitSet) solid.clone();
+        and.and(keep.solid);
+        BitSet or = (BitSet) solid.clone();
+        or.or(keep.solid);
+        int u = or.cardinality();
+        return u == 0 ? 0 : and.cardinality() / (float) u;
+    }
+
+    /** Порожня маска (для шаблонів) */
+    public static CarveMask empty() {
+        return new CarveMask(new BitSet(SIZE * SIZE));
+    }
+
+    public void set(int x, int y) {
+        if (x >= 0 && y >= 0 && x < SIZE && y < SIZE) solid.set(y * SIZE + x);
+    }
+
     /** Лише вибивати, не «доростити»: лишається те, що є і тут, і в тому, що прислав гравець */
     public void keepOnly(CarveMask other) {
         solid.and(other.solid);

@@ -16,6 +16,7 @@ public class CowMilk {
     public static final int MAX = 100;                   // повна шкала (одразу після пологів)
     public static final int BUCKET_COST = 25;            // скільки забирає одне відро
     public static final int FRIEND_BUCKET_COST = 10;     // скільки забирає відро з ефектом «Друг корови»
+    public static final int MUG_COST = 6;                // дерев'яна кружка — приблизно чверть відра (ремесло)
     public static final int REGEN_SECONDS = 24;          // +1 одиниця кожні 24 с = 100 одиниць за 2 ігрові доби
     public static final int CALF_DRINK = 5;
     public static final double THIRST_MILK_SLOWDOWN = 0.5; // дуже хоче пити — молоко відновлюється вдвічі повільніше              // скільки випиває теля за один раз (≈50 за 2 доби)

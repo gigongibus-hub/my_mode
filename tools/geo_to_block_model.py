@@ -114,3 +114,64 @@ if __name__ == '__main__':
     item_from_block('salt_pan', dy=2)
     item_from_block('salt_basket', dy=-1)
     print('предмети: 4 моделі')
+
+
+# ---------- кружка Fij (16.11): розгортка «по гранях» (uv + uv_size для кожної грані), три кістки ----------
+MUG_SHIFT = (0, 5.5, -1)    # підняти й посунути, щоб маленька кружка (4×5 пікс.) була посередині предмета
+MUG_DISPLAY = {
+    'gui': {'rotation': [30, 45, 0], 'translation': [0, 0, 0], 'scale': [2.2, 2.2, 2.2]},
+    'ground': {'rotation': [0, 0, 0], 'translation': [0, 2, 0], 'scale': [1, 1, 1]},
+    'fixed': {'rotation': [0, 180, 0], 'translation': [0, 0, 0], 'scale': [2, 2, 2]},
+    'head': {'rotation': [0, 0, 0], 'translation': [0, 0, 0], 'scale': [1.5, 1.5, 1.5]},
+    'thirdperson_righthand': {'rotation': [0, 90, 0], 'translation': [0, 1, 1], 'scale': [1, 1, 1]},
+    'thirdperson_lefthand': {'rotation': [0, 90, 0], 'translation': [0, 1, 1], 'scale': [1, 1, 1]},
+    'firstperson_righthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]},
+    'firstperson_lefthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]}}
+FLIP = {'east': 'west', 'west': 'east'}   # Bedrock X дзеркальна до Java
+
+
+def mug_elements(bones):
+    g = json.load(open(os.path.join(SRC, 'mug.geo.json')))['minecraft:geometry'][0]
+    s = 16.0 / g['description']['texture_width']
+    out = []
+    for b in g['bones']:
+        if b['name'] not in bones: continue
+        for c in b.get('cubes', []):
+            (ox, oy, oz), (w, h, d) = c['origin'], c['size']
+            frm = [8 - (ox + w) + MUG_SHIFT[0], oy + MUG_SHIFT[1], oz + 8 + MUG_SHIFT[2]]
+            to = [8 - ox + MUG_SHIFT[0], oy + h + MUG_SHIFT[1], oz + d + 8 + MUG_SHIFT[2]]
+            faces = {}
+            for name, f in c['uv'].items():
+                (u, v), (uw, uh) = f['uv'], f['uv_size']
+                faces[FLIP.get(name, name)] = {'uv': [round(u * s, 4), round(v * s, 4), round((u + uw) * s, 4), round((v + uh) * s, 4)],
+                                               'texture': '#tex'}
+            out.append({'from': frm, 'to': to, 'faces': faces})
+    return out
+
+
+def mug_model(name, bones, liquid=None):
+    els = mug_elements(bones)
+    tex = {'tex': 'hungrycows:item/carve/mug_wood', 'particle': 'hungrycows:item/carve/mug_wood'}
+    if liquid:   # рідина всередині, трохи нижче краю; колір — з коду (вода синя, молоко біле)
+        tex['liquid'] = 'minecraft:block/white_wool'
+        y = 4.5 + MUG_SHIFT[1]
+        els.append({'from': [6.5, y, 6.5 + MUG_SHIFT[2]], 'to': [9.5, y, 9.5 + MUG_SHIFT[2]],
+                    'faces': {'up': {'uv': [0, 0, 3, 3], 'texture': '#liquid', 'tintindex': 0}}})
+    json.dump({'textures': tex, 'elements': els, 'display': MUG_DISPLAY}, open(os.path.join(ITEM_OUT, name + '.json'), 'w'), indent=1)
+    print(name, len(els), 'брусків')
+
+
+if __name__ == '__main__':
+    ALL = ['kruzka', 'vuha_dla_kruzky', 'rucka']
+    mug_model('mug_body', ['kruzka'])
+    mug_model('mug_ears', ['vuha_dla_kruzky'])
+    mug_model('mug_handle', ['rucka'])
+    mug_model('mug_water', ALL, liquid=True)
+    mug_model('mug_milk', ALL, liquid=True)
+    mug_model('mug_empty', ALL)
+    # головна модель кружки: порожня + заміна за рідиною (властивість hungrycows:drink: 0,5 вода, 1 молоко)
+    m = json.load(open(os.path.join(ITEM_OUT, 'mug_empty.json')))
+    m['overrides'] = [{'predicate': {'hungrycows:drink': 0.5}, 'model': 'hungrycows:item/mug_water'},
+                      {'predicate': {'hungrycows:drink': 1.0}, 'model': 'hungrycows:item/mug_milk'}]
+    json.dump(m, open(os.path.join(ITEM_OUT, 'mug.json'), 'w'), indent=1)
+    print('mug + заміни за рідиною')

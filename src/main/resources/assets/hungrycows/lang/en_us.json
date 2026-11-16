@@ -65,5 +65,14 @@
   "gui.hungrycows.basket.dripping": "Dripping: %s%%",
   "gui.hungrycows.basket.done": "The salt has hardened…",
   "item.hungrycows.chisel": "Chisel",
-  "block.hungrycows.workpiece": "Workpiece"
+  "block.hungrycows.workpiece": "Workpiece",
+  "item.hungrycows.blueprint_mug_body": "Blueprint: Mug Blank",
+  "item.hungrycows.blueprint_mug_ears": "Blueprint: Handle Lugs",
+  "item.hungrycows.blueprint_mug_handle": "Blueprint: Mug Handle",
+  "item.hungrycows.mug_body": "Mug Blank",
+  "item.hungrycows.mug_ears": "Handle Lugs",
+  "item.hungrycows.mug_handle": "Mug Handle",
+  "item.hungrycows.mug": "Wooden Mug",
+  "item.hungrycows.mug.water": "Wooden Mug of Water",
+  "item.hungrycows.mug.milk": "Wooden Mug of Milk"
 }

@@ -31,25 +31,31 @@ public class CarvingScreen extends Screen {
     private static final int SEND_EVERY_MS = 1000;     // вирізане — на сервер раз на секунду
     private static final int TABLE = 0xFF3B2A1A, TABLE_TOP = 0xFF5A4028, BG = 0xFF1E1812;
     private static final float GRAIN = 0.10F, NOISE = 0.06F;   // прожилки й шум деревини
+    // креслення під деревом (Fij: «що більше вирізаєш, то краще бачиш шаблон»): папір і намальована деталь (штрихування)
+    private static final int PAPER = 0xFFE6DAB8, PAPER_LINE = 0xFFCFC09A, PART = 0xFF6A5236, PART_HATCH = 0xFF8C7250;
 
     private final BlockPos pos;
     private final ChiselSim sim;
     private final int woodColor;
-    private final ResourceLocation woodTexId;
-    private DynamicTexture woodTex;
+    private final ResourceLocation woodTexId, paperTexId;
+    private final CarveMask keep;
+    private DynamicTexture woodTex, paperTex;
+    private int sentStrikes = 0;
     private boolean woodDirty = true, unsent = false;
     private int lastCarved = 0;
     private long lastSend = System.currentTimeMillis(), lastFrame = System.nanoTime();
     private float scale, ox, oy;
     private final float[] grain = new float[CarveMask.SIZE * CarveMask.SIZE];
 
-    public static void open(BlockPos pos, Item log, CarveMask mask) {
-        Minecraft.getInstance().setScreen(new CarvingScreen(pos, log, mask));
+    public static void open(BlockPos pos, Item log, CarveMask mask, CarveMask keep) {
+        Minecraft.getInstance().setScreen(new CarvingScreen(pos, log, mask, keep));
     }
 
-    private CarvingScreen(BlockPos pos, Item log, CarveMask mask) {
+    private CarvingScreen(BlockPos pos, Item log, CarveMask mask, CarveMask keep) {
         super(Component.empty());
         this.pos = pos;
+        this.keep = keep;
+        this.paperTexId = new ResourceLocation(HungryCowsMod.MODID, "carving_paper/" + pos.asLong());
         this.sim = new ChiselSim(mask);
         int col = log instanceof BlockItem bi ? bi.getBlock().defaultMapColor().col : 0xA0804A;
         this.woodColor = col == 0 ? 0xA0804A : col;
@@ -75,7 +81,28 @@ public class CarvingScreen extends Screen {
         if (woodTex == null) {
             woodTex = new DynamicTexture(CarveMask.SIZE, CarveMask.SIZE, false);
             Minecraft.getInstance().getTextureManager().register(woodTexId, woodTex);
+            paperTex = new DynamicTexture(CarveMask.SIZE, CarveMask.SIZE, false);
+            Minecraft.getInstance().getTextureManager().register(paperTexId, paperTex);
+            drawPaper();
         }
+    }
+
+    /** Креслення: папір у рядки, деталь — темне штрихування (ABGR) */
+    private void drawPaper() {
+        NativeImage img = paperTex.getPixels();
+        if (img == null) return;
+        for (int yy = 0; yy < CarveMask.SIZE; yy++)
+            for (int xx = 0; xx < CarveMask.SIZE; xx++) {
+                int c = keep.get(xx, yy) ? ((xx + yy) % 6 < 2 ? PART_HATCH : PART) : (yy % 8 == 0 ? PAPER_LINE : PAPER);
+                img.setPixelRGBA(xx, yy, 0xFF000000 | (c & 255) << 16 | (c & 0xFF00) | (c >> 16 & 255));
+            }
+        paperTex.upload();
+    }
+
+    @Override
+    public void tick() {
+        var p = Minecraft.getInstance().player;   // зубило зламалось або його вже нема в руці — вікно закривається
+        if (p == null || !p.getMainHandItem().is(com.gigongibus.hungrycows.carve.Carving.CHISEL.get())) onClose();
     }
 
     private void uploadWood() {
@@ -130,6 +157,7 @@ public class CarvingScreen extends Screen {
         long now = System.nanoTime();
         sim.step((now - lastFrame) / 1e9F);
         lastFrame = now;
+        if (sim.strikes != sentStrikes) unsent = true;
         if (sim.carvedPixels != lastCarved) { lastCarved = sim.carvedPixels; woodDirty = true; unsent = true; }
         if (woodDirty) uploadWood();
         if (sim.thrown) {   // Fij: викинув — крафт кінчається, зубило випадає
@@ -148,7 +176,8 @@ public class CarvingScreen extends Screen {
         pose.pushPose();
         pose.translate(ox, oy, 0);
         pose.scale(scale, scale, 1);
-        // заготовка
+        // креслення під деревом, потім заготовка
+        g.blit(paperTexId, (int) ChiselSim.WOOD_X, (int) ChiselSim.WOOD_Y, 0, 0, CarveMask.SIZE, CarveMask.SIZE, CarveMask.SIZE, CarveMask.SIZE);
         g.blit(woodTexId, (int) ChiselSim.WOOD_X, (int) ChiselSim.WOOD_Y, 0, 0, CarveMask.SIZE, CarveMask.SIZE, CarveMask.SIZE, CarveMask.SIZE);
         // стружка
         int r0 = woodColor >> 16 & 255, g0 = woodColor >> 8 & 255, b0 = woodColor & 255;
@@ -168,7 +197,8 @@ public class CarvingScreen extends Screen {
     }
 
     private void send(boolean thrown) {
-        ModNetwork.CHANNEL.sendToServer(new CarveUpdatePacket(pos, sim.mask.toBytes(), thrown));
+        ModNetwork.CHANNEL.sendToServer(new CarveUpdatePacket(pos, sim.mask.toBytes(), thrown, sim.strikes - sentStrikes));
+        sentStrikes = sim.strikes;
         lastSend = System.currentTimeMillis();
         unsent = false;
     }
@@ -177,6 +207,7 @@ public class CarvingScreen extends Screen {
     public void removed() {
         if (!sim.thrown) send(false);
         Minecraft.getInstance().getTextureManager().release(woodTexId);
+        Minecraft.getInstance().getTextureManager().release(paperTexId);
         super.removed();
     }
 }

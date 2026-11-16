@@ -12,9 +12,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
 
-/** Заготовка: з якої колоди (колір) і що від неї лишилось (маска; Fij: зберігається, можна продовжити) */
+/**
+ * Заготовка на верстаку: креслення (Fij: кладеться першим), колода (колір) і що від неї лишилось (маска; зберігається, можна
+ * продовжити). Старі збереження без креслення — колода є, креслення немає (вийдуть лише палиці).
+ */
 public class WorkpieceBlockEntity extends BlockEntity {
-    private Item log = Items.STRIPPED_OAK_LOG;
+    private Item blueprint = null;
+    private Item log = null;
     private CarveMask mask = new CarveMask();
 
     public WorkpieceBlockEntity(BlockPos pos, BlockState state) {
@@ -22,11 +26,32 @@ public class WorkpieceBlockEntity extends BlockEntity {
     }
 
     public Item log() {
-        return log;
+        return log == null ? Items.STRIPPED_OAK_LOG : log;
+    }
+
+    public boolean hasLog() {
+        return log != null;
+    }
+
+    public Item blueprint() {
+        return blueprint;
+    }
+
+    public void setBlueprint(Item item) {
+        blueprint = item;
+        changed();
     }
 
     public void setLog(Item item) {
         log = item;
+        mask = new CarveMask();
+        changed();
+    }
+
+    /** Зняли колоду (готова деталь або палиці): креслення лишається на верстаку */
+    public void clearLog() {
+        log = null;
+        mask = new CarveMask();
         changed();
     }
 
@@ -45,19 +70,30 @@ public class WorkpieceBlockEntity extends BlockEntity {
         if (level != null && !level.isClientSide) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
+    private static String id(Item i) {
+        ResourceLocation r = i == null ? null : ForgeRegistries.ITEMS.getKey(i);
+        return r == null ? "" : r.toString();
+    }
+
+    private static Item item(String s) {
+        if (s == null || s.isEmpty()) return null;
+        Item i = ForgeRegistries.ITEMS.getValue(new ResourceLocation(s));
+        return i == null || i == Items.AIR ? null : i;
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(log);
-        tag.putString("Log", id == null ? "minecraft:stripped_oak_log" : id.toString());
+        tag.putString("Log", id(log));
+        tag.putString("Blueprint", id(blueprint));
         tag.putByteArray("Mask", mask.toBytes());
     }
 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
-        Item i = ForgeRegistries.ITEMS.getValue(new ResourceLocation(tag.getString("Log")));
-        log = i == null || i == Items.AIR ? Items.STRIPPED_OAK_LOG : i;
+        log = item(tag.getString("Log"));
+        blueprint = item(tag.getString("Blueprint"));
         mask = tag.contains("Mask") ? CarveMask.fromBytes(tag.getByteArray("Mask")) : new CarveMask();
     }
 

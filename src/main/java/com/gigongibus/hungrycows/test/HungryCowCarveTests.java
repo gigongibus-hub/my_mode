@@ -27,8 +27,9 @@ import org.slf4j.Logger;
 public class HungryCowCarveTests {
     private static final Logger LOG = LogUtils.getLogger();
 
-    // 1. Присів + ПКМ обтесаною колодою по верстаку → заготовка; дошки — ні. Вирізане лише вибивається (не «доростає»).
-    //    Ціла — колода назад, почата — 2 палиці. Викинув зубило — зникає з руки й падає на землю.
+    // 1. Креслення на верстак (колода на голий верстак — ні), колода на креслення (дошки — ні). Вирізане лише вибивається.
+    //    Точно за шаблоном → деталь з точністю ~1; ледь почата → палиці; креслення лишається. Удари зношують зубило (−1 за удар).
+    //    Кинув зубило — випадає. Три деталі → кружка (використань за точністю); налив води, випив — −1, порожня.
     @GameTest(template = "arena", batch = "carve", timeoutTicks = 40)
     public static void workpieceOnTable(GameTestHelper h) {
         BlockPos table = new BlockPos(5, 2, 5), top = table.above(), table2 = new BlockPos(9, 2, 5);
@@ -36,36 +37,66 @@ public class HungryCowCarveTests {
         h.setBlock(table2, Blocks.CRAFTING_TABLE);
         var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
         p.moveTo(h.absoluteVec(new net.minecraft.world.phys.Vec3(5.5, 2, 3.5)));
-        ItemStack log = new ItemStack(Items.STRIPPED_BIRCH_LOG, 2), planks = new ItemStack(Items.OAK_PLANKS, 2);
-        boolean placed = Carving.tryPlace(h.getLevel(), p, h.absolutePos(table), log);
-        boolean planksPlaced = Carving.tryPlace(h.getLevel(), p, h.absolutePos(table2), planks);
+        ItemStack log = new ItemStack(Items.STRIPPED_BIRCH_LOG, 3), planks = new ItemStack(Items.OAK_PLANKS, 2);
+        ItemStack bp = new ItemStack(Carving.BLUEPRINT_MUG_BODY.get());
+        boolean logOnBare = Carving.tryPlace(h.getLevel(), p, h.absolutePos(table2), log.copy());
+        boolean bpPlaced = Carving.tryPlace(h.getLevel(), p, h.absolutePos(table), bp);
+        boolean planksPlaced = Carving.tryPlace(h.getLevel(), p, h.absolutePos(top), planks);
+        boolean logPlaced = Carving.tryPlace(h.getLevel(), p, h.absolutePos(top), log);
         var be = (WorkpieceBlockEntity) h.getBlockEntity(top);
-        boolean birch = be != null && be.log() == Items.STRIPPED_BIRCH_LOG;
-        var dropsWhole = Block.getDrops(h.getBlockState(top), h.getLevel(), h.absolutePos(top), be);
-        // гравець вибив 100 пікселів і «прислав» маску, де ще й повернув уже вибиті — повертатися не має
+        boolean birch = be != null && be.hasLog() && be.log() == Items.STRIPPED_BIRCH_LOG;
+        // ледь почата (100 пікс.) — палиці
         CarveMask m = be.mask().copy();
-        for (int i = 0; i < 100; i++) m.clear(10 + i % 20, 10 + i / 20);
-        CarveUpdatePacket.apply(p, h.absolutePos(top), m, false);
-        int afterCut = be.mask().solidCount();
-        CarveUpdatePacket.apply(p, h.absolutePos(top), new CarveMask(), false);
-        int afterRestore = be.mask().solidCount();
-        var dropsCarved = Block.getDrops(h.getBlockState(top), h.getLevel(), h.absolutePos(top), be);
-        // кинув зубило
+        for (int i = 0; i < 100; i++) m.clear(i % 20, i / 20);
         p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Carving.CHISEL.get()));
-        CarveUpdatePacket.apply(p, h.absolutePos(top), be.mask().copy(), true);
+        CarveUpdatePacket.apply(p, h.absolutePos(top), m, false, 7);
+        int wear = p.getMainHandItem().getDamageValue();
+        CarveUpdatePacket.apply(p, h.absolutePos(top), new CarveMask(), false, 0);
+        int afterRestore = be.mask().solidCount();
+        ItemStack ruined = com.gigongibus.hungrycows.carve.WorkpieceBlock.finish(h.getLevel(), be);
+        be.clearLog();
+        // точно за шаблоном — заготовка кружки ~1
+        Carving.tryPlace(h.getLevel(), p, h.absolutePos(top), log);
+        CarveMask keep = com.gigongibus.hungrycows.carve.CarveTemplates.keep(h.getLevel().getServer(), "mug_body");
+        CarveUpdatePacket.apply(p, h.absolutePos(top), keep.copy(), false, 0);
+        ItemStack part = com.gigongibus.hungrycows.carve.WorkpieceBlock.finish(h.getLevel(), be);
+        float q = com.gigongibus.hungrycows.carve.CarvedPartItem.quality(part);
+        boolean blueprintStays = be.blueprint() == Carving.BLUEPRINT_MUG_BODY.get();
+        // кружка з трьох деталей: точність 1, 1, 0,4 → середня 0,8
+        var g = new net.minecraft.world.inventory.TransientCraftingContainer(new net.minecraft.world.inventory.AbstractContainerMenu(null, -1) {
+            @Override public ItemStack quickMoveStack(net.minecraft.world.entity.player.Player pl, int i) { return ItemStack.EMPTY; }
+            @Override public boolean stillValid(net.minecraft.world.entity.player.Player pl) { return true; }
+        }, 3, 3);
+        g.setItem(0, part);
+        g.setItem(4, com.gigongibus.hungrycows.carve.CarvedPartItem.withQuality(new ItemStack(Carving.MUG_EARS.get()), 1));
+        g.setItem(8, com.gigongibus.hungrycows.carve.CarvedPartItem.withQuality(new ItemStack(Carving.MUG_HANDLE.get()), 0.4F));
+        var r = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g, h.getLevel());
+        ItemStack mug = r.map(x -> x.assemble(g, h.getLevel().registryAccess())).orElse(ItemStack.EMPTY);
+        int uses = mug.isEmpty() ? -1 : mug.getMaxDamage() - mug.getDamageValue();
+        com.gigongibus.hungrycows.carve.MugItem.fillWater(mug);
+        boolean water = com.gigongibus.hungrycows.carve.MugItem.drinkKind(mug) == 1;
+        mug.finishUsingItem(h.getLevel(), p);
+        int usesAfter = mug.getMaxDamage() - mug.getDamageValue();
+        boolean emptied = com.gigongibus.hungrycows.carve.MugItem.drink(mug).isEmpty();
+        // кинув зубило
+        CarveUpdatePacket.apply(p, h.absolutePos(top), be.mask().copy(), true, 0);
         boolean handEmpty = p.getMainHandItem().isEmpty();
         h.runAtTickTime(5, () -> {
             var items = h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(p.blockPosition()).inflate(6), e -> e.getItem().is(Carving.CHISEL.get()));
-            LOG.info("[тест] workpieceOnTable: поклав {} (береза {}), колод лишилось {}, дошки {}; ціла дає {}; вибив → {} пікс., «повернув» → {}; почата дає {}; "
-                    + "кинув зубило: рука порожня {}, на землі {}", placed, birch, log.getCount(), planksPlaced, dropsWhole, 124 * 124 - afterCut,
-                    afterRestore, dropsCarved, handEmpty, items.size());
+            LOG.info("[тест] workpieceOnTable: колода на голий верстак {}, креслення {}, дошки {}, колода {} (береза {}); 7 ударів → знос {}; «повернув» → {} пікс.; "
+                    + "ледь почата → {}; точно за шаблоном → {} точність {}; креслення лишилось {}; кружка (1, 1, 0,4) → {} використань; вода {}, випила → {} і порожня {}; "
+                    + "кинув зубило: рука порожня {}, на землі {}", logOnBare, bpPlaced, planksPlaced, logPlaced, birch, wear, afterRestore, ruined, part,
+                    String.format("%.2f", q), blueprintStays, uses, water, usesAfter, emptied, handEmpty, items.size());
             items.forEach(ItemEntity::discard);
             h.setBlock(top, Blocks.AIR); h.setBlock(table, Blocks.AIR); h.setBlock(table2, Blocks.AIR);
-            h.assertTrue(placed && birch && log.getCount() == 1, "колода не лягла на верстак");
-            h.assertTrue(!planksPlaced, "дошки теж лягли");
-            h.assertTrue(dropsWhole.size() == 1 && dropsWhole.get(0).is(Items.STRIPPED_BIRCH_LOG), "ціла не дає колоду: " + dropsWhole);
-            h.assertTrue(afterCut == 124 * 124 - 100 && afterRestore == afterCut, "вирізане не так: " + afterCut + " / " + afterRestore);
-            h.assertTrue(dropsCarved.size() == 1 && dropsCarved.get(0).is(Items.STICK) && dropsCarved.get(0).getCount() == 2, "почата не дає 2 палиці: " + dropsCarved);
+            h.assertTrue(!logOnBare && bpPlaced && !planksPlaced && logPlaced && birch, "не той порядок: креслення, потім колода");
+            h.assertTrue(wear == 7, "зубило не зносилось на 7: " + wear);
+            h.assertTrue(afterRestore == 124 * 124 - 100, "вибите «повернулось»: " + afterRestore);
+            h.assertTrue(ruined.is(Items.STICK), "ледь почата дала не палиці: " + ruined);
+            h.assertTrue(part.is(Carving.MUG_BODY.get()) && q > 0.95F, "точно за шаблоном — не заготовка кружки ~1: " + part + " " + q);
+            h.assertTrue(blueprintStays, "креслення зникло з верстака");
+            h.assertTrue(uses == Carving.usesFor(0.8F), "кружка не з тією кількістю використань: " + uses);
+            h.assertTrue(water && usesAfter == uses - 1 && emptied, "налити й випити не працює: " + water + " " + usesAfter + " " + emptied);
             h.assertTrue(handEmpty && items.size() == 1, "зубило не випало: рука порожня " + handEmpty + ", на землі " + items.size());
             h.succeed();
         });

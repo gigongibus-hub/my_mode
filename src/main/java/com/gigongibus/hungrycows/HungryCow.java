@@ -1625,6 +1625,14 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         tell("Подоєно " + family.name + ": якість " + milk.quality().letter + ", лишилось " + milk.amount());
     }
 
+    // ПКМ порожньою кружкою: молоко тієї ж якості; бере чверть відра (MUG_MILK_COST)
+    private void tryMilkMug(Player player, ItemStack stack) {
+        if (this.isBaby() || !repro.isFemale() || !milk.isLactating()) return;
+        if (!milk.take(CowMilk.MUG_COST)) return;
+        player.playSound(SoundEvents.COW_MILK, 1.0F, 1.2F);
+        com.gigongibus.hungrycows.carve.MugItem.fillMilk(stack, milk.quality());
+    }
+
     // ПКМ по теляті відром молока: теля наїдається; сирота вважає гравця матір'ю
     private void feedCalfMilk(Player player, InteractionHand hand, ItemStack stack) {
         hunger = Math.max(0, hunger - CALF_BUCKET_FOOD);
@@ -1736,6 +1744,11 @@ public class HungryCow extends Cow implements software.bernie.geckolib.animatabl
         // доїння: замість ванільного молока для будь-якої корови
         if (stack.is(Items.BUCKET)) {
             if (server) tryMilk(player, hand, stack);
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
+        // доїння в порожню дерев'яну кружку (ремесло, Fij «щоб можна було наливати»): менше молока, ніж на відро
+        if (stack.is(com.gigongibus.hungrycows.carve.Carving.MUG.get()) && com.gigongibus.hungrycows.carve.MugItem.drink(stack).isEmpty()) {
+            if (server) tryMilkMug(player, stack);
             return InteractionResult.sidedSuccess(this.level().isClientSide);
         }
         // теля п'є молоко з відра

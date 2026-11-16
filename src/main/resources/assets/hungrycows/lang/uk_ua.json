@@ -65,5 +65,14 @@
   "gui.hungrycows.basket.dripping": "Капає: %s%%",
   "gui.hungrycows.basket.done": "Сіль затверділа…",
   "item.hungrycows.chisel": "Зубило",
-  "block.hungrycows.workpiece": "Заготовка"
+  "block.hungrycows.workpiece": "Заготовка",
+  "item.hungrycows.blueprint_mug_body": "Креслення: заготовка для кружки",
+  "item.hungrycows.blueprint_mug_ears": "Креслення: вушка для ручки",
+  "item.hungrycows.blueprint_mug_handle": "Креслення: ручка для кружки",
+  "item.hungrycows.mug_body": "Заготовка для кружки",
+  "item.hungrycows.mug_ears": "Вушка для ручки",
+  "item.hungrycows.mug_handle": "Ручка для кружки",
+  "item.hungrycows.mug": "Дерев'яна кружка",
+  "item.hungrycows.mug.water": "Дерев'яна кружка з водою",
+  "item.hungrycows.mug.milk": "Дерев'яна кружка з молоком"
 }

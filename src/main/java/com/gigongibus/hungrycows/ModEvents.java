@@ -46,6 +46,13 @@ public class ModEvents {
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_BODY);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_EARS);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_HANDLE);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.MUG_BODY);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.MUG_EARS);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.MUG_HANDLE);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.MUG);
             event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_ITEM);
             event.accept(com.gigongibus.hungrycows.salt.Salt.TUB_LID);
             event.accept(com.gigongibus.hungrycows.salt.Salt.SIEVE);
@@ -98,6 +105,10 @@ public class ModEvents {
         // Предмет «Сіно» виглядає так, як блок, що з нього поставиться (стадія, стан, нитки) — інакше всі були однакові (Fij)
         @SubscribeEvent
         public static void clientSetup(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent event) {
+            // кружка: що в ній налито (0 — порожня, 0,5 — вода, 1 — молоко) → модель з рідиною
+            event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(com.gigongibus.hungrycows.carve.Carving.MUG.get(),
+                    new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "drink"),
+                    (stack, level, entity, seed) -> com.gigongibus.hungrycows.carve.MugItem.drinkKind(stack) * 0.5F));
             event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(ModBlocks.HAY_ITEM.get(),
                     new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "variant"),
                     (stack, level, entity, seed) -> CowHayBlock.variant(stack) * 0.01F + 0.001F));
@@ -110,6 +121,13 @@ public class ModEvents {
 
         // сіль: рідина в діжці — вода синя, розчин світлий
         public static final int TUB_WATER_COLOR = 0x3F76E4, TUB_BRINE_COLOR = 0xC9DDE6;
+
+        @SubscribeEvent
+        public static void itemColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
+            // рідина в кружці: вода синя, молоко біле
+            event.register((stack, tint) -> tint != 0 ? -1 : com.gigongibus.hungrycows.carve.MugItem.drinkKind(stack) == 1 ? 0x3F76E4 : 0xF4F1E8,
+                    com.gigongibus.hungrycows.carve.Carving.MUG.get());
+        }
 
         @SubscribeEvent
         public static void blockColors(net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {

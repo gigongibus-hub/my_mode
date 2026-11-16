@@ -26,13 +26,15 @@ public class ChiselSim {
     public static final float AIR_DRAG = 0.4f, SPIN_DRAG = 1.8f;    // опір повітря (за секунду)
     public static final float HELD_SPIN_DRAG = 1.0f;                // у руці хитається й потроху заспокоюється
     public static final float SCROLL_SPIN = 5f;                     // коліщатко: рад/с за один «клік»
-    public static final float CUT_MIN_SPEED = 160;                  // повільніше вздовж леза — лише стукає, не ріже
-    public static final float CUT_DEPTH_PER_SPEED = 0.025f;         // глибина зрізу на кожен пікс/с понад поріг
-    public static final float CUT_MAX_DEPTH = 14;                   // найглибший шматок за удар
-    public static final float CUT_SPEED_LOSS = 0.55f;               // після зрізу лишається 45% швидкості вздовж леза
+    // Fij (16.11): «зубило занадто м'яко проходить через дерево» — було 160 / 0,025 / 14 / 0,55
+    public static final float CUT_MIN_SPEED = 260;                  // повільніше вздовж леза — лише стукає, не ріже
+    public static final float CUT_DEPTH_PER_SPEED = 0.01f;          // глибина зрізу на кожен пікс/с понад поріг
+    public static final float CUT_MAX_DEPTH = 7;                    // найглибший шматок за удар
+    public static final float CUT_SPEED_LOSS = 0.9f;                // після зрізу лишається 10% швидкості — застрягає в дереві
     public static final float RESTITUTION = 0.25f, FRICTION = 0.35f;// відскок і тертя об дерево/стіл
     public static final float START_X = WORLD_W - 72;                // де лежить зубило, коли відкрив вікно
     public static final int SUBSTEPS = 8;
+    public static final int HIT_GAP_SUBSTEPS = SUBSTEPS * 6;        // зрізи ближче 0,1 с — той самий удар
     public static final float MAX_DT = 1 / 30f;
 
     public final CarveMask mask;
@@ -40,7 +42,9 @@ public class ChiselSim {
     private boolean held;
     private float grabU, grabV, mouseX, mouseY;
     public boolean thrown;
-    public int carvedPixels;                    // скільки вибито за цей раз (для зносу й тестів)
+    public int carvedPixels;                    // скільки вибито за цей раз (для тестів)
+    public int strikes;                          // скільки ударів, що вибили дерево (знос зубила: −1 за удар, Fij)
+    private int cutCooldown;                    // один удар — один знос, навіть якщо ріже кілька під-кроків
     public final List<float[]> chips = new ArrayList<>();   // стружка: x, y, vx, vy, життя, відтінок
     private final Random rnd = new Random();
     private final float[][] contour;            // точки обрису (u, v, вістря?)
@@ -126,6 +130,7 @@ public class ChiselSim {
     }
 
     private void sub(float h) {
+        if (cutCooldown > 0) cutCooldown--;
         // рука: пружина з гасником тягне точку хвату до курсора
         if (held) {
             float[] g = toWorld(grabU, grabV);
@@ -169,6 +174,7 @@ public class ChiselSim {
         if (bestSpeed > CUT_MIN_SPEED) {
             float depth = Math.min(CUT_MAX_DEPTH, (bestSpeed - CUT_MIN_SPEED) * CUT_DEPTH_PER_SPEED + 1);
             int removed = cut(depth);
+            if (removed > 0 && cutCooldown <= 0) { strikes++; cutCooldown = HIT_GAP_SUBSTEPS; }
             if (removed > 0) {
                 float along = vx * axisX + vy * axisY;
                 vx -= axisX * along * CUT_SPEED_LOSS;
