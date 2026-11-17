@@ -122,10 +122,29 @@ public class HungryCowVoxelTests {
         h.setBlock(top, Blocks.AIR); h.setBlock(top2, Blocks.AIR); h.setBlock(table, Blocks.AIR); h.setBlock(table2, Blocks.AIR);
         h.assertTrue(started && afterMallet < 1728 - 3, "удар киянкою не вибив глибше за легкий: " + afterMallet);
         h.assertTrue(chiselWear == 1 && malletWear == 1, "знос не 1/1: " + chiselWear + "/" + malletWear);
-        h.assertTrue(byHand == 3, "рукою не найслабший удар: " + byHand);
+        h.assertTrue(byHand == 2, "рукою середнім зубилом не найслабший удар (2): " + byHand);
         h.assertTrue(birchOld, "береза пішла в нову різьбу");
         h.assertTrue(ruined.is(Items.STICK), "ледь почата — не палиці: " + ruined);
         h.assertTrue(part.is(Carving.MUG_HANDLE.get()) && q > 0.99F, "за шаблоном — не ручка 1,0: " + part + " " + q);
+        h.succeed();
+    }
+
+    // 2б. Зубила (Fij): мале — 1 піксель, середнє — 2, широке — 3 × 3; сильно — глибше
+    @GameTest(template = "arena", batch = "carve3d", timeoutTicks = 20)
+    public static void chiselSizes(GameTestHelper h) {
+        int[][] sizes = { { 1, 1 }, { 2, 1 }, { 3, 3 } };
+        StringBuilder out = new StringBuilder();
+        int[] light = new int[3], strong = new int[3];
+        for (int i = 0; i < 3; i++) {
+            VoxelMask m = new VoxelMask();
+            light[i] = VoxelCarve.strike(m, 5, 11, 5, Direction.UP, DOWN, 0, false, dice(1), null, sizes[i][0], sizes[i][1]).total();
+            m = new VoxelMask();
+            strong[i] = VoxelCarve.strike(m, 5, 11, 5, Direction.UP, DOWN, 1, false, dice(1), null, sizes[i][0], sizes[i][1]).total();
+            out.append(String.format("%d×%d: легко %d, сильно %d; ", sizes[i][0], sizes[i][1], light[i], strong[i]));
+        }
+        LOG.info("[тест] chiselSizes: {}", out);
+        h.assertTrue(light[0] == 1 && light[1] == 2 && light[2] == 9, "легкий удар не 1 / 2 / 9: " + out);
+        h.assertTrue(strong[0] == 4 && strong[1] == 8 && strong[2] == 36, "сильний удар не 4 / 8 / 36: " + out);
         h.succeed();
     }
 

@@ -51,8 +51,13 @@ public final class Carving {
     public static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, HungryCowsMod.MODID);
 
+    // Fij (17.11): три зубила — поперечний зріз удару: мале 1 × 1, середнє 2 × 1 (вікно старої різьби — лише воно), широке 3 × 3
     public static final RegistryObject<Item> CHISEL = HungryCowsMod.ITEMS.register("chisel", () ->
-            new ChiselItem(new Item.Properties().durability(CHISEL_DURABILITY)));
+            new ChiselItem(new Item.Properties().durability(CHISEL_DURABILITY), 2, 1));
+    public static final RegistryObject<Item> CHISEL_SMALL = HungryCowsMod.ITEMS.register("chisel_small", () ->
+            new ChiselItem(new Item.Properties().durability(CHISEL_DURABILITY), 1, 1));
+    public static final RegistryObject<Item> CHISEL_WIDE = HungryCowsMod.ITEMS.register("chisel_wide", () ->
+            new ChiselItem(new Item.Properties().durability(CHISEL_DURABILITY), 3, 3));
     // киянка (Fij, 17.11: «зубило + киянка») — у другій руці; текстура тимчасова (скрипт), рецепта ще немає
     public static final RegistryObject<Item> MALLET = HungryCowsMod.ITEMS.register("mallet", () ->
             new Item(new Item.Properties().durability(MALLET_DURABILITY)));

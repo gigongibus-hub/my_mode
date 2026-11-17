@@ -57,7 +57,7 @@ public class WorkpieceBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("deprecation")
     public float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
-        if (player.getMainHandItem().is(Carving.CHISEL.get())) return 0;
+        if (player.getMainHandItem().getItem() instanceof ChiselItem) return 0;
         return super.getDestroyProgress(state, player, level, pos);
     }
 
@@ -79,7 +79,7 @@ public class WorkpieceBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (hand != InteractionHand.MAIN_HAND || !(level.getBlockEntity(pos) instanceof WorkpieceBlockEntity be)) return InteractionResult.PASS;
         ItemStack held = player.getItemInHand(hand);
-        if (held.is(Carving.CHISEL.get()) && be.hasLog() && be.voxels() != null) return InteractionResult.PASS;   // справжня різьба — ЛКМ
+        if (held.getItem() instanceof ChiselItem && be.hasLog() && be.voxels() != null) return InteractionResult.PASS;   // справжня різьба — ЛКМ
         if (held.is(Carving.CHISEL.get()) && be.hasLog()) {
             if (!level.isClientSide && player instanceof ServerPlayer sp) {
                 CarveMask keep = be.blueprint() instanceof BlueprintItem bp ? CarveTemplates.keep(sp.server, bp.template) : CarveMask.empty();

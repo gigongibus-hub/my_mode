@@ -46,7 +46,7 @@ public final class VoxelCarve {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int OFFSET_XZ = (16 - VoxelMask.N) / 2;    // колода посередині блока (у пікселях)
     public static final int OFFSET_Y = 1;                           // на 1 піксель вище — під нею креслення
-    public static final int EDGE_WIDTH = 3;                         // ширина леза (середнє зубило), пікселі
+    public static final int EDGE_WIDTH = 3;                         // ширина леза для тестів правил (зубила — свої, `ChiselItem`)
     public static final int CHOP_MAX_DEPTH = 4;                     // найглибше за удар
     public static final int PARE_MAX_LENGTH = 4;                    // найдовша смужка, коли стругаєш
     public static final double CHOP_MAX_ANGLE = 40;                 // кут від прямого, до якого — рубає; більший — стругає
@@ -89,12 +89,21 @@ public final class VoxelCarve {
      * strength 0…1, turned — лезо повернуте (присів).
      */
     public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd) {
-        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, null);
+        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, null, EDGE_WIDTH, 1);
     }
 
     /** template — клітинки деталі з креслення: шматок, що відокремився й схожий на неї, випадає готовою деталлю */
     public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd,
                                 List<int[]> template) {
+        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, template, EDGE_WIDTH, 1);
+    }
+
+    /**
+     * width × thick — поперечний зріз удару (Fij, 17.11): мале зубило 1 × 1, середнє 2 × 1, широке 3 × 3. width — уздовж леза,
+     * thick — упоперек нього (на грані); глибина — від сили. Стругає — смужка ширини леза (товщина не важить).
+     */
+    public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd,
+                                List<int[]> template, int width, int thick) {
         Result r = new Result();
         Direction.Axis a = face.getAxis();
         int[] in = { -face.getStepX(), -face.getStepY(), -face.getStepZ() };
@@ -115,26 +124,34 @@ public final class VoxelCarve {
             t = unit(ta, s);
         }
         int[] eu = unit(e, 1);
-        int lo = -(EDGE_WIDTH - 1) / 2, hi = EDGE_WIDTH / 2;
+        Direction.Axis fa = null;
+        for (Direction.Axis ax : Direction.Axis.values()) if (ax != a && ax != e) fa = ax;
+        int[] fu = unit(fa, 1);
+        int lo = -(width - 1) / 2, hi = width / 2;
+        int tlo = -(thick - 1) / 2, thi = thick / 2;
         if (r.chop) {
             int d = 1 + Math.round(strength * (CHOP_MAX_DEPTH - 1));
             if (a == Direction.Axis.X) d = Math.max(1, Math.round(d * END_GRAIN_DEPTH));
             else if (e != Direction.Axis.X) d = Math.max(1, d - ACROSS_GRAIN_LESS);
             for (int k = 0; k < d; k++)
-                for (int o = lo; o <= hi; o++) take(m, r.cut, hx + o * eu[0] + k * in[0], hy + o * eu[1] + k * in[1], hz + o * eu[2] + k * in[2]);
+                for (int q = tlo; q <= thi; q++)
+                    for (int o = lo; o <= hi; o++)
+                        take(m, r.cut, hx + o * eu[0] + q * fu[0] + k * in[0], hy + o * eu[1] + q * fu[1] + k * in[1], hz + o * eu[2] + q * fu[2] + k * in[2]);
             // скол: лезо вздовж волокон, удар сильний — тріщина йде вздовж x до торця або порожнечі
             if (e == Direction.Axis.X && a != Direction.Axis.X && strength >= SPLIT_MIN_STRENGTH && rnd.nextFloat() < SPLIT_CHANCE)
-                for (int dir = -1; dir <= 1; dir += 2) {
-                    int start = dir > 0 ? hx + hi + 1 : hx + lo - 1;
-                    int end = -1;
-                    for (int s = 0; s <= SPLIT_MAX; s++) {
-                        int x = start + dir * s;
-                        if (x < 0 || x >= VoxelMask.N || !columnHasWood(m, x, hy, hz, in, d)) { end = s; break; }
+                for (int q = tlo; q <= thi; q++)
+                    for (int dir = -1; dir <= 1; dir += 2) {
+                        int sy = hy + q * fu[1], sz = hz + q * fu[2];
+                        int start = dir > 0 ? hx + hi + 1 : hx + lo - 1;
+                        int end = -1;
+                        for (int s = 0; s <= SPLIT_MAX; s++) {
+                            int x = start + dir * s;
+                            if (x < 0 || x >= VoxelMask.N || !columnHasWood(m, x, sy, sz, in, d)) { end = s; break; }
+                        }
+                        if (end <= 0) continue;
+                        for (int s = 0; s < end; s++)
+                            for (int k = 0; k < d; k++) take(m, r.split, start + dir * s, sy + k * in[1], sz + k * in[2]);
                     }
-                    if (end <= 0) continue;
-                    for (int s = 0; s < end; s++)
-                        for (int k = 0; k < d; k++) take(m, r.split, start + dir * s, hy + k * in[1], hz + k * in[2]);
-                }
         } else {
             int len = 1 + Math.round(strength * (PARE_MAX_LENGTH - 1));
             if (t[0] != 0) len += ALONG_GRAIN_PARE_MORE;
@@ -213,7 +230,7 @@ public final class VoxelCarve {
     public static void onLeftClick(PlayerInteractEvent.LeftClickBlock e) {
         if (e.getLevel().isClientSide || e.getAction() != PlayerInteractEvent.LeftClickBlock.Action.START) return;
         Player p = e.getEntity();
-        if (!p.getMainHandItem().is(Carving.CHISEL.get())) return;
+        if (!(p.getMainHandItem().getItem() instanceof ChiselItem)) return;
         if (!(e.getLevel().getBlockEntity(e.getPos()) instanceof WorkpieceBlockEntity be) || !be.hasLog()) return;
         if (be.voxels() == null) {
             if (!isSpruce(be.log()) || !be.mask().untouched()) return;     // інше дерево чи вже почате у вікні — стара різьба
@@ -229,6 +246,7 @@ public final class VoxelCarve {
         BlockPos pos = be.getBlockPos();
         int[] h = pick(m, pos, p.getEyePosition(), p.getLookAngle());
         if (h == null) return null;
+        if (!(p.getMainHandItem().getItem() instanceof ChiselItem chisel)) return null;
         boolean mallet = p.getOffhandItem().is(Carving.MALLET.get());
         long now = level.getGameTime();
         Long last = LAST_STRIKE.put(p, now);
@@ -237,7 +255,7 @@ public final class VoxelCarve {
         BlueprintItem bp = be.blueprint() instanceof BlueprintItem b ? b : null;
         VoxelMask keep = bp == null ? null : CarveTemplates.keep3d(level.getServer(), bp.template);
         Result r = strike(m, h[0], h[1], h[2], Direction.from3DDataValue(h[3]), p.getLookAngle(), strength, p.isShiftKeyDown(), new Random(),
-                keep == null ? null : PartMatcher.cells(keep));
+                keep == null ? null : PartMatcher.cells(keep), chisel.width, chisel.thick);
         if (r.sink > 0) be.sinkGuide(r.sink);
         // готова деталь випадає сама (з точністю); місце для наступної — знову чорним, поки вміщається
         for (float q : r.parts) {
