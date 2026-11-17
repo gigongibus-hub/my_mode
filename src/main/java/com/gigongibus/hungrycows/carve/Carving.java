@@ -43,12 +43,19 @@ public final class Carving {
     // Fij (16.11): «ідеальну форму практично неможливо зробити» — пікселі ближче 2 до краю деталі не рахуються
     public static final int EDGE_TOLERANCE = 2;
     public static final int MAX_STRIKES_PER_PACKET = 200; // більше ударів за секунду гравець не зробить — не вірити
+    // справжня різьба (Fij, 17.11): об'ємна схожість 12 × 12 × 12 — без допуску на краях (пікселі вже великі)
+    public static final float MATCH3D_MIN = 0.6F;         // нижче — палиці
+    public static final float MATCH3D_PERFECT = 0.92F;    // від цієї — найкраща якість
+    public static final int MALLET_DURABILITY = 500;      // киянка (ПРОПОЗИЦІЯ): −1 за удар
 
     public static final DeferredRegister<net.minecraft.world.level.block.entity.BlockEntityType<?>> BLOCK_ENTITIES =
             DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, HungryCowsMod.MODID);
 
     public static final RegistryObject<Item> CHISEL = HungryCowsMod.ITEMS.register("chisel", () ->
-            new Item(new Item.Properties().durability(CHISEL_DURABILITY)));
+            new ChiselItem(new Item.Properties().durability(CHISEL_DURABILITY)));
+    // киянка (Fij, 17.11: «зубило + киянка») — у другій руці; текстура тимчасова (скрипт), рецепта ще немає
+    public static final RegistryObject<Item> MALLET = HungryCowsMod.ITEMS.register("mallet", () ->
+            new Item(new Item.Properties().durability(MALLET_DURABILITY)));
     // креслення (Fij: «поки текстура паперу з написами»), деталі й кружка (модель і текстура Fij)
     public static final RegistryObject<Item> MUG_BODY = HungryCowsMod.ITEMS.register("mug_body", () -> new CarvedPartItem(new Item.Properties()));
     public static final RegistryObject<Item> MUG_EARS = HungryCowsMod.ITEMS.register("mug_ears", () -> new CarvedPartItem(new Item.Properties()));
@@ -84,6 +91,12 @@ public final class Carving {
     public static float quality(float match) {
         if (match < MATCH_MIN) return -1;
         return Math.min(1, (match - MATCH_MIN) / (MATCH_PERFECT - MATCH_MIN));
+    }
+
+    /** Точність об'ємної різьби; нижче MATCH3D_MIN — −1 */
+    public static float quality3d(float match) {
+        if (match < MATCH3D_MIN) return -1;
+        return Math.min(1, (match - MATCH3D_MIN) / (MATCH3D_PERFECT - MATCH3D_MIN));
     }
 
     /** Скільки разів можна випити з кружки такої точності */

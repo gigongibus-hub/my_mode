@@ -46,6 +46,7 @@ public class ModEvents {
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL);
+            event.accept(com.gigongibus.hungrycows.carve.Carving.MALLET);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_BODY);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_EARS);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_HANDLE);

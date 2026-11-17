@@ -64,6 +64,7 @@
   "gui.hungrycows.basket.missing": "The basket is still half empty…",
   "gui.hungrycows.basket.dripping": "Dripping: %s%%",
   "gui.hungrycows.basket.done": "The salt has hardened…",
+  "item.hungrycows.mallet": "Mallet",
   "item.hungrycows.chisel": "Chisel",
   "block.hungrycows.workpiece": "Workpiece",
   "item.hungrycows.blueprint_mug_body": "Blueprint: Mug Blank",

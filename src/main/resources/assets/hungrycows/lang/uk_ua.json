@@ -64,6 +64,7 @@
   "gui.hungrycows.basket.missing": "Корзина ще напівпорожня…",
   "gui.hungrycows.basket.dripping": "Капає: %s%%",
   "gui.hungrycows.basket.done": "Сіль затверділа…",
+  "item.hungrycows.mallet": "Киянка",
   "item.hungrycows.chisel": "Зубило",
   "block.hungrycows.workpiece": "Заготовка",
   "item.hungrycows.blueprint_mug_body": "Креслення: заготовка для кружки",

@@ -48,7 +48,17 @@ public class WorkpieceBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("deprecation")
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
-        return level.getBlockEntity(pos) instanceof WorkpieceBlockEntity be && !be.hasLog() ? PAPER : SHAPE;
+        if (!(level.getBlockEntity(pos) instanceof WorkpieceBlockEntity be)) return SHAPE;
+        if (!be.hasLog()) return PAPER;
+        return be.voxels() != null ? be.voxelShape() : SHAPE;
+    }
+
+    /** Зубилом не ламається (ЛКМ зубилом — удар різьби, `VoxelCarve`) */
+    @Override
+    @SuppressWarnings("deprecation")
+    public float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+        if (player.getMainHandItem().is(Carving.CHISEL.get())) return 0;
+        return super.getDestroyProgress(state, player, level, pos);
     }
 
     @Override
@@ -69,6 +79,7 @@ public class WorkpieceBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (hand != InteractionHand.MAIN_HAND || !(level.getBlockEntity(pos) instanceof WorkpieceBlockEntity be)) return InteractionResult.PASS;
         ItemStack held = player.getItemInHand(hand);
+        if (held.is(Carving.CHISEL.get()) && be.hasLog() && be.voxels() != null) return InteractionResult.PASS;   // справжня різьба — ЛКМ
         if (held.is(Carving.CHISEL.get()) && be.hasLog()) {
             if (!level.isClientSide && player instanceof ServerPlayer sp) {
                 CarveMask keep = be.blueprint() instanceof BlueprintItem bp ? CarveTemplates.keep(sp.server, bp.template) : CarveMask.empty();
@@ -97,6 +108,14 @@ public class WorkpieceBlock extends BaseEntityBlock {
 
     /** Що вийшло: ціла колода — назад колода; схоже на шаблон креслення — деталь з точністю; інакше — палиці (Fij) */
     public static ItemStack finish(Level level, WorkpieceBlockEntity be) {
+        if (be.voxels() != null) {           // справжня різьба: порівняти з об'ємним шаблоном креслення
+            if (be.voxels().untouched()) return new ItemStack(be.log());
+            if (be.blueprint() instanceof BlueprintItem bp && level.getServer() != null) {
+                float q = Carving.quality3d(be.voxels().match(CarveTemplates.keep3d(level.getServer(), bp.template)));
+                if (q >= 0) return CarvedPartItem.withQuality(new ItemStack(bp.result.get()), q);
+            }
+            return new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED);
+        }
         if (be.mask().untouched()) return new ItemStack(be.log());
         if (be.blueprint() instanceof BlueprintItem bp && level.getServer() != null) {
             float q = Carving.quality(be.mask().match(CarveTemplates.keep(level.getServer(), bp.template), Carving.EDGE_TOLERANCE));
@@ -112,7 +131,8 @@ public class WorkpieceBlock extends BaseEntityBlock {
         if (b.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof WorkpieceBlockEntity be) {
             List<ItemStack> out = new java.util.ArrayList<>();
             if (be.blueprint() != null) out.add(new ItemStack(be.blueprint()));
-            if (be.hasLog()) out.add(be.mask().untouched() ? new ItemStack(be.log()) : new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED));
+            boolean whole = be.voxels() != null ? be.voxels().untouched() : be.mask().untouched();
+            if (be.hasLog()) out.add(whole ? new ItemStack(be.log()) : new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED));
             return out;
         }
         return List.of();

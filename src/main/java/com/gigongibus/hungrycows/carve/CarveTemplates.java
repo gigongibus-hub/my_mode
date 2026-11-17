@@ -24,6 +24,37 @@ public final class CarveTemplates {
         return CACHE.computeIfAbsent(name, n -> load(server, n));
     }
 
+    private static final Map<String, VoxelMask> CACHE_3D = new HashMap<>();
+
+    /**
+     * Об'ємний шаблон (справжня різьба, Fij 17.11): `carving_templates_3d/<назва>.png`, 12 завширшки × 144 заввишки —
+     * 12 шарів знизу вгору (рядок = шар × 12 + z, стовпчик = x уздовж волокон). Чорне — лишається.
+     */
+    public static VoxelMask keep3d(MinecraftServer server, String name) {
+        return CACHE_3D.computeIfAbsent(name, n -> {
+            VoxelMask m = VoxelMask.empty();
+            var res = server == null ? null : server.getResourceManager()
+                    .getResource(new ResourceLocation(HungryCowsMod.MODID, "carving_templates_3d/" + n + ".png")).orElse(null);
+            if (res == null) return m;
+            try (InputStream in = res.open()) {
+                java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(in);
+                int N = VoxelMask.N;
+                for (int y = 0; y < N; y++)
+                    for (int z = 0; z < N; z++)
+                        for (int x = 0; x < N; x++) {
+                            int row = y * N + z;
+                            if (row >= img.getHeight() || x >= img.getWidth()) continue;
+                            int c = img.getRGB(x, row);
+                            int a = c >>> 24 & 255, r = c >> 16 & 255, g = c >> 8 & 255, b = c & 255;
+                            if (a > 128 && (r + g + b) / 3 < DARK) m.set(x, y, z);
+                        }
+            } catch (Exception e) {
+                com.mojang.logging.LogUtils.getLogger().warn("Об'ємний шаблон {} не прочитано: {}", n, e.toString());
+            }
+            return m;
+        });
+    }
+
     private static CarveMask load(MinecraftServer server, String name) {
         CarveMask m = CarveMask.empty();
         var res = server == null ? null : server.getResourceManager()

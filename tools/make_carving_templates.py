@@ -45,3 +45,29 @@ for y in (4, 6, 8, 10, 12):       # «написи»
         if rnd.random() < 0.8: px[x, y] = (70, 56, 40, 255)
 im.save(os.path.join(TEX, 'blueprint.png'))
 print('blueprint.png')
+
+# ---- ОБ'ЄМНІ шаблони (справжня різьба, Fij 17.11): 12×12×12, файл 12 × 144 — 12 шарів знизу вгору,
+# рядок = шар*12 + z, стовпчик = x (уздовж волокон). Чорне — лишається. Кожна деталь стоїть на кресленні (шар 0).
+N = 12
+OUT3 = 'src/main/resources/data/hungrycows/carving_templates_3d'
+os.makedirs(OUT3, exist_ok=True)
+
+def template3d(name, keep):
+    im = Image.new('RGBA', (N, N * N), GREEN)
+    px = im.load()
+    cnt = 0
+    for y in range(N):
+        for z in range(N):
+            for x in range(N):
+                if keep(x, y, z):
+                    px[x, y * N + z] = BLACK
+                    cnt += 1
+    im.save(os.path.join(OUT3, name + '.png'))
+    print('3d', name, cnt)
+
+# заготовка кружки: коробка 10×12×10, стінки 2, дно 2, відкрита згори
+template3d('mug_body', lambda x, y, z: 1 <= x <= 10 and 1 <= z <= 10 and not (3 <= x <= 8 and 3 <= z <= 8 and y >= 2))
+# вушка: два виступи 3×5×6 по краях
+template3d('mug_ears', lambda x, y, z: y <= 4 and 3 <= z <= 8 and (1 <= x <= 3 or 8 <= x <= 10))
+# ручка: брусок 4×12×4 стовпчиком
+template3d('mug_handle', lambda x, y, z: 4 <= x <= 7 and 4 <= z <= 7)
