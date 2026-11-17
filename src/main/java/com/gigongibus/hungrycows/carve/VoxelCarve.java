@@ -74,6 +74,8 @@ public final class VoxelCarve {
         public List<int[]> loose = List.of();
         public boolean chop;
         public int sink;          // на скільки шарів осів шматок, що вже не лежав на кресленні
+        public final List<Float> parts = new ArrayList<>();     // готові деталі, що випали (точність кожної)
+        public final List<int[]> partCells = new ArrayList<>();
 
         public int total() {
             return cut.size() + split.size() + loose.size();
@@ -87,12 +89,12 @@ public final class VoxelCarve {
      * strength 0…1, turned — лезо повернуте (присів).
      */
     public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd) {
-        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, null, 0);
+        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, null);
     }
 
-    /** keep/sink — креслення (осіле разом із колодою): відпадає те, де деталі немає */
+    /** template — клітинки деталі з креслення: шматок, що відокремився й схожий на неї, випадає готовою деталлю */
     public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd,
-                                VoxelMask keep, int sink) {
+                                List<int[]> template) {
         Result r = new Result();
         Direction.Axis a = face.getAxis();
         int[] in = { -face.getStepX(), -face.getStepY(), -face.getStepZ() };
@@ -139,10 +141,34 @@ public final class VoxelCarve {
             for (int j = 0; j < len; j++)
                 for (int o = lo; o <= hi; o++) take(m, r.cut, hx + o * eu[0] + j * t[0], hy + o * eu[1] + j * t[1], hz + o * eu[2] + j * t[2]);
         }
-        r.loose = m.dropLoose(keep, sink);
+        separate(m, template, r);
+        return r;
+    }
+
+    /**
+     * Після удару (Fij, 17.11): шматок, що відокремився й схожий на деталь з креслення, — ВИПАДАЄ готовою деталлю (де б його не
+     * вирізали); з решти лишається найбільший шматок (дерево лишається — можна різати ще), дрібне відпадає стружкою; що вже не лежить
+     * на кресленні — осідає на нього.
+     */
+    public static void separate(VoxelMask m, List<int[]> template, Result r) {
+        List<List<int[]>> comps = m.components();
+        List<List<int[]>> rest = new ArrayList<>();
+        for (List<int[]> c : comps) {
+            float q = template == null ? -1 : Carving.quality3d(PartMatcher.best(c, template));
+            if (q >= 0) {
+                r.parts.add(q);
+                r.partCells.addAll(c);
+                for (int[] v : c) m.clear(v[0], v[1], v[2]);
+            } else rest.add(c);
+        }
+        int best = -1;
+        for (int k = 0; k < rest.size(); k++) if (best < 0 || rest.get(k).size() > rest.get(best).size()) best = k;
+        List<int[]> loose = new ArrayList<>();
+        for (int k = 0; k < rest.size(); k++) if (k != best) loose.addAll(rest.get(k));
+        for (int[] v : loose) m.clear(v[0], v[1], v[2]);
+        r.loose = loose;
         int low = m.lowest();
         if (low > 0 && low < VoxelMask.N) { m.shiftDown(low); r.sink = low; }
-        return r;
     }
 
     private static boolean columnHasWood(VoxelMask m, int x, int hy, int hz, int[] in, int d) {
@@ -208,15 +234,28 @@ public final class VoxelCarve {
         Long last = LAST_STRIKE.put(p, now);
         float charge = last == null ? 1 : Math.max(MIN_STRENGTH, Math.min(1, (now - last) / (float) CHARGE_TICKS));
         float strength = mallet ? charge : HAND_STRENGTH;
-        VoxelMask keep = be.blueprint() instanceof BlueprintItem bp ? CarveTemplates.keep3d(level.getServer(), bp.template) : null;
+        BlueprintItem bp = be.blueprint() instanceof BlueprintItem b ? b : null;
+        VoxelMask keep = bp == null ? null : CarveTemplates.keep3d(level.getServer(), bp.template);
         Result r = strike(m, h[0], h[1], h[2], Direction.from3DDataValue(h[3]), p.getLookAngle(), strength, p.isShiftKeyDown(), new Random(),
-                keep, be.sink());
-        if (r.sink > 0) be.addSink(r.sink);
+                keep == null ? null : PartMatcher.cells(keep));
+        if (r.sink > 0) be.sinkGuide(r.sink);
+        // готова деталь випадає сама (з точністю); місце для наступної — знову чорним, поки вміщається
+        for (float q : r.parts) {
+            var item = new net.minecraft.world.entity.item.ItemEntity(level, pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5,
+                    CarvedPartItem.withQuality(new net.minecraft.world.item.ItemStack(bp.result.get()), q));
+            item.setDeltaMovement((level.random.nextDouble() - 0.5) * 0.1, 0.2, (level.random.nextDouble() - 0.5) * 0.1);
+            level.addFreshEntity(item);
+        }
+        if (!r.parts.isEmpty()) {
+            level.playSound(null, pos, SoundEvents.ITEM_PICKUP, SoundSource.BLOCKS, 0.6F, 0.8F);
+            if (m.count() == 0) be.clearLog();
+            else be.setGuide(PartMatcher.findGuide(m, keep));
+        }
         be.voxelsChanged();
         // видно й чути: стружка, тук киянки, тріск сколу
         var dust = new BlockParticleOption(ParticleTypes.BLOCK, Blocks.STRIPPED_SPRUCE_LOG.defaultBlockState());
         int n = 0;
-        for (List<int[]> l : List.of(r.cut, r.split, r.loose))
+        for (List<int[]> l : List.of(r.cut, r.split, r.loose, r.partCells))
             for (int[] c : l) {
                 if (n++ >= MAX_PARTICLES) break;
                 level.sendParticles(dust, pos.getX() + (OFFSET_XZ + c[0] + 0.5) / 16, pos.getY() + (OFFSET_Y + c[1] + 0.5) / 16,

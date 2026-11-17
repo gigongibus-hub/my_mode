@@ -70,5 +70,5 @@ def template3d(name, keep):
 template3d('mug_body', lambda x, y, z: 3 <= x <= 8 and 3 <= z <= 8 and 2 <= y <= 8 and not (4 <= x <= 7 and 4 <= z <= 7 and y >= 3))
 # вушка: «П» — основа 6×1×4 і два виступи 2×2×4 з проміжком 2 (окремими шматками один би відпав)
 template3d('mug_ears', lambda x, y, z: 4 <= z <= 7 and 3 <= x <= 8 and (y == 4 or (5 <= y <= 6 and (x <= 4 or x >= 7))))
-# ручка: брусок 2×7×2
-template3d('mug_handle', lambda x, y, z: 5 <= x <= 6 and 5 <= z <= 6 and 2 <= y <= 8)
+# ручка (Fij: «тонка, як на моделі» — модель 1 × 3,5 × 0,5): пластинка 2×7×1
+template3d('mug_handle', lambda x, y, z: 5 <= x <= 6 and z == 5 and 2 <= y <= 8)

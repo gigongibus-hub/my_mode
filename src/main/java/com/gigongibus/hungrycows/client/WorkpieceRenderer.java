@@ -82,7 +82,7 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
 
     private void renderVoxels(WorkpieceBlockEntity be, PoseStack pose, MultiBufferSource buf, int light) {
         VoxelMask m = be.voxels(), keep = be.keep3d();
-        int sink = be.sink();
+        int[] gd = be.guide();
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
         TextureAtlasSprite side = atlas.apply(SIDE), end = atlas.apply(END);
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(InventoryMenu.BLOCK_ATLAS));
@@ -95,7 +95,7 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
                     for (Direction d : Direction.values()) {
                         if (m.get(x + d.getStepX(), y + d.getStepY(), z + d.getStepZ())) continue;
                         float c = shade(d);
-                        if (keep != null && keep.get(x, y + sink, z)) c *= REVEALED;      // дійшов до деталі — чорна
+                        if (keep != null && gd != null && keep.get(x - gd[0], y - gd[1], z - gd[2])) c *= REVEALED;   // дійшов до деталі — чорна
                         face(vc, p, d, o + x, oy + y, o + z, d.getAxis() == Direction.Axis.X ? end : side, c, c, c, light, 0, 1, 0);
                         if (!PENCIL_LINES || keep == null || !inside(keep, x, y, z, d)) continue;
                         // олівець: край обрису на цій грані
