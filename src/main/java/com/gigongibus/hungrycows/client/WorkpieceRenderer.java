@@ -62,6 +62,9 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
     private static final ResourceLocation END = new ResourceLocation("minecraft", "block/stripped_spruce_log_top");
     public static final float PENCIL_WIDTH = 0.12F;      // олівцева лінія, частка пікселя
     public static final int PENCIL = 0x3A3530;            // колір олівця
+    // Fij (17.11): «деталь підсвічується чорним, коли до неї доходиш» — олівцевий обрис вимкнено (true — повернути)
+    public static final boolean PENCIL_LINES = false;
+    public static final float REVEALED = 0.13F;           // деталь, до якої дійшов, — майже чорна
 
     private static float shade(Direction d) {
         return switch (d) { case UP -> 1F; case DOWN -> 0.5F; case NORTH, SOUTH -> 0.8F; default -> 0.6F; };
@@ -79,6 +82,7 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
 
     private void renderVoxels(WorkpieceBlockEntity be, PoseStack pose, MultiBufferSource buf, int light) {
         VoxelMask m = be.voxels(), keep = be.keep3d();
+        int sink = be.sink();
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
         TextureAtlasSprite side = atlas.apply(SIDE), end = atlas.apply(END);
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(InventoryMenu.BLOCK_ATLAS));
@@ -91,8 +95,9 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
                     for (Direction d : Direction.values()) {
                         if (m.get(x + d.getStepX(), y + d.getStepY(), z + d.getStepZ())) continue;
                         float c = shade(d);
+                        if (keep != null && keep.get(x, y + sink, z)) c *= REVEALED;      // дійшов до деталі — чорна
                         face(vc, p, d, o + x, oy + y, o + z, d.getAxis() == Direction.Axis.X ? end : side, c, c, c, light, 0, 1, 0);
-                        if (keep == null || !inside(keep, x, y, z, d)) continue;
+                        if (!PENCIL_LINES || keep == null || !inside(keep, x, y, z, d)) continue;
                         // олівець: край обрису на цій грані
                         for (Direction u : Direction.values()) {
                             if (u.getAxis() == d.getAxis()) continue;

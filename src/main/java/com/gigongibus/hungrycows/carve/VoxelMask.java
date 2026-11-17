@@ -72,29 +72,82 @@ public final class VoxelMask {
     }
 
     /**
-     * Шматки, що вже ні до чого не тримаються (не з'єднані гранями з нижнім шаром, що лежить на кресленні), відпадають.
-     * Повертає їхні клітинки (x, y, z).
+     * Fij (17.11: кружка посередині колоди): після удару лишається шматок, у якому найбільше деталі з креслення (keep, осіла
+     * на sink), а без креслення чи порівну — найбільший; решта відпадає. Повертає клітинки, що відпали (x, y, z).
      */
     public List<int[]> dropLoose() {
-        BitSet seen = new BitSet(N * N * N);
-        ArrayDeque<int[]> q = new ArrayDeque<>();
-        for (int z = 0; z < N; z++)
-            for (int x = 0; x < N; x++)
-                if (get(x, 0, z)) { seen.set(idx(x, 0, z)); q.add(new int[]{ x, 0, z }); }
+        return dropLoose(null, 0);
+    }
+
+    public List<int[]> dropLoose(VoxelMask keep, int sink) {
+        int[] comp = new int[N * N * N];
+        java.util.Arrays.fill(comp, -1);
         int[][] dirs = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
-        while (!q.isEmpty()) {
-            int[] c = q.poll();
-            for (int[] d : dirs) {
-                int x = c[0] + d[0], y = c[1] + d[1], z = c[2] + d[2];
-                if (get(x, y, z) && !seen.get(idx(x, y, z))) { seen.set(idx(x, y, z)); q.add(new int[]{ x, y, z }); }
+        List<Integer> sizes = new ArrayList<>();
+        for (int i = bits.nextSetBit(0); i >= 0; i = bits.nextSetBit(i + 1)) {
+            if (comp[i] >= 0) continue;
+            int id = sizes.size(), size = 0, inKeep = 0;
+            ArrayDeque<Integer> q = new ArrayDeque<>();
+            q.add(i);
+            comp[i] = id;
+            while (!q.isEmpty()) {
+                int c = q.poll();
+                size++;
+                int x = c % N, z = c / N % N, y = c / (N * N);
+                if (keep != null && keep.get(x, y + sink, z)) inKeep++;
+                for (int[] d : dirs) {
+                    int xx = x + d[0], yy = y + d[1], zz = z + d[2];
+                    if (!get(xx, yy, zz)) continue;
+                    int j = idx(xx, yy, zz);
+                    if (comp[j] < 0) { comp[j] = id; q.add(j); }
+                }
             }
+            sizes.add(inKeep * (N * N * N + 1) + size);    // спершу деталь, потім розмір
         }
+        int best = 0;
+        for (int k = 1; k < sizes.size(); k++) if (sizes.get(k) > sizes.get(best)) best = k;
         List<int[]> out = new ArrayList<>();
+        for (int i = bits.nextSetBit(0); i >= 0; i = bits.nextSetBit(i + 1))
+            if (comp[i] != best) out.add(new int[]{ i % N, i / (N * N), i / N % N });
+        for (int[] c : out) bits.clear(idx(c[0], c[1], c[2]));
+        return out;
+    }
+
+    /** Найнижчий шар, де ще є дерево (N — порожньо) */
+    public int lowest() {
         for (int y = 0; y < N; y++)
             for (int z = 0; z < N; z++)
-                for (int x = 0; x < N; x++)
-                    if (get(x, y, z) && !seen.get(idx(x, y, z))) { bits.clear(idx(x, y, z)); out.add(new int[]{ x, y, z }); }
-        return out;
+                for (int x = 0; x < N; x++) if (get(x, y, z)) return y;
+        return N;
+    }
+
+    /** Шматок, що вже не лежить на кресленні, сідає на нього: зсув униз на d шарів */
+    public void shiftDown(int d) {
+        if (d <= 0) return;
+        BitSet nb = new BitSet(N * N * N);
+        for (int i = bits.nextSetBit(0); i >= 0; i = bits.nextSetBit(i + 1)) {
+            int x = i % N, z = i / N % N, y = i / (N * N);
+            if (y - d >= 0) nb.set(idx(x, y - d, z));
+        }
+        bits.clear();
+        bits.or(nb);
+    }
+
+    /** Схожість на шаблон, якщо шматок осів на sink шарів (шаблон теж «опускається») */
+    public float match(VoxelMask keep, int sink) {
+        int and = 0, or = 0;
+        for (int y = 0; y < N; y++)
+            for (int z = 0; z < N; z++)
+                for (int x = 0; x < N; x++) {
+                    boolean a = get(x, y, z), k = keep.get(x, y + sink, z);
+                    if (a && k) and++;
+                    if (a || k) or++;
+                }
+        // частина шаблону нижче sink (уже «під столом») — теж рахується як невирізана
+        for (int y = 0; y < Math.min(sink, N); y++)
+            for (int z = 0; z < N; z++)
+                for (int x = 0; x < N; x++) if (keep.get(x, y, z)) or++;
+        return or == 0 ? 0 : and / (float) or;
     }
 
     public byte[] toBytes() {

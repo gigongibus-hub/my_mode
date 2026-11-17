@@ -65,9 +65,10 @@ def template3d(name, keep):
     im.save(os.path.join(OUT3, name + '.png'))
     print('3d', name, cnt)
 
-# заготовка кружки: коробка 10×12×10, стінки 2, дно 2, відкрита згори
-template3d('mug_body', lambda x, y, z: 1 <= x <= 10 and 1 <= z <= 10 and not (3 <= x <= 8 and 3 <= z <= 8 and y >= 2))
-# вушка: два виступи 3×5×6 по краях
-template3d('mug_ears', lambda x, y, z: y <= 4 and 3 <= z <= 8 and (1 <= x <= 3 or 8 <= x <= 10))
-# ручка: брусок 4×12×4 стовпчиком
-template3d('mug_handle', lambda x, y, z: 4 <= x <= 7 and 4 <= z <= 7)
+# Fij (17.11): «форма завелика, має бути посередині дерева» — деталі менші й посередині колоди (з усіх боків дерево)
+# заготовка кружки: коробка 6×7×6 (x, z 3–8; y 2–8), стінки й дно 1, відкрита згори
+template3d('mug_body', lambda x, y, z: 3 <= x <= 8 and 3 <= z <= 8 and 2 <= y <= 8 and not (4 <= x <= 7 and 4 <= z <= 7 and y >= 3))
+# вушка: «П» — основа 6×1×4 і два виступи 2×2×4 з проміжком 2 (окремими шматками один би відпав)
+template3d('mug_ears', lambda x, y, z: 4 <= z <= 7 and 3 <= x <= 8 and (y == 4 or (5 <= y <= 6 and (x <= 4 or x >= 7))))
+# ручка: брусок 2×7×2
+template3d('mug_handle', lambda x, y, z: 5 <= x <= 6 and 5 <= z <= 6 and 2 <= y <= 8)

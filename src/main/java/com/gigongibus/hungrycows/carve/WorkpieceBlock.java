@@ -111,7 +111,7 @@ public class WorkpieceBlock extends BaseEntityBlock {
         if (be.voxels() != null) {           // справжня різьба: порівняти з об'ємним шаблоном креслення
             if (be.voxels().untouched()) return new ItemStack(be.log());
             if (be.blueprint() instanceof BlueprintItem bp && level.getServer() != null) {
-                float q = Carving.quality3d(be.voxels().match(CarveTemplates.keep3d(level.getServer(), bp.template)));
+                float q = Carving.quality3d(be.voxels().match(CarveTemplates.keep3d(level.getServer(), bp.template), be.sink()));
                 if (q >= 0) return CarvedPartItem.withQuality(new ItemStack(bp.result.get()), q);
             }
             return new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED);

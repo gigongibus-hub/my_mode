@@ -22,7 +22,8 @@ public class WorkpieceBlockEntity extends BlockEntity {
     private CarveMask mask = new CarveMask();
     // справжня різьба (Fij, 17.11): об'ємна колода; null — стара (вікно) або ще не почата
     private VoxelMask voxels = null;
-    private VoxelMask keep3d = null;                 // шаблон креслення — для олівцевих ліній у грі гравця
+    private VoxelMask keep3d = null;                 // шаблон креслення — у грі гравця (деталь стає чорною, коли до неї дійшов)
+    private int sink = 0;                            // на скільки шарів осіла колода (шаблон «опускається» разом із нею)
     private net.minecraft.world.phys.shapes.VoxelShape shapeCache = null;
 
     public WorkpieceBlockEntity(BlockPos pos, BlockState state) {
@@ -50,6 +51,7 @@ public class WorkpieceBlockEntity extends BlockEntity {
         log = item;
         mask = new CarveMask();
         voxels = null;
+        sink = 0;
         changed();
     }
 
@@ -58,6 +60,7 @@ public class WorkpieceBlockEntity extends BlockEntity {
         log = null;
         mask = new CarveMask();
         voxels = null;
+        sink = 0;
         changed();
     }
 
@@ -78,13 +81,23 @@ public class WorkpieceBlockEntity extends BlockEntity {
     /** Почати справжню різьбу: ціла колода 12 × 12 × 12 */
     public void startVoxels() {
         voxels = new VoxelMask();
+        sink = 0;
         changed();
     }
 
     /** Для тестів: поставити готову об'ємну форму */
     public void setVoxels(VoxelMask m) {
         voxels = m;
+        sink = 0;
         changed();
+    }
+
+    public int sink() {
+        return sink;
+    }
+
+    public void addSink(int d) {
+        sink += d;
     }
 
     public void voxelsChanged() {
@@ -137,6 +150,7 @@ public class WorkpieceBlockEntity extends BlockEntity {
         tag.putString("Blueprint", id(blueprint));
         tag.putByteArray("Mask", mask.toBytes());
         if (voxels != null) tag.putByteArray("Voxels", voxels.toBytes());
+        if (sink != 0) tag.putInt("Sink", sink);
     }
 
     @Override
@@ -146,6 +160,7 @@ public class WorkpieceBlockEntity extends BlockEntity {
         blueprint = item(tag.getString("Blueprint"));
         mask = tag.contains("Mask") ? CarveMask.fromBytes(tag.getByteArray("Mask")) : new CarveMask();
         voxels = tag.contains("Voxels") ? VoxelMask.fromBytes(tag.getByteArray("Voxels")) : null;
+        sink = tag.getInt("Sink");
         keep3d = tag.contains("Keep3d") ? VoxelMask.fromBytes(tag.getByteArray("Keep3d")) : null;
         shapeCache = null;
     }

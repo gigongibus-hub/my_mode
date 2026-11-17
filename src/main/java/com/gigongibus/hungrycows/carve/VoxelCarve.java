@@ -35,7 +35,7 @@ import java.util.WeakHashMap;
  *   <li>Волокна йдуть уздовж колоди: у торець рубати важко (удвічі мілкіше), упоперек волокон — на 1 мілкіше,
  *       стругати вздовж — на 1 довше. Сильний удар лезом уздовж волокон може СКОЛОТИ шмат аж до торця.</li>
  *   <li>Присів — лезо повернуте (на боковій грані — сторч). Без киянки — лише рукою: найслабший удар.</li>
- *   <li>Шматки, що вже ні до чого не тримаються, відпадають.</li>
+ *   <li>Відрізане відпадає (лишається найбільший шматок); шматок, що вже не лежить на кресленні, осідає на нього.</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = HungryCowsMod.MODID)
@@ -73,6 +73,7 @@ public final class VoxelCarve {
         public final List<int[]> cut = new ArrayList<>(), split = new ArrayList<>();
         public List<int[]> loose = List.of();
         public boolean chop;
+        public int sink;          // на скільки шарів осів шматок, що вже не лежав на кресленні
 
         public int total() {
             return cut.size() + split.size() + loose.size();
@@ -86,6 +87,12 @@ public final class VoxelCarve {
      * strength 0…1, turned — лезо повернуте (присів).
      */
     public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd) {
+        return strike(m, hx, hy, hz, face, look, strength, turned, rnd, null, 0);
+    }
+
+    /** keep/sink — креслення (осіле разом із колодою): відпадає те, де деталі немає */
+    public static Result strike(VoxelMask m, int hx, int hy, int hz, Direction face, Vec3 look, float strength, boolean turned, Random rnd,
+                                VoxelMask keep, int sink) {
         Result r = new Result();
         Direction.Axis a = face.getAxis();
         int[] in = { -face.getStepX(), -face.getStepY(), -face.getStepZ() };
@@ -132,7 +139,9 @@ public final class VoxelCarve {
             for (int j = 0; j < len; j++)
                 for (int o = lo; o <= hi; o++) take(m, r.cut, hx + o * eu[0] + j * t[0], hy + o * eu[1] + j * t[1], hz + o * eu[2] + j * t[2]);
         }
-        r.loose = m.dropLoose();
+        r.loose = m.dropLoose(keep, sink);
+        int low = m.lowest();
+        if (low > 0 && low < VoxelMask.N) { m.shiftDown(low); r.sink = low; }
         return r;
     }
 
@@ -199,7 +208,10 @@ public final class VoxelCarve {
         Long last = LAST_STRIKE.put(p, now);
         float charge = last == null ? 1 : Math.max(MIN_STRENGTH, Math.min(1, (now - last) / (float) CHARGE_TICKS));
         float strength = mallet ? charge : HAND_STRENGTH;
-        Result r = strike(m, h[0], h[1], h[2], Direction.from3DDataValue(h[3]), p.getLookAngle(), strength, p.isShiftKeyDown(), new Random());
+        VoxelMask keep = be.blueprint() instanceof BlueprintItem bp ? CarveTemplates.keep3d(level.getServer(), bp.template) : null;
+        Result r = strike(m, h[0], h[1], h[2], Direction.from3DDataValue(h[3]), p.getLookAngle(), strength, p.isShiftKeyDown(), new Random(),
+                keep, be.sink());
+        if (r.sink > 0) be.addSink(r.sink);
         be.voxelsChanged();
         // видно й чути: стружка, тук киянки, тріск сколу
         var dust = new BlockParticleOption(ParticleTypes.BLOCK, Blocks.STRIPPED_SPRUCE_LOG.defaultBlockState());

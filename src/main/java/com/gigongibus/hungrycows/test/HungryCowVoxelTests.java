@@ -58,16 +58,27 @@ public class HungryCowVoxelTests {
         boolean pareTop = pare.cut.stream().allMatch(c -> c[1] == 11);
         m = new VoxelMask();
         for (int z = 0; z < VoxelMask.N; z++) for (int x = 0; x < VoxelMask.N; x++) m.clear(x, 5, z);
-        int loose = m.dropLoose().size();
+        int loose = m.dropLoose().size();      // шари 0–4 (720) менші за 6–11 (864) — відпадають вони
+        VoxelMask m2 = new VoxelMask();
+        for (int z = 0; z < VoxelMask.N; z++) for (int x = 0; x < VoxelMask.N; x++) m2.clear(x, 5, z);
+        VoxelMask keepLow = VoxelMask.empty();
+        keepLow.set(5, 1, 5);
+        int looseKeep = m2.dropLoose(keepLow, 0).size();   // деталь унизу — тримається менший, відпадає більший
+        var settle = new VoxelMask();
+        for (int y = 0; y < 3; y++) for (int z = 0; z < VoxelMask.N; z++) for (int x = 0; x < VoxelMask.N; x++) settle.clear(x, y, z);
+        var sr = VoxelCarve.strike(settle, 5, 11, 5, Direction.UP, DOWN, 0, false, dice(1));
         LOG.info("[тест] carvingRules: легко {}, сильно {}, у торець {}, упоперек волокон {}, скол {} (+{}), стругає {} (лише верх {}), відпало {}",
-                light, strong, endGrain, across, split.cut.size(), split.split.size(), pare.cut.size(), pareTop, loose);
+                light, strong, endGrain, across, split.cut.size(), split.split.size(), pare.cut.size(), pareTop, loose + " / з деталлю " + looseKeep
+                        + " / осіла на " + sr.sink + " (низ " + settle.lowest() + ")");
         h.assertTrue(light == 3, "легкий удар не 3: " + light);
         h.assertTrue(strong == 12, "сильний удар не 12: " + strong);
         h.assertTrue(endGrain == 6, "у торець не удвічі мілкіше: " + endGrain);
         h.assertTrue(across == 9, "упоперек волокон не на 1 мілкіше: " + across);
         h.assertTrue(split.split.size() == 4, "скол не дійшов до торця: " + split.split.size());
         h.assertTrue(pare.cut.size() == 15 && pareTop, "стругання не верхній шар 3 × 5: " + pare.cut.size() + " " + pareTop);
-        h.assertTrue(loose == 6 * 144, "відрізане не відпало: " + loose);
+        h.assertTrue(loose == 5 * 144, "відрізане не відпало: " + loose);
+        h.assertTrue(looseKeep == 6 * 144, "відпала частина з деталлю: " + looseKeep);
+        h.assertTrue(sr.sink == 3 && settle.lowest() == 0, "шматок не осів на креслення: " + sr.sink + " " + settle.lowest());
         h.succeed();
     }
 
@@ -124,54 +135,65 @@ public class HungryCowVoxelTests {
         h.succeed();
     }
 
-    // 3. Чи можна вирізати: «бот» ударами лише згори й з боків, обережно (без сильних ударів біля стінок) вирізає заготовку кружки
-    @GameTest(template = "arena", batch = "carve3d", timeoutTicks = 20)
-    public static void botCarvesMugBody(GameTestHelper h) {
-        VoxelMask keep = CarveTemplates.keep3d(h.getLevel().getServer(), "mug_body");
+    // 3. Чи можна вирізати: «бот» б'є з усіх боків (кружка посередині колоди), не зачіпаючи деталь — що вийде
+    @GameTest(template = "arena", batch = "carve3d", timeoutTicks = 200)
+    public static void botCarvesMugParts(GameTestHelper h) {
+        StringBuilder out = new StringBuilder();
+        float worst = 1;
+        for (String name : new String[]{ "mug_body", "mug_ears", "mug_handle" }) {
+            VoxelMask keep = CarveTemplates.keep3d(h.getLevel().getServer(), name);
+            int[] res = bot(keep);
+            VoxelMask m = lastBot;
+            float match = m.match(keep, res[1]);
+            worst = Math.min(worst, Carving.quality3d(match));
+            out.append(String.format("%s: ударів %d, осіла %d, схожість %.3f, точність %.2f; ", name, res[0], res[1], match, Carving.quality3d(match)));
+        }
+        LOG.info("[тест] botCarvesMugParts: {}", out);
+        h.assertTrue(worst >= 0.5F, "навіть обережний бот не вирізає деталь: " + out);
+        h.succeed();
+    }
+
+    private static VoxelMask lastBot;
+
+    private static int keepCount(VoxelMask m, VoxelMask keep, int sink) {
+        int n = 0, N = VoxelMask.N;
+        for (int y = 0; y < N; y++) for (int z = 0; z < N; z++) for (int x = 0; x < N; x++) if (m.get(x, y, z) && keep.get(x, y + sink, z)) n++;
+        return n;
+    }
+
+    /** Жадібно: будь-яка відкрита грань зайвої клітинки, удар (сильний, далі від деталі — легкий), лише якщо деталь ціла */
+    private static int[] bot(VoxelMask keep) {
         VoxelMask m = new VoxelMask();
+        int sink = 0, strikes = 0, N = VoxelMask.N;
         Random rnd = new Random(1);
-        int strikes = 0, N = VoxelMask.N;
-        // зовнішні шари: зверху вниз, лезо вздовж і впоперек, сила — щоб не зачепити деталь
-        for (int pass = 0; pass < 40; pass++) {
+        int whole = keepCount(m, keep, 0);
+        for (int pass = 0; pass < 60; pass++) {
             boolean any = false;
-            for (int z = 0; z < N; z++)
-                for (int x = 0; x < N; x++) {
-                    int top = -1;
-                    for (int y = N - 1; y >= 0; y--) if (m.get(x, y, z)) { top = y; break; }
-                    if (top < 0 || keep.get(x, top, z)) continue;
-                    // скільки можна вглиб, не зачепивши деталь, у смузі леза (вздовж x або впоперек)
-                    for (boolean turned : new boolean[]{ false, true }) {
-                        boolean ok = true;
-                        int room = 99;
-                        for (int o = -1; o <= 1; o++) {
-                            int xx = turned ? x : x + o, zz = turned ? z + o : z;
-                            if (!VoxelMask.in(xx, 0, zz)) continue;
-                            int r = 0;
-                            for (int y = top; y >= 0 && !keep.get(xx, y, zz); y--) r++;
-                            if (m.get(xx, top, zz) && keep.get(xx, top, zz)) ok = false;
-                            room = Math.min(room, r);
+            for (int y = N - 1; y >= 0; y--)
+                for (int z = 0; z < N; z++)
+                    for (int x = 0; x < N; x++) {
+                        if (!m.get(x, y, z) || keep.get(x, y + sink, z)) continue;
+                        attempt:
+                        for (Direction f : Direction.values()) {
+                            if (m.get(x + f.getStepX(), y + f.getStepY(), z + f.getStepZ())) continue;
+                            if (f == Direction.DOWN && y == 0) continue;               // знизу — креслення й стіл
+                            Vec3 look = new Vec3(-f.getStepX(), -f.getStepY(), -f.getStepZ());
+                            for (float s : new float[]{ 1F, 0.5F, 0F })
+                                for (boolean turned : new boolean[]{ false, true }) {
+                                    VoxelMask c = m.copy();
+                                    var r = VoxelCarve.strike(c, x, y, z, f, look, s, turned, rnd, keep, sink);
+                                    if (r.total() == 0 || keepCount(c, keep, sink + r.sink) < whole) continue;
+                                    m = c;
+                                    sink += r.sink;
+                                    strikes++;
+                                    any = true;
+                                    break attempt;
+                                }
                         }
-                        if (!ok || room < 1) continue;
-                        int depth = Math.min(room, turned ? 3 : 2);     // уздовж волокон — не сильніше 0,5 (скол)
-                        float s = turned ? (depth) / 3F : (depth - 1) / 3F;   // упоперек: глибина = 1 + round(3s) − 1
-                        if (turned) s = Math.max(0, (depth + 1 - 1) / 3F);
-                        int before = m.count();
-                        VoxelCarve.strike(m, x, top, z, Direction.UP, DOWN, Math.min(s, 0.55F), turned, rnd);
-                        strikes++;
-                        if (m.count() < before) { any = true; break; }
                     }
-                }
             if (!any) break;
         }
-        float match = m.match(keep);
-        int damaged = 0, left = 0;
-        for (int y = 0; y < N; y++) for (int z = 0; z < N; z++) for (int x = 0; x < N; x++) {
-            if (keep.get(x, y, z) && !m.get(x, y, z)) damaged++;
-            if (!keep.get(x, y, z) && m.get(x, y, z)) left++;
-        }
-        LOG.info("[тест] botCarvesMugBody: ударів {}, схожість {}, точність {}, зачепив деталь {}, лишилось зайвого {}", strikes,
-                String.format("%.3f", match), String.format("%.2f", Carving.quality3d(match)), damaged, left);
-        h.assertTrue(Carving.quality3d(match) >= 0.5F, "навіть обережний бот не вирізає заготовку кружки: " + match);
-        h.succeed();
+        lastBot = m;
+        return new int[]{ strikes, sink };
     }
 }
