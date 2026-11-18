@@ -109,7 +109,8 @@ public class WorkpieceBlock extends BaseEntityBlock {
     /** Що вийшло: ціла колода — назад колода; схоже на шаблон креслення — деталь з точністю; інакше — палиці (Fij) */
     public static ItemStack finish(Level level, WorkpieceBlockEntity be) {
         if (be.voxels() != null) {           // справжня різьба: порівняти з об'ємним шаблоном креслення
-            if (be.voxels().untouched()) return new ItemStack(be.log());
+            if (be.untouchedPiece() != null) return be.untouchedPiece();
+            if (!be.isPiece() && be.voxels().untouched()) return new ItemStack(be.log());
             if (be.blueprint() instanceof BlueprintItem bp && level.getServer() != null) {
                 float q = Carving.quality3d(PartMatcher.best(PartMatcher.cells(be.voxels()),
                         PartMatcher.cells(CarveTemplates.keep3d(level.getServer(), bp.template))));
@@ -132,8 +133,9 @@ public class WorkpieceBlock extends BaseEntityBlock {
         if (b.getOptionalParameter(LootContextParams.BLOCK_ENTITY) instanceof WorkpieceBlockEntity be) {
             List<ItemStack> out = new java.util.ArrayList<>();
             if (be.blueprint() != null) out.add(new ItemStack(be.blueprint()));
-            boolean whole = be.voxels() != null ? be.voxels().untouched() : be.mask().untouched();
-            if (be.hasLog()) out.add(whole ? new ItemStack(be.log()) : new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED));
+            boolean whole = be.voxels() != null ? !be.isPiece() && be.voxels().untouched() : be.mask().untouched();
+            if (be.hasLog() && be.untouchedPiece() != null) out.add(be.untouchedPiece());
+            else if (be.hasLog()) out.add(whole ? new ItemStack(be.log()) : new ItemStack(Items.STICK, Carving.STICKS_WHEN_RUINED));
             return out;
         }
         return List.of();

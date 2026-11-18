@@ -23,5 +23,8 @@ public final class ModNetwork {
                 com.gigongibus.hungrycows.carve.OpenCarvingPacket::decode, com.gigongibus.hungrycows.carve.OpenCarvingPacket::handle);
         CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.carve.CarveUpdatePacket.class, com.gigongibus.hungrycows.carve.CarveUpdatePacket::encode,
                 com.gigongibus.hungrycows.carve.CarveUpdatePacket::decode, com.gigongibus.hungrycows.carve.CarveUpdatePacket::handle);
+        // розрубка дерева (Fij): удар сокирою
+        CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.chop.ChopPacket.class, com.gigongibus.hungrycows.chop.ChopPacket::encode,
+                com.gigongibus.hungrycows.chop.ChopPacket::decode, com.gigongibus.hungrycows.chop.ChopPacket::handle);
     }
 }

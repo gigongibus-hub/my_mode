@@ -129,6 +129,16 @@ public final class Carving {
             if (player == null || !player.getAbilities().instabuild) held.shrink(1);
             return true;
         }
+        // розрубка (Fij): шматок колоди — заготовка свого розміру, одразу справжня різьба
+        if (held.getItem() instanceof com.gigongibus.hungrycows.chop.WoodPieceItem && st.is(WORKPIECE.get())
+                && level.getBlockEntity(clicked) instanceof WorkpieceBlockEntity be0 && !be0.hasLog()) {
+            if (level.isClientSide) return true;
+            VoxelMask keep = be0.blueprint() instanceof BlueprintItem bp && level.getServer() != null ? CarveTemplates.keep3d(level.getServer(), bp.template) : null;
+            be0.setPiece(com.gigongibus.hungrycows.chop.WoodPieceItem.piece(held), keep);
+            level.playSound(null, clicked, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 1F, 0.9F);
+            if (player == null || !player.getAbilities().instabuild) held.shrink(1);
+            return true;
+        }
         if (isStrippedLog(held) && st.is(WORKPIECE.get()) && level.getBlockEntity(clicked) instanceof WorkpieceBlockEntity be && !be.hasLog()) {
             if (level.isClientSide) return true;
             be.setLog(held.getItem());

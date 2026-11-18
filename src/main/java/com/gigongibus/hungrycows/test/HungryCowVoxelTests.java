@@ -197,20 +197,20 @@ public class HungryCowVoxelTests {
     private static BotResult bot(VoxelMask keep) {
         var tcells = com.gigongibus.hungrycows.carve.PartMatcher.cells(keep);
         VoxelMask m = new VoxelMask();
-        int[] g = { 0, 0, 0 };
+        VoxelMask g = com.gigongibus.hungrycows.carve.PartMatcher.findGuide(m, keep);
         int strikes = 0, N = VoxelMask.N;
         java.util.List<Float> parts = new java.util.ArrayList<>();
         Random rnd = new Random(1);
         while (g != null && parts.size() < 8) {
             int[] lo = { 99, 99, 99 }, hi = { -99, -99, -99 };
-            for (int[] c : tcells) for (int a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], c[a] + g[a]); hi[a] = Math.max(hi[a], c[a] + g[a]); }
+            for (int[] c : com.gigongibus.hungrycows.carve.PartMatcher.cells(g)) for (int a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], c[a]); hi[a] = Math.max(hi[a], c[a]); }
             boolean dropped = false;
             for (int pass = 0; pass < 80 && !dropped; pass++) {
                 boolean any = false;
                 for (int y = N - 1; y >= 0 && !dropped; y--)
                     for (int z = lo[2] - 1; z <= hi[2] + 1 && !dropped; z++)
                         for (int x = lo[0] - 1; x <= hi[0] + 1 && !dropped; x++) {
-                            if (y < lo[1] - 1 || !m.get(x, y, z) || keep.get(x - g[0], y - g[1], z - g[2])) continue;
+                            if (y < lo[1] - 1 || !m.get(x, y, z) || g.get(x, y, z)) continue;
                             attempt:
                             for (Direction f : Direction.values()) {
                                 if (m.get(x + f.getStepX(), y + f.getStepY(), z + f.getStepZ()) || (f == Direction.DOWN && y == 0)) continue;
@@ -222,12 +222,12 @@ public class HungryCowVoxelTests {
                                         if (r.total() == 0 && r.parts.isEmpty()) continue;
                                         boolean hurt = false;
                                         for (java.util.List<int[]> l : java.util.List.of(r.cut, r.split, r.loose))
-                                            for (int[] v : l) if (keep.get(v[0] - g[0], v[1] - g[1], v[2] - g[2])) hurt = true;
+                                            for (int[] v : l) if (g.get(v[0], v[1], v[2])) hurt = true;
                                         if (hurt) continue;
                                         m = c;
                                         strikes++;
                                         any = true;
-                                        if (r.sink > 0) g = new int[]{ g[0], g[1] - r.sink, g[2] };
+                                        if (r.sink > 0) g.shiftDown(r.sink);
                                         if (!r.parts.isEmpty()) { parts.addAll(r.parts); dropped = true; }
                                         break attempt;
                                     }

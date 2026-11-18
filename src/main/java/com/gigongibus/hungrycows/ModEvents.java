@@ -49,6 +49,7 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL);
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL_WIDE);
             event.accept(com.gigongibus.hungrycows.carve.Carving.MALLET);
+            event.accept(com.gigongibus.hungrycows.chop.Chopping.WOOD_PIECE);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_BODY);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_EARS);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_HANDLE);
@@ -103,6 +104,14 @@ public class ModEvents {
                     com.gigongibus.hungrycows.client.WickerBundleRenderer::new);
             event.registerBlockEntityRenderer(com.gigongibus.hungrycows.carve.Carving.WORKPIECE_BE.get(),
                     com.gigongibus.hungrycows.client.WorkpieceRenderer::new);   // колода на верстаку   // пучки лози, розкидані по блоку
+            event.registerBlockEntityRenderer(com.gigongibus.hungrycows.chop.Chopping.WOOD_PILE_BE.get(),
+                    com.gigongibus.hungrycows.client.WoodPileRenderer::new);    // купа шматків колоди (розрубка, Fij)
+        }
+
+        // розрубка (Fij): шкала сили біля прицілу
+        @SubscribeEvent
+        public static void registerOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+            com.gigongibus.hungrycows.client.ChopClient.registerOverlay(event);
         }
 
         // Предмет «Сіно» виглядає так, як блок, що з нього поставиться (стадія, стан, нитки) — інакше всі були однакові (Fij)
@@ -115,6 +124,11 @@ public class ModEvents {
             event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(ModBlocks.HAY_ITEM.get(),
                     new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "variant"),
                     (stack, level, entity, seed) -> CowHayBlock.variant(stack) * 0.01F + 0.001F));
+            // шматок колоди: картинка за розміром (0 ціла … 4 скіпка)
+            event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(com.gigongibus.hungrycows.chop.Chopping.WOOD_PIECE.get(),
+                    new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "size"),
+                    (stack, level, entity, seed) -> com.gigongibus.hungrycows.chop.WoodPieceItem.sizeClass(
+                            com.gigongibus.hungrycows.chop.WoodPieceItem.piece(stack).fraction()) * 0.25F));
             // сіль: інтерфейс діжки
             event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(com.gigongibus.hungrycows.salt.Salt.TUB_MENU.get(),
                     com.gigongibus.hungrycows.client.TubScreen::new));

@@ -70,27 +70,59 @@ public final class PartMatcher {
     }
 
     /**
-     * Де показати наступну деталь (чорним, коли до неї дійдеш): зсув шаблону (як у файлі) так, щоб уся деталь була в
-     * дереві, що лишилось; найближче до середини. null — уже не вміщається.
+     * Де показати наступну деталь (чорним, коли до неї дійдеш): шаблон, повернутий як завгодно (48 поворотів; спершу — як у файлі)
+     * і зсунутий так, щоб уся деталь була в дереві, що лишилось; найближче до середини. null — уже не вміщається.
      */
-    public static int[] findGuide(VoxelMask wood, VoxelMask keep) {
+    public static VoxelMask findGuide(VoxelMask wood, VoxelMask keep) {
         List<int[]> t = cells(keep);
         if (t.isEmpty()) return null;
         int n = VoxelMask.N;
-        int[] best = null;
+        List<int[]> best = null;
         double bestD = Double.MAX_VALUE;
-        double tc[] = { 0, 0, 0 };
-        for (int[] c : t) for (int a = 0; a < 3; a++) tc[a] += c[a] / (double) t.size();
-        for (int ox = -n; ox <= n; ox++)
-            for (int oy = -n; oy <= n; oy++)
-                for (int oz = -n; oz <= n; oz++) {
-                    boolean fits = true;
-                    for (int[] c : t) if (!wood.get(c[0] + ox, c[1] + oy, c[2] + oz)) { fits = false; break; }
-                    if (!fits) continue;
-                    double cx = tc[0] + ox - (n - 1) / 2.0, cy = tc[1] + oy - (n - 1) / 2.0, cz = tc[2] + oz - (n - 1) / 2.0;
-                    double d = cx * cx + cy * cy + cz * cz;
-                    if (d < bestD) { bestD = d; best = new int[]{ ox, oy, oz }; }
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        // спершу — як у файлі (без повороту); повертає, лише коли так не вміщається
+        for (int pass = 0; pass < 2 && best == null; pass++)
+        for (int[] perm : PERMS)
+            for (int signs = 0; signs < 8; signs++) {
+                if ((pass == 0) != (perm == PERMS[0] && signs == 0)) continue;
+                List<int[]> rot = new ArrayList<>(t.size());
+                for (int[] c : t) {
+                    int[] p = new int[3];
+                    for (int a = 0; a < 3; a++) p[a] = ((signs >> a & 1) == 1 ? -1 : 1) * c[perm[a]];
+                    rot.add(p);
                 }
-        return best;
+                int[] mn = min(rot), mx = { Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE };
+                for (int[] c : rot) for (int a = 0; a < 3; a++) { c[a] -= mn[a]; mx[a] = Math.max(mx[a], c[a]); }
+                StringBuilder key = new StringBuilder();
+                rot.stream().map(c -> c[0] + c[1] * 16 + c[2] * 256).sorted().forEach(v -> key.append(v).append(','));
+                if (!seen.add(key.toString())) continue;
+                double[] tc = { 0, 0, 0 };
+                for (int[] c : rot) for (int a = 0; a < 3; a++) tc[a] += c[a] / (double) rot.size();
+                for (int ox = 0; ox + mx[0] < n; ox++)
+                    for (int oy = 0; oy + mx[1] < n; oy++)
+                        for (int oz = 0; oz + mx[2] < n; oz++) {
+                            double cx = tc[0] + ox - (n - 1) / 2.0, cy = tc[1] + oy - (n - 1) / 2.0, cz = tc[2] + oz - (n - 1) / 2.0;
+                            double d = cx * cx + cy * cy + cz * cz;
+                            if (d >= bestD - 1e-9) continue;
+                            boolean fits = true;
+                            for (int[] c : rot) if (!wood.get(c[0] + ox, c[1] + oy, c[2] + oz)) { fits = false; break; }
+                            if (!fits) continue;
+                            bestD = d;
+                            List<int[]> placed = new ArrayList<>();
+                            for (int[] c : rot) placed.add(new int[]{ c[0] + ox, c[1] + oy, c[2] + oz });
+                            best = placed;
+                        }
+            }
+        if (best == null) return null;
+        VoxelMask m = VoxelMask.empty();
+        for (int[] c : best) m.set(c[0], c[1], c[2]);
+        return m;
+    }
+
+    /** Шаблон, зсунутий на off (для старих збережень, де місце деталі було зсувом) */
+    public static VoxelMask shifted(VoxelMask keep, int[] off) {
+        VoxelMask m = VoxelMask.empty();
+        for (int[] c : cells(keep)) m.set(c[0] + off[0], c[1] + off[1], c[2] + off[2]);
+        return m;
     }
 }

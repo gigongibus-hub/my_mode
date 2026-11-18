@@ -82,9 +82,12 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
 
     private void renderVoxels(WorkpieceBlockEntity be, PoseStack pose, MultiBufferSource buf, int light) {
         VoxelMask m = be.voxels(), keep = be.keep3d();
-        int[] gd = be.guide();
+        VoxelMask gd = be.guide();
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
-        TextureAtlasSprite side = atlas.apply(SIDE), end = atlas.apply(END);
+        // текстури — того дерева, що лежить (ялина, темний дуб зі шматка)
+        var id = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(be.log());
+        TextureAtlasSprite side = id == null ? atlas.apply(SIDE) : atlas.apply(new ResourceLocation(id.getNamespace(), "block/" + id.getPath()));
+        TextureAtlasSprite end = id == null ? atlas.apply(END) : atlas.apply(new ResourceLocation(id.getNamespace(), "block/" + id.getPath() + "_top"));
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(InventoryMenu.BLOCK_ATLAS));
         PoseStack.Pose p = pose.last();
         int n = VoxelMask.N, o = VoxelCarve.OFFSET_XZ, oy = VoxelCarve.OFFSET_Y;
@@ -95,7 +98,7 @@ public class WorkpieceRenderer implements BlockEntityRenderer<WorkpieceBlockEnti
                     for (Direction d : Direction.values()) {
                         if (m.get(x + d.getStepX(), y + d.getStepY(), z + d.getStepZ())) continue;
                         float c = shade(d);
-                        if (keep != null && gd != null && keep.get(x - gd[0], y - gd[1], z - gd[2])) c *= REVEALED;   // дійшов до деталі — чорна
+                        if (gd != null && gd.get(x, y, z)) c *= REVEALED;   // дійшов до деталі — чорна
                         face(vc, p, d, o + x, oy + y, o + z, d.getAxis() == Direction.Axis.X ? end : side, c, c, c, light, 0, 1, 0);
                         if (!PENCIL_LINES || keep == null || !inside(keep, x, y, z, d)) continue;
                         // олівець: край обрису на цій грані

@@ -24,7 +24,13 @@ public class WorkpieceBlockEntity extends BlockEntity {
     private VoxelMask voxels = null;
     private VoxelMask keep3d = null;                 // шаблон креслення — у грі гравця (деталь стає чорною, коли до неї дійшов)
     // де в колоді наступна деталь (зсув шаблону): чорнішає, коли до неї доходиш; осідає разом з колодою; null — не вміщається
-    private int[] guide = { 0, 0, 0 };
+    // місце наступної деталі (клітинки шаблону, повернутого й зсунутого) — чорніє, коли до неї доходиш; осідає разом з колодою
+    private VoxelMask guide = null;
+    private boolean guideReady = false;           // false — ще не шукали (шукає сервер при першому ударі)
+    private int[] legacyGuide = null;             // старе збереження: місце деталі як зсув шаблону
+    // розрубка (Fij, 18.11): шматок колоди темного дуба замість цілої колоди — заготовка його розміру; null — звичайна колода
+    private CompoundTag piece = null;
+    private int pieceStart = 0;                      // скільки «пікселів» було, коли поклали (менше — уже почали різати)
     private net.minecraft.world.phys.shapes.VoxelShape shapeCache = null;
 
     public WorkpieceBlockEntity(BlockPos pos, BlockState state) {
@@ -52,7 +58,9 @@ public class WorkpieceBlockEntity extends BlockEntity {
         log = item;
         mask = new CarveMask();
         voxels = null;
-        guide = new int[]{ 0, 0, 0 };
+        guide = null;
+        guideReady = false;
+        piece = null;
         changed();
     }
 
@@ -61,7 +69,9 @@ public class WorkpieceBlockEntity extends BlockEntity {
         log = null;
         mask = new CarveMask();
         voxels = null;
-        guide = new int[]{ 0, 0, 0 };
+        guide = null;
+        guideReady = false;
+        piece = null;
         changed();
     }
 
@@ -80,30 +90,76 @@ public class WorkpieceBlockEntity extends BlockEntity {
     }
 
     /** Почати справжню різьбу: ціла колода 12 × 12 × 12 */
+    /** Шматок колоди на кресленні: брусок його розміру (пікс. × 12/16), волокна вздовж x, лежить на кресленні посередині */
+    public void setPiece(com.gigongibus.hungrycows.chop.WoodPiece p, VoxelMask keep) {
+        log = net.minecraft.world.item.Items.STRIPPED_DARK_OAK_LOG;
+        mask = new CarveMask();
+        piece = p.itemTag();
+        int n = VoxelMask.N, g = scale(p.size(p.grain));
+        int a = 0, b = 0;
+        for (net.minecraft.core.Direction.Axis ax : net.minecraft.core.Direction.Axis.values())
+            if (ax != p.grain) { if (a == 0) a = scale(p.size(ax)); else b = scale(p.size(ax)); }
+        int h = Math.min(a, b), w = Math.max(a, b);         // нижчою стороною донизу
+        voxels = VoxelMask.empty();
+        int x0 = (n - g) / 2, z0 = (n - w) / 2;
+        for (int y = 0; y < h; y++) for (int z = z0; z < z0 + w; z++) for (int x = x0; x < x0 + g; x++) voxels.set(x, y, z);
+        pieceStart = voxels.count();
+        guide = keep == null ? null : PartMatcher.findGuide(voxels, keep);
+        guideReady = true;
+        changed();
+    }
+
+    private static int scale(int px) {
+        return Math.max(1, Math.min(VoxelMask.N, Math.round(px * VoxelMask.N / 16F)));
+    }
+
+    /** Шматок, якого ще не торкались, — повернути як був; null — це не шматок або вже різали */
+    public net.minecraft.world.item.ItemStack untouchedPiece() {
+        if (piece == null || voxels == null || voxels.count() != pieceStart) return null;
+        return com.gigongibus.hungrycows.chop.WoodPieceItem.of(com.gigongibus.hungrycows.chop.WoodPiece.load(piece));
+    }
+
+    public boolean isPiece() {
+        return piece != null;
+    }
+
     public void startVoxels() {
         voxels = new VoxelMask();
-        guide = new int[]{ 0, 0, 0 };
+        guide = null;
+        guideReady = false;
         changed();
     }
 
     /** Для тестів: поставити готову об'ємну форму */
     public void setVoxels(VoxelMask m) {
         voxels = m;
-        guide = new int[]{ 0, 0, 0 };
+        guide = null;
+        guideReady = false;
         changed();
     }
 
-    public int[] guide() {
+    public VoxelMask guide() {
         return guide;
     }
 
-    public void setGuide(int[] g) {
+    public void setGuide(VoxelMask g) {
         guide = g;
+        guideReady = true;
+    }
+
+    /** Сервер: місце деталі ще не знайдене — знайти (або перенести зі старого збереження) */
+    public void ensureGuide(VoxelMask keep) {
+        if (guideReady || voxels == null) return;
+        if (keep == null) guide = null;
+        else if (legacyGuide != null) guide = PartMatcher.shifted(keep, legacyGuide);
+        else guide = PartMatcher.findGuide(voxels, keep);
+        legacyGuide = null;
+        guideReady = true;
     }
 
     /** Колода осіла на d шарів — і місце деталі з нею */
     public void sinkGuide(int d) {
-        if (guide != null) guide = new int[]{ guide[0], guide[1] - d, guide[2] };
+        if (guide != null) guide.shiftDown(d);
     }
 
     public void voxelsChanged() {
@@ -156,8 +212,10 @@ public class WorkpieceBlockEntity extends BlockEntity {
         tag.putString("Blueprint", id(blueprint));
         tag.putByteArray("Mask", mask.toBytes());
         if (voxels != null) tag.putByteArray("Voxels", voxels.toBytes());
-        if (guide != null) tag.putIntArray("Guide", guide);
-        else tag.putBoolean("NoGuide", true);
+        if (piece != null) { tag.put("Piece", piece); tag.putInt("PieceStart", pieceStart); }
+        if (guide != null) tag.putByteArray("GuideMask", guide.toBytes());
+        if (guideReady) tag.putBoolean("GuideReady", true);
+        else if (legacyGuide != null) tag.putIntArray("Guide", legacyGuide);
     }
 
     @Override
@@ -167,9 +225,15 @@ public class WorkpieceBlockEntity extends BlockEntity {
         blueprint = item(tag.getString("Blueprint"));
         mask = tag.contains("Mask") ? CarveMask.fromBytes(tag.getByteArray("Mask")) : new CarveMask();
         voxels = tag.contains("Voxels") ? VoxelMask.fromBytes(tag.getByteArray("Voxels")) : null;
-        if (tag.contains("Guide")) guide = tag.getIntArray("Guide");
-        else if (tag.getBoolean("NoGuide")) guide = null;
-        else guide = new int[]{ 0, -tag.getInt("Sink"), 0 };     // старе збереження: лише «осіла»
+        piece = tag.contains("Piece") ? tag.getCompound("Piece") : null;
+        pieceStart = tag.getInt("PieceStart");
+        guide = tag.contains("GuideMask") ? VoxelMask.fromBytes(tag.getByteArray("GuideMask")) : null;
+        guideReady = tag.getBoolean("GuideReady") || tag.getBoolean("NoGuide");
+        legacyGuide = null;
+        if (!guideReady && voxels != null) {        // старі збереження (17.11): зсув або «осіла»
+            if (tag.contains("Guide")) legacyGuide = tag.getIntArray("Guide");
+            else if (tag.contains("Sink")) legacyGuide = new int[]{ 0, -tag.getInt("Sink"), 0 };
+        }
         keep3d = tag.contains("Keep3d") ? VoxelMask.fromBytes(tag.getByteArray("Keep3d")) : null;
         shapeCache = null;
     }

@@ -254,6 +254,7 @@ public final class VoxelCarve {
         float strength = mallet ? charge : HAND_STRENGTH;
         BlueprintItem bp = be.blueprint() instanceof BlueprintItem b ? b : null;
         VoxelMask keep = bp == null ? null : CarveTemplates.keep3d(level.getServer(), bp.template);
+        be.ensureGuide(keep);
         Result r = strike(m, h[0], h[1], h[2], Direction.from3DDataValue(h[3]), p.getLookAngle(), strength, p.isShiftKeyDown(), new Random(),
                 keep == null ? null : PartMatcher.cells(keep), chisel.width, chisel.thick);
         if (r.sink > 0) be.sinkGuide(r.sink);
