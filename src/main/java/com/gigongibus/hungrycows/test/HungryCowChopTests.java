@@ -110,6 +110,69 @@ public class HungryCowChopTests {
         h.succeed();
     }
 
+    // 5. Нитка (Fij, 18.11): дві нитки — перев'язана; не рубається й шматки не забрати; зламав — одна в'язанка; поставив — та
+    //    сама купа (ті самі шматки на тих самих місцях); присів + порожня рука — розв'язав, 2 нитки назад
+    @GameTest(template = "arena", batch = "chop", timeoutTicks = 20)
+    public static void tieAndCarry(GameTestHelper h) {
+        var lvl = h.getLevel();
+        BlockPos at = new BlockPos(4, 2, 4), to = new BlockPos(8, 2, 8);
+        h.setBlock(at, Chopping.WOOD_PILE.get());
+        var pile = (WoodPileBlockEntity) h.getBlockEntity(at);
+        pile.add(new WoodPiece(0, 0, 0, 8, 16, 16, Direction.Axis.Y), false);
+        pile.add(new WoodPiece(0, 0, 0, 4, 16, 8, Direction.Axis.Y), false);
+        String before = describe(pile);
+        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(lvl);
+        BlockPos abs = h.absolutePos(at);
+        p.moveTo(abs.getX() + 0.5, abs.getY() + 1, abs.getZ() - 1.5);
+        var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(abs), Direction.UP, abs, false);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STRING, 5));
+        var st = lvl.getBlockState(abs);
+        st.use(lvl, p, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+        boolean oneNotTied = pile.strings() == 1 && !pile.tied();
+        st.use(lvl, p, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+        boolean third = st.use(lvl, p, net.minecraft.world.InteractionHand.MAIN_HAND, hit).consumesAction();
+        int left = p.getMainHandItem().getCount();
+        boolean addBlocked = !pile.add(new WoodPiece(0, 0, 0, 4, 16, 4, Direction.Axis.Y), false);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_AXE));
+        boolean chopBlocked = Chopping.chop(lvl, p, abs, 0, Direction.Axis.X, 4, 0.8F) == Chopping.Result.NONE;
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.ItemStack.EMPTY);
+        st.use(lvl, p, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+        boolean takeBlocked = pile.pieces().size() == 2;
+        var drops = net.minecraft.world.level.block.Block.getDrops(st, lvl, abs, pile);
+        boolean oneBundle = drops.size() == 1 && drops.get(0).is(Chopping.WOOD_BUNDLE.get());
+        h.setBlock(at, Blocks.AIR);
+        BlockPos absTo = h.absolutePos(to);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, drops.get(0));
+        var ctx = new net.minecraft.world.item.context.UseOnContext(p, net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(absTo.below()), Direction.UP, absTo.below(), false));
+        drops.get(0).useOn(ctx);
+        var placed = lvl.getBlockEntity(absTo) instanceof WoodPileBlockEntity be ? be : null;
+        String after = placed == null ? "немає" : describe(placed);
+        boolean placedTied = placed != null && placed.tied();
+        p.setShiftKeyDown(true);
+        if (placed != null) lvl.getBlockState(absTo).use(lvl, p, net.minecraft.world.InteractionHand.MAIN_HAND,
+                new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(absTo), Direction.UP, absTo, false));
+        p.setShiftKeyDown(false);
+        int back = p.getInventory().countItem(net.minecraft.world.item.Items.STRING);
+        boolean untied = placed != null && placed.strings() == 0;
+        p.getInventory().clearContent();
+        LOG.info("[тест] tieAndCarry: 1 нитка {}, третя {}, лишилось ниток {}, докласти/рубати/забрати заборонено {}/{}/{}, " +
+                "в'язанка {}, до: {}, після: {}, перев'язана {}, розв'язав {} (ниток назад {})",
+                oneNotTied, third, left, addBlocked, chopBlocked, takeBlocked, oneBundle, before, after, placedTied, untied, back);
+        h.setBlock(to, Blocks.AIR);
+        h.assertTrue(oneNotTied && !third && left == 3, "нитки: не 2 або взяло третю");
+        h.assertTrue(addBlocked && chopBlocked && takeBlocked, "перев'язану можна змінити");
+        h.assertTrue(oneBundle && before.equals(after) && placedTied, "в'язанка не та сама купа");
+        h.assertTrue(untied && back == 2, "не розв'язалась");
+        h.succeed();
+    }
+
+    private static String describe(WoodPileBlockEntity be) {
+        StringBuilder sb = new StringBuilder();
+        for (WoodPiece w : be.pieces()) sb.append(w.save()).append(';');
+        return sb.toString();
+    }
+
     // 3. Купи: 16 скіпок у купу влазять, 17-та — ні; різні разом (половинка + четвертинка + поліна); назви за розміром; однакові — стос
     @GameTest(template = "arena", batch = "chop", timeoutTicks = 20)
     public static void pilesAndItems(GameTestHelper h) {

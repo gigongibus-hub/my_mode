@@ -52,6 +52,7 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
                 byte kind = w.faces[d.get3DDataValue()];
                 face(vc, p, d, w, tex[Math.max(0, Math.min(2, kind))], shade(d), light);
             }
+        if (be.strings() > 0) strings(be, vc, p, light);   // до ліній: інший буфер закінчує цей
         // стики (Fij): де шматок торкається іншого або це грань розрубу — чорна лінія по краю грані
         List<WoodPiece> all = be.pieces();
         VertexConsumer lines = buf.getBuffer(RenderType.lines());
@@ -76,6 +77,53 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
             for (int i = 0; i < 3; i++) if (i != a) { mn[i] -= NOTCH_OUT; mx[i] += NOTCH_OUT; }
             net.minecraft.client.renderer.LevelRenderer.renderLineBox(pose, buf.getBuffer(RenderType.lines()),
                     mn[0] / 16, mn[1] / 16, mn[2] / 16, mx[0] / 16, mx[1] / 16, mx[2] / 16, 0.12F, 0.08F, 0.05F, 1F);
+        }
+    }
+
+    private static final ResourceLocation STRING = new ResourceLocation("minecraft", "block/white_wool");
+    public static final float STRING_WIDTH = 0.8F;   // ширина нитки (пікс.)
+    public static final float STRING_OUT = 0.15F;    // нитка над поверхнею купи (пікс.)
+
+    /** Нитки (Fij): кільця навколо купи впоперек волокон — перша на ¼ довжини, друга на ¾ */
+    private static void strings(WoodPileBlockEntity be, VertexConsumer vc, PoseStack.Pose p, int light) {
+        float[] mn = { 16, 16, 16 }, mx = { 0, 0, 0 };
+        int[] grainVol = new int[3];
+        for (WoodPiece w : be.pieces()) {
+            int[] a = { w.x, w.y, w.z }, s = { w.sx, w.sy, w.sz };
+            for (int k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], a[k]); mx[k] = Math.max(mx[k], a[k] + s[k]); }
+            grainVol[w.grain.ordinal()] += w.volume();
+        }
+        int g = 0;
+        for (int k = 1; k < 3; k++) if (grainVol[k] > grainVol[g]) g = k;
+        TextureAtlasSprite tex = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(STRING);
+        for (int i = 0; i < be.strings(); i++) {
+            float at = mn[g] + (mx[g] - mn[g]) * (i == 0 ? 0.25F : 0.75F);
+            float[] lo = mn.clone(), hi = mx.clone();
+            for (int k = 0; k < 3; k++) if (k != g) { lo[k] -= STRING_OUT; hi[k] += STRING_OUT; }
+            lo[g] = at - STRING_WIDTH / 2; hi[g] = at + STRING_WIDTH / 2;
+            for (Direction d : Direction.values()) {
+                if (d.getAxis().ordinal() == g) continue;
+                stringFace(vc, p, d, lo, hi, tex, shade(d) * 0.92F, light);
+            }
+        }
+    }
+
+    private static void stringFace(VertexConsumer vc, PoseStack.Pose p, Direction d, float[] lo, float[] hi, TextureAtlasSprite tex, float c, int light) {
+        float x0 = lo[0], y0 = lo[1], z0 = lo[2], x1 = hi[0], y1 = hi[1], z1 = hi[2];
+        float[][] q = switch (d) {
+            case DOWN -> new float[][]{ { x0, y0, z0 }, { x1, y0, z0 }, { x1, y0, z1 }, { x0, y0, z1 } };
+            case UP -> new float[][]{ { x0, y1, z0 }, { x0, y1, z1 }, { x1, y1, z1 }, { x1, y1, z0 } };
+            case NORTH -> new float[][]{ { x0, y0, z0 }, { x0, y1, z0 }, { x1, y1, z0 }, { x1, y0, z0 } };
+            case SOUTH -> new float[][]{ { x0, y0, z1 }, { x1, y0, z1 }, { x1, y1, z1 }, { x0, y1, z1 } };
+            case WEST -> new float[][]{ { x0, y0, z0 }, { x0, y0, z1 }, { x0, y1, z1 }, { x0, y1, z0 } };
+            default -> new float[][]{ { x1, y0, z0 }, { x1, y1, z0 }, { x1, y1, z1 }, { x1, y0, z1 } };
+        };
+        float[][] uv = { { 0, 0 }, { 0, 16 }, { 2, 16 }, { 2, 0 } };
+        for (int i = 0; i < 4; i++) {
+            float[] v = q[i];
+            vc.vertex(p.pose(), v[0] / 16F, v[1] / 16F, v[2] / 16F).color(c, c, c * 0.92F, 1F)
+                    .uv(tex.getU(uv[i][0]), tex.getV(uv[i][1])).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light)
+                    .normal(p.normal(), d.getStepX(), d.getStepY(), d.getStepZ()).endVertex();
         }
     }
 

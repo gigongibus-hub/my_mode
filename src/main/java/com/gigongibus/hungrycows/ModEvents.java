@@ -50,6 +50,7 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL_WIDE);
             event.accept(com.gigongibus.hungrycows.carve.Carving.MALLET);
             event.accept(com.gigongibus.hungrycows.chop.Chopping.WOOD_PIECE);
+            event.accept(com.gigongibus.hungrycows.chop.Chopping.WOOD_BUNDLE);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_BODY);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_EARS);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_HANDLE);

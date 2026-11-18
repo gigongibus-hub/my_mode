@@ -68,6 +68,9 @@ public final class Chopping {
             BlockEntityType.Builder.of(WoodPileBlockEntity::new, WOOD_PILE.get()).build(null));
     public static final RegistryObject<Item> WOOD_PIECE = HungryCowsMod.ITEMS.register("wood_piece", () ->
             new WoodPieceItem(new Item.Properties().stacksTo(16)));
+    /** Перев'язана купа (Fij, 18.11): зламав перев'язану — вся купа одним предметом, поставив — стоїть так само */
+    public static final RegistryObject<Item> WOOD_BUNDLE = HungryCowsMod.ITEMS.register("wood_bundle", () ->
+            new WoodBundleItem(new Item.Properties().stacksTo(1)));
 
     public static void init() {
     }
@@ -93,7 +96,7 @@ public final class Chopping {
 
     /** Шматки, які можна рубати на цьому місці (колода — одна ціла); null — тут нічого рубати */
     public static List<WoodPiece> targetPieces(BlockGetter level, BlockPos pos) {
-        if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) return pile.pieces().isEmpty() ? null : pile.pieces();
+        if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) return pile.pieces().isEmpty() || pile.strings() > 0 ? null : pile.pieces();
         if (!loggable(level, pos)) return null;
         BlockState s = level.getBlockState(pos);
         Direction.Axis axis = s.hasProperty(RotatedPillarBlock.AXIS) ? s.getValue(RotatedPillarBlock.AXIS) : Direction.Axis.Y;

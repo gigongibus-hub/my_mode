@@ -22,6 +22,9 @@ import java.util.List;
 public class WoodPileBlockEntity extends BlockEntity {
     private final List<WoodPiece> pieces = new ArrayList<>();
     private VoxelShape shape;
+    /** Скільки ниток на купі (Fij, 18.11): 2 — перев'язана, ламається однією в'язанкою */
+    private int strings;
+    public static final int STRINGS_TO_TIE = 2;          // потрібно ниток, щоб перев'язати
 
     public WoodPileBlockEntity(BlockPos pos, BlockState state) {
         super(Chopping.WOOD_PILE_BE.get(), pos, state);
@@ -29,6 +32,19 @@ public class WoodPileBlockEntity extends BlockEntity {
 
     public List<WoodPiece> pieces() {
         return pieces;
+    }
+
+    public int strings() {
+        return strings;
+    }
+
+    public boolean tied() {
+        return strings >= STRINGS_TO_TIE;
+    }
+
+    public void setStrings(int n) {
+        strings = Math.max(0, Math.min(STRINGS_TO_TIE, n));
+        changed();
     }
 
     public void setPieces(List<WoodPiece> list) {
@@ -73,6 +89,7 @@ public class WoodPileBlockEntity extends BlockEntity {
      * лежачи, волокна вздовж погляду (along). Не влазить так — false (не кладе як завгодно).
      */
     public boolean add(WoodPiece fromItem, boolean lying, double tx, double tz, Direction.Axis along) {
+        if (strings > 0) return false;                    // перев'язану (чи з ниткою) не докладеш
         WoodPiece up = fromItem.grain == Direction.Axis.Y ? fromItem
                 : fromItem.reoriented(fromItem.grain == Direction.Axis.X ? new int[]{ 1, 0, 2 } : new int[]{ 0, 2, 1 });
         List<WoodPiece> orients = new ArrayList<>();
@@ -157,6 +174,20 @@ public class WoodPileBlockEntity extends BlockEntity {
         ListTag l = new ListTag();
         for (WoodPiece p : pieces) l.add(p.save());
         tag.put("Pieces", l);
+        if (strings > 0) tag.putInt("Strings", strings);
+    }
+
+    /** Шматки списком для в'язанки */
+    public ListTag piecesTag() {
+        ListTag l = new ListTag();
+        for (WoodPiece p : pieces) l.add(p.save());
+        return l;
+    }
+
+    public static List<WoodPiece> piecesFrom(ListTag l) {
+        List<WoodPiece> out = new ArrayList<>();
+        for (Tag t : l) out.add(WoodPiece.load((CompoundTag) t));
+        return out;
     }
 
     @Override
@@ -164,6 +195,7 @@ public class WoodPileBlockEntity extends BlockEntity {
         super.load(tag);
         pieces.clear();
         for (Tag t : tag.getList("Pieces", Tag.TAG_COMPOUND)) pieces.add(WoodPiece.load((CompoundTag) t));
+        strings = tag.getInt("Strings");
         shape = null;
     }
 
