@@ -15,6 +15,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.InventoryMenu;
 
+import java.util.List;
+
 /**
  * Купа шматків (Fij): кожен шматок — брусок з текстурами темного дуба: де була кора — кора, де розкололи вздовж волокон —
  * свіже дерево, торці — кільця (з того місця колоди, звідки шматок, тож візерунок «складається»).
@@ -24,7 +26,9 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
     private static final ResourceLocation SPLIT = new ResourceLocation("minecraft", "block/stripped_dark_oak_log");
     private static final ResourceLocation END = new ResourceLocation("minecraft", "block/dark_oak_log_top");
 
-    public static final float GAP = 0.2F;             // пікселя з кожного боку розрубу (щілина 0,4 пікс.)
+    public static final float GAP = 0F;               // щілина між шматками (Fij, 18.11: «дивно, ніби повітря» — було 0,2; тепер чорна лінія)
+    public static final double SEAM_OUT = 0.04;      // лінія стику трохи над поверхнею (пікс.), щоб не ховалась у грані
+    public static final float SEAM_DARK = 0.03F;     // колір лінії стику (майже чорний)
 
     private static float gap(WoodPiece w, Direction d, float g) {
         return (w.cut >> d.get3DDataValue() & 1) != 0 ? g : 0;
@@ -48,6 +52,21 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
                 byte kind = w.faces[d.get3DDataValue()];
                 face(vc, p, d, w, tex[Math.max(0, Math.min(2, kind))], shade(d), light);
             }
+        // стики (Fij): де шматок торкається іншого або це грань розрубу — чорна лінія по краю грані
+        List<WoodPiece> all = be.pieces();
+        VertexConsumer lines = buf.getBuffer(RenderType.lines());
+        for (WoodPiece w : all)
+            for (Direction d : Direction.values()) {
+                boolean seam = (w.cut >> d.get3DDataValue() & 1) != 0;
+                for (int i = 0; !seam && i < all.size(); i++) if (all.get(i) != w && touches(w, all.get(i), d)) seam = true;
+                if (!seam) continue;
+                int a = d.getAxis().ordinal();
+                double[] mn = { w.x, w.y, w.z }, mx = { w.x + w.sx, w.y + w.sy, w.z + w.sz };
+                mn[a] = mx[a] = d.getAxisDirection() == Direction.AxisDirection.POSITIVE ? mx[a] : mn[a];
+                for (int k = 0; k < 3; k++) if (k != a) { mn[k] -= SEAM_OUT; mx[k] += SEAM_OUT; }
+                net.minecraft.client.renderer.LevelRenderer.renderLineBox(pose, lines,
+                        mn[0] / 16, mn[1] / 16, mn[2] / 16, mx[0] / 16, mx[1] / 16, mx[2] / 16, SEAM_DARK, SEAM_DARK, SEAM_DARK, 1F);
+            }
         // засічка: де сокира застрягла — темна риска навколо шматка
         for (WoodPiece w : be.pieces()) {
             if (w.notchAxis < 0) continue;
@@ -58,6 +77,17 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
             net.minecraft.client.renderer.LevelRenderer.renderLineBox(pose, buf.getBuffer(RenderType.lines()),
                     mn[0] / 16, mn[1] / 16, mn[2] / 16, mx[0] / 16, mx[1] / 16, mx[2] / 16, 0.12F, 0.08F, 0.05F, 1F);
         }
+    }
+
+    /** Грань d шматка w прилягає до шматка o (та сама площина, перекриваються) */
+    private static boolean touches(WoodPiece w, WoodPiece o, Direction d) {
+        int a = d.getAxis().ordinal();
+        int[] wp = { w.x, w.y, w.z }, ws = { w.sx, w.sy, w.sz }, op = { o.x, o.y, o.z }, os = { o.sx, o.sy, o.sz };
+        int plane = d.getAxisDirection() == Direction.AxisDirection.POSITIVE ? wp[a] + ws[a] : wp[a];
+        int other = d.getAxisDirection() == Direction.AxisDirection.POSITIVE ? op[a] : op[a] + os[a];
+        if (plane != other) return false;
+        for (int k = 0; k < 3; k++) if (k != a && (wp[k] >= op[k] + os[k] || op[k] >= wp[k] + ws[k])) return false;
+        return true;
     }
 
     public static final double NOTCH_OUT = 0.03;     // риска засічки трохи над поверхнею
