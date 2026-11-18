@@ -48,7 +48,7 @@ public class HungryCowChopTests {
         var s1 = Chopping.chopPieces(c, 0, Direction.Axis.Y, 8, 0.4F, rnd);
         var s2 = Chopping.chopPieces(c, 0, Direction.Axis.Y, 8, 0.4F, rnd);
         boolean endFace = c.size() == 2 && c.get(0).faces[Direction.UP.get3DDataValue()] == WoodPiece.END;
-        // забагато: половинка вздовж (треба 0,45) ударом 1,0 — криво, менше дерева
+        // засильно: половинка вздовж (треба 0,45) ударом 1,0 — розруб так само рівно по рамці, дерево не губиться
         List<WoodPiece> k = new ArrayList<>(List.of(l.get(0).copy()));
         int before = k.get(0).volume();
         var crooked = Chopping.chopPieces(k, 0, Direction.Axis.Z, 8, 1F, rnd);
@@ -70,11 +70,12 @@ public class HungryCowChopTests {
         }
         boolean sixteen = all.size() == 16 && all.stream().allMatch(p -> p.sx == 4 && p.sz == 4 && p.sy == 16);
         LOG.info("[тест] chopRules: треба вздовж {} / упоперек {}; слабко {} → потім {} (половини {}, розкол {}); поперек {} → {} (торець {}); "
-                        + "забагато {} ({} → {} пікс.); 16 шматків {} за {} ударів", String.format("%.2f", needAlong), String.format("%.2f", needAcross),
+                        + "засильно {} ({} → {} пікс.); 16 шматків {} за {} ударів", String.format("%.2f", needAlong), String.format("%.2f", needAcross),
                 weak, clean, halves, splitFace, s1, s2, endFace, crooked, before, after, sixteen, strikes);
         h.assertTrue(weak == Chopping.Result.STUCK && clean == Chopping.Result.CLEAN && halves && splitFace, "колода не розкололась навпіл як слід");
         h.assertTrue(s1 == Chopping.Result.STUCK && s2 == Chopping.Result.CLEAN && endFace, "поперек: засічка не доповнила або не торець");
-        h.assertTrue(crooked == Chopping.Result.CROOKED && after < before, "забагато сили — не криво: " + crooked + " " + after);
+        boolean onLine = k.size() == 2 && k.get(0).sz == 8 && k.get(1).sz == 8 && k.get(1).z == 8;
+        h.assertTrue(crooked == Chopping.Result.HARD && after == before && onLine, "засильно — не рівно по рамці: " + crooked + " " + after + " " + onLine);
         h.assertTrue(sixteen && strikes == 15, "не 16 шматків 4×16×4: " + all.size() + " за " + strikes);
         h.succeed();
     }
@@ -129,6 +130,31 @@ public class HungryCowChopTests {
         for (int i = 0; i < 5; i++) names[i] = WoodPieceItem.of(new WoodPiece(0, 0, 0, dims[i][0], dims[i][1], dims[i][2], Direction.Axis.Y)).getHoverName().getString();
         ItemStack a = WoodPieceItem.of(new WoodPiece(3, 0, 5, 4, 16, 8, Direction.Axis.Y)), b = WoodPieceItem.of(new WoodPiece(0, 0, 0, 8, 16, 4, Direction.Axis.Y));
         boolean stacks = ItemStack.isSameItemSameTags(a, b);
+        // куди клацнув: половинка праворуч (x 8), друга — ліворуч (x 0); лежачи вздовж z — волокна по z
+        BlockPos at4 = new BlockPos(4, 2, 8);
+        h.setBlock(at4, Chopping.WOOD_PILE.get());
+        var pile4 = (WoodPileBlockEntity) h.getBlockEntity(at4);
+        WoodPiece half = new WoodPiece(0, 0, 0, 8, 16, 16, Direction.Axis.Y);
+        pile4.add(half, false, 13, 8, Direction.Axis.X);
+        pile4.add(half, false, 2, 8, Direction.Axis.X);
+        int right = pile4.pieces().get(0).x, left = pile4.pieces().get(1).x;
+        BlockPos at5 = new BlockPos(8, 2, 8);
+        h.setBlock(at5, Chopping.WOOD_PILE.get());
+        var pile5 = (WoodPileBlockEntity) h.getBlockEntity(at5);
+        WoodPiece quarter = new WoodPiece(0, 0, 0, 8, 16, 8, Direction.Axis.Y);
+        int q = 0;
+        for (double[] c : new double[][]{ { 3, 3 }, { 12, 3 }, { 3, 12 }, { 12, 12 } }) if (pile5.add(quarter, false, c[0], c[1], Direction.Axis.X)) q++;
+        boolean tidy = q == 4 && pile5.pieces().stream().allMatch(p -> p.x % 8 == 0 && p.z % 8 == 0 && p.y == 0);
+        BlockPos at6 = new BlockPos(11, 2, 8);
+        h.setBlock(at6, Chopping.WOOD_PILE.get());
+        var pile6 = (WoodPileBlockEntity) h.getBlockEntity(at6);
+        pile6.add(new WoodPiece(0, 0, 0, 4, 16, 4, Direction.Axis.Y), true, 8, 8, Direction.Axis.Z);
+        WoodPiece lyingP = pile6.pieces().get(0);
+        boolean lyingOk = lyingP.grain == Direction.Axis.Z && lyingP.sz == 16 && lyingP.y == 0;
+        for (BlockPos bp : new BlockPos[]{ at4, at5, at6 }) h.setBlock(bp, Blocks.AIR);
+        h.assertTrue(right == 8 && left == 0, "не кладеться туди, куди клацнув: " + right + " " + left);
+        h.assertTrue(tidy, "четвертинки не лягли рівно 2×2: " + q);
+        h.assertTrue(lyingOk, "присівши не лягла вздовж погляду: " + lyingP.grain + " " + lyingP.sz);
         // забрали нижню половинку — верхня осідає
         BlockPos at3 = new BlockPos(11, 2, 4);
         h.setBlock(at3, Chopping.WOOD_PILE.get());

@@ -24,6 +24,12 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
     private static final ResourceLocation SPLIT = new ResourceLocation("minecraft", "block/stripped_dark_oak_log");
     private static final ResourceLocation END = new ResourceLocation("minecraft", "block/dark_oak_log_top");
 
+    public static final float GAP = 0.2F;             // пікселя з кожного боку розрубу (щілина 0,4 пікс.)
+
+    private static float gap(WoodPiece w, Direction d, float g) {
+        return (w.cut >> d.get3DDataValue() & 1) != 0 ? g : 0;
+    }
+
     public WoodPileRenderer(BlockEntityRendererProvider.Context ctx) {
     }
 
@@ -58,7 +64,10 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
 
     /** Грань бруска (у пікселях) — текстура вирізається з того місця, де брусок лежить */
     private static void face(VertexConsumer vc, PoseStack.Pose p, Direction d, WoodPiece w, TextureAtlasSprite tex, float c, int light) {
-        float x0 = w.x, y0 = w.y, z0 = w.z, x1 = w.x + w.sx, y1 = w.y + w.sy, z1 = w.z + w.sz;
+        // Fij: розруб має бути видно — грані розрубу трохи «всередину», між шматками тонка щілина
+        float g = GAP;
+        float x0 = w.x + gap(w, Direction.WEST, g), y0 = w.y + gap(w, Direction.DOWN, g), z0 = w.z + gap(w, Direction.NORTH, g);
+        float x1 = w.x + w.sx - gap(w, Direction.EAST, g), y1 = w.y + w.sy - gap(w, Direction.UP, g), z1 = w.z + w.sz - gap(w, Direction.SOUTH, g);
         float[][] q = switch (d) {
             case DOWN -> new float[][]{ { x0, y0, z0 }, { x1, y0, z0 }, { x1, y0, z1 }, { x0, y0, z1 } };
             case UP -> new float[][]{ { x0, y1, z0 }, { x0, y1, z1 }, { x1, y1, z1 }, { x1, y1, z0 } };

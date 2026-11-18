@@ -58,9 +58,11 @@ public class WoodPieceItem extends Item {
         BlockPos clicked = ctx.getClickedPos();
         boolean lying = ctx.getPlayer() != null && ctx.getPlayer().isShiftKeyDown();
         WoodPiece p = piece(ctx.getItemInHand());
+        Direction.Axis along = ctx.getPlayer() == null ? Direction.Axis.X : ctx.getPlayer().getDirection().getAxis();
         if (level.getBlockEntity(clicked) instanceof WoodPileBlockEntity pile) {
             if (level.isClientSide) return InteractionResult.SUCCESS;
-            if (!pile.add(p, lying)) return InteractionResult.FAIL;
+            double tx = (ctx.getClickLocation().x - clicked.getX()) * 16, tz = (ctx.getClickLocation().z - clicked.getZ()) * 16;
+            if (!pile.add(p, lying, tx, tz, along)) return InteractionResult.FAIL;
             done(ctx, clicked);
             return InteractionResult.CONSUME;
         }
@@ -69,7 +71,8 @@ public class WoodPieceItem extends Item {
             return InteractionResult.FAIL;
         if (level.isClientSide) return InteractionResult.SUCCESS;
         level.setBlock(at, Chopping.WOOD_PILE.get().defaultBlockState(), 3);
-        if (!(level.getBlockEntity(at) instanceof WoodPileBlockEntity pile) || !pile.add(p, lying)) {
+        double tx = (ctx.getClickLocation().x - at.getX()) * 16, tz = (ctx.getClickLocation().z - at.getZ()) * 16;
+        if (!(level.getBlockEntity(at) instanceof WoodPileBlockEntity pile) || !pile.add(p, lying, tx, tz, along)) {
             level.removeBlock(at, false);
             return InteractionResult.FAIL;
         }

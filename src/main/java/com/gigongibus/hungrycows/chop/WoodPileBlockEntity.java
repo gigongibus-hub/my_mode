@@ -62,28 +62,55 @@ public class WoodPileBlockEntity extends BlockEntity {
         if (level != null && !level.isClientSide) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
     }
 
-    /** Покласти шматок (як лежав у предметі — волокна вгору); lying — покласти лежачи. false — не влазить. */
+    /** Без місця клацання (тести): ближче до кута, стоячи / лежачи вздовж x */
     public boolean add(WoodPiece fromItem, boolean lying) {
-        WoodPiece best = null;
-        int bestY = Integer.MAX_VALUE;
-        // перестановки осей: стоячи (волокна вгору) двома способами, лежачи — вздовж x і z
-        int g = fromItem.grain.ordinal();
-        int[][] perms = { { 0, 1, 2 }, { 2, 1, 0 }, { 1, 0, 2 }, { 0, 2, 1 }, { 1, 2, 0 }, { 2, 0, 1 } };
+        return add(fromItem, lying, 0, 0, Direction.Axis.X);
+    }
+
+    /**
+     * Покласти шматок (Fij, 18.11: «дивно складається»): туди, куди клацнув (tx, tz — пікселі в блоці), рівно по сітці (кратно 4,
+     * не влазить — по пікселю), найнижче, де є опора. Стоячи — волокна вгору (можна повернути на 90°, щоб влізло); присівши —
+     * лежачи, волокна вздовж погляду (along). Не влазить так — false (не кладе як завгодно).
+     */
+    public boolean add(WoodPiece fromItem, boolean lying, double tx, double tz, Direction.Axis along) {
+        WoodPiece up = fromItem.grain == Direction.Axis.Y ? fromItem
+                : fromItem.reoriented(fromItem.grain == Direction.Axis.X ? new int[]{ 1, 0, 2 } : new int[]{ 0, 2, 1 });
+        List<WoodPiece> orients = new ArrayList<>();
+        if (!lying) {
+            orients.add(up);
+            orients.add(up.reoriented(new int[]{ 2, 1, 0 }));
+        } else {
+            // волокна (вісь y у «стоячому») лягають уздовж погляду
+            WoodPiece l1 = along == Direction.Axis.Z ? up.reoriented(new int[]{ 0, 2, 1 }) : up.reoriented(new int[]{ 1, 0, 2 });
+            orients.add(l1);
+            orients.add(along == Direction.Axis.Z ? up.reoriented(new int[]{ 2, 0, 1 }) : up.reoriented(new int[]{ 1, 2, 0 }));
+        }
         boolean[] occ = occupancy();
-        // спершу як просили (стоячи / лежачи), не влазить — як завгодно
-        for (int pass = 0; pass < 2 && best == null; pass++)
-            for (int[] perm : perms) {
-                WoodPiece p = fromItem.reoriented(perm);
-                boolean standing = p.grain == Direction.Axis.Y;
-                if (pass == 0 && standing == lying) continue;
-                int[] at = lowestFit(occ, p.sx, p.sy, p.sz);
-                if (at != null && at[1] < bestY) {
-                    bestY = at[1];
-                    best = p;
-                    best.x = at[0]; best.y = at[1]; best.z = at[2];
-                }
+        WoodPiece best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (int pass = 0; pass < 2; pass++) {
+            for (WoodPiece p : orients) {
+                int n = WoodPiece.FULL;
+                // сітка — розмір самого шматка (половинки — 0 або 8, четвертинки — 0/4/8/12), не ділить 16 — по 4; удруге — по пікселю
+                int stepX = pass == 1 ? 1 : n % p.sx == 0 ? p.sx : 4, stepZ = pass == 1 ? 1 : n % p.sz == 0 ? p.sz : 4;
+                for (int y = 0; y + p.sy <= n; y++)
+                    for (int z = 0; z + p.sz <= n; z += stepZ)
+                        for (int x = 0; x + p.sx <= n; x += stepX) {
+                            if (!free(occ, x, y, z, p.sx, p.sy, p.sz)) continue;
+                            if (y > 0 && !supported(occ, x, y, z, p.sx, p.sz)) continue;
+                            double dx = x + p.sx / 2.0 - tx, dz = z + p.sz / 2.0 - tz;
+                            double score = y * 1000 + dx * dx + dz * dz;      // спершу нижче, потім ближче до клацання
+                            if (score < bestScore) {
+                                bestScore = score;
+                                best = p.copy();
+                                best.x = x; best.y = y; best.z = z;
+                            }
+                        }
             }
+            if (best != null) break;
+        }
         if (best == null) return false;
+        best.notch = 0; best.notchAxis = best.notchAt = -1;
         pieces.add(best);
         changed();
         return true;
@@ -98,19 +125,6 @@ public class WoodPileBlockEntity extends BlockEntity {
                     for (int x = p.x; x < p.x + p.sx; x++)
                         if (x >= 0 && y >= 0 && z >= 0 && x < n && y < n && z < n) occ[(y * n + z) * n + x] = true;
         return occ;
-    }
-
-    /** Найнижче вільне місце для бруска; складається з кутка рядами (щоб 16 скіпок лягли щільно) */
-    private static int[] lowestFit(boolean[] occ, int sx, int sy, int sz) {
-        int n = WoodPiece.FULL;
-        for (int y = 0; y + sy <= n; y++)
-            for (int z = 0; z + sz <= n; z++)
-                for (int x = 0; x + sx <= n; x++) {
-                    if (!free(occ, x, y, z, sx, sy, sz)) continue;
-                    if (y > 0 && !supported(occ, x, y, z, sx, sz)) continue;
-                    return new int[]{ x, y, z };
-                }
-        return null;
     }
 
     private static boolean free(boolean[] occ, int x0, int y0, int z0, int sx, int sy, int sz) {

@@ -16,6 +16,8 @@ public final class WoodPiece {
     public Direction.Axis grain;
     /** вид кожної грані за `Direction.get3DDataValue()`: DOWN, UP, NORTH, SOUTH, WEST, EAST */
     public final byte[] faces = new byte[6];
+    /** котрі грані — розруб (біт за `get3DDataValue`): там між шматками видно щілину */
+    public byte cut;
     /** засічка: скільки «сили» вже вклали в розруб, що застряг (і де саме) — наступний удар туди ж доповнює */
     public float notch;
     public int notchAxis = -1, notchAt = -1;
@@ -64,6 +66,7 @@ public final class WoodPiece {
     public WoodPiece copy() {
         WoodPiece p = new WoodPiece(x, y, z, sx, sy, sz, grain);
         System.arraycopy(faces, 0, p.faces, 0, 6);
+        p.cut = cut;
         p.notch = notch; p.notchAxis = notchAxis; p.notchAt = notchAt;
         return p;
     }
@@ -91,6 +94,8 @@ public final class WoodPiece {
         Direction pos = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE);
         a.faces[pos.get3DDataValue()] = cut;
         b.faces[pos.getOpposite().get3DDataValue()] = cut;
+        a.cut |= (byte) (1 << pos.get3DDataValue());
+        b.cut |= (byte) (1 << pos.getOpposite().get3DDataValue());
         a.notch = b.notch = 0;
         a.notchAxis = b.notchAxis = a.notchAt = b.notchAt = -1;
         return new WoodPiece[]{ a, b };
@@ -106,8 +111,11 @@ public final class WoodPiece {
         WoodPiece p = new WoodPiece(0, 0, 0, s[perm[0]], s[perm[1]], s[perm[2]], ax[indexOf(perm, grain.ordinal())]);
         for (int newAxis = 0; newAxis < 3; newAxis++) {
             Direction.Axis from = ax[perm[newAxis]], to = ax[newAxis];
-            for (Direction.AxisDirection sign : Direction.AxisDirection.values())
-                p.faces[Direction.fromAxisAndDirection(to, sign).get3DDataValue()] = faces[Direction.fromAxisAndDirection(from, sign).get3DDataValue()];
+            for (Direction.AxisDirection sign : Direction.AxisDirection.values()) {
+                int ti = Direction.fromAxisAndDirection(to, sign).get3DDataValue(), fi = Direction.fromAxisAndDirection(from, sign).get3DDataValue();
+                p.faces[ti] = faces[fi];
+                if ((cut >> fi & 1) != 0) p.cut |= (byte) (1 << ti);
+            }
         }
         return p;
     }
@@ -127,6 +135,7 @@ public final class WoodPiece {
         t.putIntArray("Box", new int[]{ x, y, z, sx, sy, sz });
         t.putString("Grain", grain.getName());
         t.putByteArray("Faces", faces.clone());
+        if (cut != 0) t.putByte("Cut", cut);
         if (notch > 0) { t.putFloat("Notch", notch); t.putInt("NotchAxis", notchAxis); t.putInt("NotchAt", notchAt); }
         return t;
     }
@@ -138,6 +147,7 @@ public final class WoodPiece {
         WoodPiece p = new WoodPiece(b[0], b[1], b[2], b[3], b[4], b[5], g == null ? Direction.Axis.Y : g);
         byte[] f = t.getByteArray("Faces");
         if (f.length == 6) System.arraycopy(f, 0, p.faces, 0, 6);
+        p.cut = t.getByte("Cut");
         p.notch = t.getFloat("Notch");
         p.notchAxis = t.contains("NotchAxis") ? t.getInt("NotchAxis") : -1;
         p.notchAt = t.contains("NotchAt") ? t.getInt("NotchAt") : -1;

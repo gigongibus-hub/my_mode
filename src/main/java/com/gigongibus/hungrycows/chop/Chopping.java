@@ -39,7 +39,7 @@ import java.util.List;
  * не стовбур і не листя) або шматок у купі. Затиснув ЛКМ із сокирою (не присівши) — з'являється рамка розрубу й шкала сили, що
  * наповнюється, поки тримаєш (`client/ChopClient`); стрілки ←/→ зсувають рамку, ↑/↓ повертають; відпустив — удар (`ChopPacket` → `chop`).
  * Розруб уздовж волокон легший за поперечний, більший шматок — важчий. Замало сили — сокира застрягає (наступний удар туди ж
- * доповнює); саме те — рівно; забагато — криво, з трісками. Обидві частини лишаються лежати купою (`WoodPileBlock`): рубай далі
+ * доповнює); вистачило — розруб рівно по рамці; засильно — так само рівно, але тріски летять і сокира зношується вдвічі. Обидві частини лишаються лежати купою (`WoodPileBlock`): рубай далі
  * (половини → четвертини → … → 16), забирай ПКМ, складай будь-які разом.
  */
 public final class Chopping {
@@ -51,9 +51,10 @@ public final class Chopping {
     public static final float ALONG_BASE = 0.2F;             // скільки сили треба: уздовж волокон (розколоти) — від 0,2…
     public static final float ACROSS_BASE = 0.45F;           // …упоперек (перерубати) — від 0,45
     public static final float AREA_NEED = 0.5F;              // + 0,5 × площа розрубу / площа колоди (більше дерева — важче)
-    public static final float GOOD_RANGE = 0.2F;             // понад потрібне на стільки — ще рівно; більше — криво
-    public static final int CROOKED_SHIFT = 2;               // кривий удар: лінія з'їжджає на 1–2 пікселі…
-    public static final int CROOKED_LOST = 1;                // …і з кожного боку відлітає 1 піксель трісками
+    // Fij (18.11: «рубиться криво й не по лінії») — розруб ЗАВЖДИ точно по рамці; було: забагато сили — лінія з'їжджала на 1–2
+    // і губилось по пікселю. Тепер забагато — лише тріски летять і сокира зношується вдвічі.
+    public static final float GOOD_RANGE = 0.2F;             // понад потрібне більше, ніж на стільки, — «засильно»
+    public static final int HARD_EXTRA_WEAR = 1;             // засильний удар — сокира −1 ще
     public static final int MIN_PIECE = 1;                   // тонше 1 пікселя не рубається
     public static final double REACH = 6.0;                  // блоків
     public static final int AXE_WEAR = 1;                    // сокира −1 за удар
@@ -148,7 +149,7 @@ public final class Chopping {
         return (axis == p.grain ? ACROSS_BASE : ALONG_BASE) + AREA_NEED * p.cutArea(axis) / (float) (WoodPiece.FULL * WoodPiece.FULL);
     }
 
-    public enum Result { STUCK, CLEAN, CROOKED, NONE }
+    public enum Result { STUCK, CLEAN, HARD, NONE }
 
     /**
      * Сама розрубка (без світу): шматок index у списку, площина поперек axis на відстані at від початку шматка, сила 0…1.
@@ -168,17 +169,11 @@ public final class Chopping {
             p.notchAt = at;
             return Result.STUCK;
         }
-        boolean crooked = power > need + GOOD_RANGE;
-        int lost = 0;
-        if (crooked) {
-            at = Math.max(MIN_PIECE, Math.min(n - MIN_PIECE, at + (rnd.nextBoolean() ? 1 : -1) * (1 + rnd.nextInt(CROOKED_SHIFT))));
-            lost = CROOKED_LOST;
-        }
-        WoodPiece[] two = p.split(axis, at, lost);
+        WoodPiece[] two = p.split(axis, at, 0);           // точно по рамці
         if (two == null) return Result.NONE;
         pieces.set(index, two[0]);
         pieces.add(index + 1, two[1]);
-        return crooked ? Result.CROOKED : Result.CLEAN;
+        return power > need + GOOD_RANGE ? Result.HARD : Result.CLEAN;
     }
 
     /** Удар гравця (з пакета): перевірки, розруб, звук, тріски, знос сокири */
@@ -209,7 +204,7 @@ public final class Chopping {
                 level.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 1F, 1.1F);
                 level.sendParticles(chips, cx, cy, cz, 8, 0.1, 0.1, 0.1, 0.05);
             }
-            case CROOKED -> {
+            case HARD -> {
                 level.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 1F, 0.7F);
                 level.playSound(null, pos, SoundEvents.AXE_STRIP, SoundSource.BLOCKS, 1F, 1.4F);
                 level.sendParticles(chips, cx, cy, cz, 24, 0.2, 0.2, 0.2, 0.12);
@@ -219,7 +214,8 @@ public final class Chopping {
         }
         player.swing(InteractionHand.MAIN_HAND, true);
         if (!player.getAbilities().instabuild)
-            player.getMainHandItem().hurtAndBreak(AXE_WEAR, player, pl -> pl.broadcastBreakEvent(EquipmentSlot.MAINHAND));
+            player.getMainHandItem().hurtAndBreak(AXE_WEAR + (r == Result.HARD ? HARD_EXTRA_WEAR : 0), player,
+                    pl -> pl.broadcastBreakEvent(EquipmentSlot.MAINHAND));
         return r;
     }
 
