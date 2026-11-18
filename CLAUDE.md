@@ -628,6 +628,7 @@
   ближче до клацання; стоячи — волокна вгору (або повернута на 90°), присівши — лежачи вздовж погляду; «як завгодно» більше не кладе.
   Тести: chopRules (засильно HARD, 2048 → 2048, рівно по рамці), pilesAndItems (половинка праворуч x 8 / ліворуч x 0, четвертинки
   2×2 рівно, лежачи вздовж z). У грі: рамка → 4 пікс. праворуч → розруб саме там (12 + 4), щілину видно, шматок ліг, куди клацнув.
+  Fij ПЕРЕВІРИВ У ГРІ (18.11): «це ідеально, справді» — розрубку більше не чіпати без його прохання.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
