@@ -82,13 +82,17 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
 
     private static final ResourceLocation STRING = new ResourceLocation("minecraft", "block/white_wool");
     public static final float STRING_WIDTH = 0.8F;   // ширина нитки (пікс.)
-    public static final float STRING_OUT = 0.15F;    // нитка над поверхнею купи (пікс.)
+    public static final float STRING_OUT = 0.05F;    // нитка над поверхнею шматка (пікс.)
 
-    /** Нитки (Fij): кільця навколо купи впоперек волокон — перша на ¼ довжини, друга на ¾ */
+    /**
+     * Нитки (Fij): кільця навколо купи впоперек волокон — перша на ¼ довжини, друга на ¾. Fij: «вилазить за текстуру» — тепер
+     * нитка лягає на кожен шматок, який перетинає, і лише на ті його грані, що зовні (не торкаються іншого шматка), впритул.
+     */
     private static void strings(WoodPileBlockEntity be, VertexConsumer vc, PoseStack.Pose p, int light) {
+        List<WoodPiece> all = be.pieces();
         float[] mn = { 16, 16, 16 }, mx = { 0, 0, 0 };
         int[] grainVol = new int[3];
-        for (WoodPiece w : be.pieces()) {
+        for (WoodPiece w : all) {
             int[] a = { w.x, w.y, w.z }, s = { w.sx, w.sy, w.sz };
             for (int k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], a[k]); mx[k] = Math.max(mx[k], a[k] + s[k]); }
             grainVol[w.grain.ordinal()] += w.volume();
@@ -97,13 +101,21 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
         for (int k = 1; k < 3; k++) if (grainVol[k] > grainVol[g]) g = k;
         TextureAtlasSprite tex = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(STRING);
         for (int i = 0; i < be.strings(); i++) {
-            float at = mn[g] + (mx[g] - mn[g]) * (i == 0 ? 0.25F : 0.75F);
-            float[] lo = mn.clone(), hi = mx.clone();
-            for (int k = 0; k < 3; k++) if (k != g) { lo[k] -= STRING_OUT; hi[k] += STRING_OUT; }
-            lo[g] = at - STRING_WIDTH / 2; hi[g] = at + STRING_WIDTH / 2;
-            for (Direction d : Direction.values()) {
-                if (d.getAxis().ordinal() == g) continue;
-                stringFace(vc, p, d, lo, hi, tex, shade(d) * 0.92F, light);
+            float at = Math.round(mn[g] + (mx[g] - mn[g]) * (i == 0 ? 0.25F : 0.75F)) + 0.5F;
+            for (WoodPiece w : all) {
+                int[] a = { w.x, w.y, w.z }, s = { w.sx, w.sy, w.sz };
+                if (at - STRING_WIDTH / 2 < a[g] || at + STRING_WIDTH / 2 > a[g] + s[g]) continue;   // нитка не на цьому шматку
+                for (Direction d : Direction.values()) {
+                    if (d.getAxis().ordinal() == g) continue;
+                    boolean covered = false;
+                    for (WoodPiece o : all) if (o != w && touches(w, o, d)) { covered = true; break; }
+                    if (covered) continue;
+                    float[] lo = { a[0], a[1], a[2] }, hi = { a[0] + s[0], a[1] + s[1], a[2] + s[2] };
+                    int na = d.getAxis().ordinal();
+                    if (d.getAxisDirection() == Direction.AxisDirection.POSITIVE) hi[na] += STRING_OUT; else lo[na] -= STRING_OUT;
+                    lo[g] = at - STRING_WIDTH / 2; hi[g] = at + STRING_WIDTH / 2;
+                    stringFace(vc, p, d, lo, hi, tex, shade(d) * 0.92F, light);
+                }
             }
         }
     }

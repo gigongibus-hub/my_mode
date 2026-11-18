@@ -159,6 +159,12 @@ public class WoodPileBlockEntity extends BlockEntity {
         return under * 2 >= sx * sz;
     }
 
+    /** Fij (18.11): «відвертаєшся — дрова пропадають» — межі для малювання завжди весь блок (з запасом), а не форма з шматків */
+    @Override
+    public net.minecraft.world.phys.AABB getRenderBoundingBox() {
+        return new net.minecraft.world.phys.AABB(worldPosition).inflate(0.25);
+    }
+
     /** Форма для ЛКМ/ПКМ і ходіння: усі шматки разом */
     public VoxelShape shape() {
         if (shape != null) return shape;

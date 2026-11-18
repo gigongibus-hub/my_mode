@@ -13,7 +13,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 /**
- * Шматок колоди в руці (Fij): ПКМ по землі — покласти (стоячи; присівши — лежачи), ПКМ по купі — докласти, якщо влазить.
+ * Шматок колоди в руці (Fij): ПКМ по землі — покласти лежачи вздовж погляду (присівши — упоперек), ПКМ по купі — докласти, якщо влазить.
  * Назва за розміром: колода, половинка, четвертинка, поліно, скіпка. Ціла колода темного дуба теж такий предмет, коли її забрати з купи.
  */
 public class WoodPieceItem extends Item {
@@ -56,9 +56,11 @@ public class WoodPieceItem extends Item {
     public InteractionResult useOn(UseOnContext ctx) {
         Level level = ctx.getLevel();
         BlockPos clicked = ctx.getClickedPos();
-        boolean lying = ctx.getPlayer() != null && ctx.getPlayer().isShiftKeyDown();
+        // Fij (18.11): кладеться лише лежачи — уздовж погляду; присівши — упоперек погляду
+        boolean lying = true, across = ctx.getPlayer() != null && ctx.getPlayer().isShiftKeyDown();
         WoodPiece p = piece(ctx.getItemInHand());
         Direction.Axis along = ctx.getPlayer() == null ? Direction.Axis.X : ctx.getPlayer().getDirection().getAxis();
+        if (across) along = along == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
         if (level.getBlockEntity(clicked) instanceof WoodPileBlockEntity pile) {
             if (level.isClientSide) return InteractionResult.SUCCESS;
             double tx = (ctx.getClickLocation().x - clicked.getX()) * 16, tz = (ctx.getClickLocation().z - clicked.getZ()) * 16;
