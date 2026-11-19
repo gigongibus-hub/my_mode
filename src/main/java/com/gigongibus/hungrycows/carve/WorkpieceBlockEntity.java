@@ -92,7 +92,7 @@ public class WorkpieceBlockEntity extends BlockEntity {
     /** Почати справжню різьбу: ціла колода 12 × 12 × 12 */
     /** Шматок колоди на кресленні: брусок його розміру (пікс. × 12/16), волокна вздовж x, лежить на кресленні посередині */
     public void setPiece(com.gigongibus.hungrycows.chop.WoodPiece p, VoxelMask keep) {
-        log = net.minecraft.world.item.Items.STRIPPED_DARK_OAK_LOG;
+        log = com.gigongibus.hungrycows.chop.WoodPiece.block(p.wood, true).asItem();   // текстури того дерева, з якого шматок
         mask = new CarveMask();
         piece = p.itemTag();
         int n = VoxelMask.N, g = scale(p.size(p.grain));

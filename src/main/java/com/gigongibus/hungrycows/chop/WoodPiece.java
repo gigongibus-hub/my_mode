@@ -21,11 +21,27 @@ public final class WoodPiece {
     /** засічка: скільки «сили» вже вклали в розруб, що застряг (і де саме) — наступний удар туди ж доповнює */
     public float notch;
     public int notchAxis = -1, notchAt = -1;
+    /** Вид дерева (Fij, 19.11: після падіння дуба — і дубові колоди): «dark_oak» чи «oak»; від нього текстури й тріски */
+    public String wood = DARK_OAK;
+    public static final String DARK_OAK = "dark_oak", OAK = "oak";
 
     public WoodPiece(int x, int y, int z, int sx, int sy, int sz, Direction.Axis grain) {
         this.x = x; this.y = y; this.z = z;
         this.sx = sx; this.sy = sy; this.sz = sz;
         this.grain = grain;
+    }
+
+    public static WoodPiece whole(Direction.Axis axis, boolean bark, boolean allSides, String wood) {
+        WoodPiece p = whole(axis, bark, allSides);
+        p.wood = wood;
+        return p;
+    }
+
+    /** Ванільний блок цього виду: колода, обтесана колода (для трісок і заготовки) */
+    public static net.minecraft.world.level.block.Block block(String wood, boolean stripped) {
+        var b = net.minecraftforge.registries.ForgeRegistries.BLOCKS.getValue(
+                new net.minecraft.resources.ResourceLocation("minecraft", (stripped ? "stripped_" : "") + wood + "_log"));
+        return b == null || b == net.minecraft.world.level.block.Blocks.AIR ? net.minecraft.world.level.block.Blocks.DARK_OAK_LOG : b;
     }
 
     /** Ціла колода (блок) з волокнами вздовж axis; bark — кора на боках, stripped — обтесана, wood — кора всюди */
@@ -68,6 +84,7 @@ public final class WoodPiece {
         System.arraycopy(faces, 0, p.faces, 0, 6);
         p.cut = cut;
         p.notch = notch; p.notchAxis = notchAxis; p.notchAt = notchAt;
+        p.wood = wood;
         return p;
     }
 
@@ -109,6 +126,7 @@ public final class WoodPiece {
         Direction.Axis[] ax = Direction.Axis.values();
         int[] s = { sx, sy, sz };
         WoodPiece p = new WoodPiece(0, 0, 0, s[perm[0]], s[perm[1]], s[perm[2]], ax[indexOf(perm, grain.ordinal())]);
+        p.wood = wood;
         for (int newAxis = 0; newAxis < 3; newAxis++) {
             Direction.Axis from = ax[perm[newAxis]], to = ax[newAxis];
             for (Direction.AxisDirection sign : Direction.AxisDirection.values()) {
@@ -137,6 +155,7 @@ public final class WoodPiece {
         t.putByteArray("Faces", faces.clone());
         if (cut != 0) t.putByte("Cut", cut);
         if (notch > 0) { t.putFloat("Notch", notch); t.putInt("NotchAxis", notchAxis); t.putInt("NotchAt", notchAt); }
+        if (!DARK_OAK.equals(wood)) t.putString("Wood", wood);     // старі шматки — темний дуб
         return t;
     }
 
@@ -151,6 +170,7 @@ public final class WoodPiece {
         p.notch = t.getFloat("Notch");
         p.notchAxis = t.contains("NotchAxis") ? t.getInt("NotchAxis") : -1;
         p.notchAt = t.contains("NotchAt") ? t.getInt("NotchAt") : -1;
+        if (t.contains("Wood")) p.wood = t.getString("Wood");
         return p;
     }
 

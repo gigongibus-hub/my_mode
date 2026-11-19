@@ -90,5 +90,8 @@
   "item.hungrycows.pig_bristle": "Щетина свині",
   "item.hungrycows.bristle_brush": "Пензлик",
   "block.hungrycows.resin_cauldron": "Котел зі смолою",
-  "block.hungrycows.mug_assembly": "Кружка, що склеюється"
+  "block.hungrycows.mug_assembly": "Кружка, що склеюється",
+  "item.hungrycows.wood_piece.log.oak": "Дубова колода",
+  "block.hungrycows.felling_cut": "Дуб із зарубкою",
+  "entity.hungrycows.falling_tree": "Дерево, що падає"
 }

@@ -44,8 +44,9 @@ public class CowHearing {
     public static final double SOURCE_NEAR = 1.5;            // звук «у точці» належить тому, хто ближче 1,5 бл. до неї
     // дальність (бл.) і наскільки лякає (страх одразу, поблизу; далі слабше)
     public static final double R_EXPLOSION = 64, R_CALF = 32, R_BELL = 32, R_MOO = 24, R_MUSIC = 24, R_MOB = 16, R_HIT = 16,
-            R_ARROW = 16, R_BREAK = 12;
-    public static final int S_EXPLOSION = 45, S_ARROW = 20, S_HIT = 15, S_BREAK = 10, S_MOB = 10;
+            R_ARROW = 16, R_BREAK = 12, R_TREE = 40;                  // падіння дерева (Fij): гуркіт чути далеко
+
+    public static final int S_EXPLOSION = 45, S_ARROW = 20, S_HIT = 15, S_BREAK = 10, S_MOB = 10, S_TREE = 30;
     public static final double STEP_RUN = 8, STEP_WALK = 5, STEP_SNEAK = 1.5;   // кроки: біг / хода / крадькома
     public static final double RUN_SPEED = 0.2, WALK_SPEED = 0.03;              // бл. за тік
     public static final double MUFFLE = 0.5;                 // крізь тверді блоки — удвічі тихіше (половина дальності)
@@ -77,7 +78,8 @@ public class CowHearing {
     public enum Kind {
         EXPLOSION("вибух", R_EXPLOSION, S_EXPLOSION), CALF("клич теляти", R_CALF, 0), BELL("дзвін", R_BELL, 0),
         MOO("мукання", R_MOO, 0), MUSIC("музика", R_MUSIC, 0), MOB("голос моба", R_MOB, S_MOB), HIT("удар", R_HIT, S_HIT),
-        ARROW("постріл", R_ARROW, S_ARROW), BREAK("ламання блока", R_BREAK, S_BREAK), OTHER("звук", 8, 0);
+        ARROW("постріл", R_ARROW, S_ARROW), BREAK("ламання блока", R_BREAK, S_BREAK), TREE("падіння дерева", R_TREE, S_TREE),
+        OTHER("звук", 8, 0);
 
         public final String title;
         public final double range;
@@ -101,6 +103,7 @@ public class CowHearing {
     // Що визначити з назви звуку гри
     public static Kind classify(String id, Entity source) {
         if (id.contains("explode")) return Kind.EXPLOSION;
+        if (id.equals("hungrycows:tree_fall")) return Kind.TREE;
         if (id.contains("bell")) return Kind.BELL;
         if (id.contains("music_disc") || id.contains("note_block") || id.contains("jukebox")) return Kind.MUSIC;
         if (id.contains("entity.cow.")) return source instanceof HungryCow c && c.isBaby() ? Kind.CALF : Kind.MOO;

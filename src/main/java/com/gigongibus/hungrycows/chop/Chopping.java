@@ -86,24 +86,40 @@ public final class Chopping {
         return s.is(Blocks.DARK_OAK_LOG) || s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.STRIPPED_DARK_OAK_LOG) || s.is(Blocks.STRIPPED_DARK_OAK_WOOD);
     }
 
+    /** Дуб (Fij, 19.11: повалений дуб рубається нашим способом) */
+    public static boolean isOak(BlockState s) {
+        return s.is(Blocks.OAK_LOG) || s.is(Blocks.OAK_WOOD) || s.is(Blocks.STRIPPED_OAK_LOG) || s.is(Blocks.STRIPPED_OAK_WOOD);
+    }
+
+    /** Вид дерева колоди, яку можна рубати; null — не рубається */
+    public static String woodOf(BlockState s) {
+        return isDarkOak(s) ? WoodPiece.DARK_OAK : isOak(s) ? WoodPiece.OAK : null;
+    }
+
     /** Колода «на землі»: під нею твердий верх, над нею не стовбур і не листя (дерево в лісі рубається, як завжди) */
     public static boolean loggable(BlockGetter level, BlockPos pos) {
         BlockState s = level.getBlockState(pos);
-        if (!isDarkOak(s)) return false;
+        if (woodOf(s) == null) return false;
         BlockState up = level.getBlockState(pos.above());
         return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP) && !up.is(BlockTags.LOGS) && !up.is(BlockTags.LEAVES);
     }
 
     /** Шматки, які можна рубати на цьому місці (колода — одна ціла); null — тут нічого рубати */
     public static List<WoodPiece> targetPieces(BlockGetter level, BlockPos pos) {
+        // стовбур дерева (Fij): ціла колода, рубати лише горизонтально (`Felling`)
+        if (com.gigongibus.hungrycows.fell.Felling.isTrunk(level, pos)) {
+            List<WoodPiece> l = new ArrayList<>();
+            l.add(WoodPiece.whole(Direction.Axis.Y, true, false, WoodPiece.OAK));
+            return l;
+        }
         if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) return pile.pieces().isEmpty() || pile.strings() > 0 ? null : pile.pieces();
         if (!loggable(level, pos)) return null;
         BlockState s = level.getBlockState(pos);
         Direction.Axis axis = s.hasProperty(RotatedPillarBlock.AXIS) ? s.getValue(RotatedPillarBlock.AXIS) : Direction.Axis.Y;
-        boolean bark = s.is(Blocks.DARK_OAK_LOG) || s.is(Blocks.DARK_OAK_WOOD);
-        boolean allSides = s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.STRIPPED_DARK_OAK_WOOD);
+        boolean bark = s.is(Blocks.DARK_OAK_LOG) || s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.OAK_LOG) || s.is(Blocks.OAK_WOOD);
+        boolean allSides = s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.STRIPPED_DARK_OAK_WOOD) || s.is(Blocks.OAK_WOOD) || s.is(Blocks.STRIPPED_OAK_WOOD);
         List<WoodPiece> l = new ArrayList<>();
-        l.add(WoodPiece.whole(axis, bark, allSides));
+        l.add(WoodPiece.whole(axis, bark, allSides, woodOf(s)));
         return l;
     }
 
@@ -182,6 +198,8 @@ public final class Chopping {
     /** Удар гравця (з пакета): перевірки, розруб, звук, тріски, знос сокири */
     public static Result chop(ServerLevel level, Player player, BlockPos pos, int index, Direction.Axis axis, int at, float power) {
         if (!holdsAxe(player) || player.isShiftKeyDown() || player.distanceToSqr(Vec3.atCenterOf(pos)) > REACH * REACH) return Result.NONE;
+        if (com.gigongibus.hungrycows.fell.Felling.isTrunk(level, pos))         // стовбур — зарубка, лише горизонтально
+            return axis == Direction.Axis.Y ? com.gigongibus.hungrycows.fell.Felling.cut(level, player, pos, at, power) : Result.NONE;
         List<WoodPiece> pieces = targetPieces(level, pos);
         if (pieces == null) return Result.NONE;
         power = Math.max(0, Math.min(1, power));
@@ -197,7 +215,7 @@ public final class Chopping {
         // видно й чути
         double cx = pos.getX() + (target.x + target.sx / 2.0) / 16, cy = pos.getY() + (target.y + target.sy / 2.0) / 16,
                 cz = pos.getZ() + (target.z + target.sz / 2.0) / 16;
-        var chips = new BlockParticleOption(ParticleTypes.BLOCK, Blocks.STRIPPED_DARK_OAK_LOG.defaultBlockState());
+        var chips = new BlockParticleOption(ParticleTypes.BLOCK, WoodPiece.block(target.wood, true).defaultBlockState());
         switch (r) {
             case STUCK -> {
                 level.playSound(null, pos, SoundEvents.AXE_STRIP, SoundSource.BLOCKS, 0.8F, 0.6F);

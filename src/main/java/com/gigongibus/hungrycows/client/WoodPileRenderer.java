@@ -22,9 +22,13 @@ import java.util.List;
  * свіже дерево, торці — кільця (з того місця колоди, звідки шматок, тож візерунок «складається»).
  */
 public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity> {
-    private static final ResourceLocation BARK = new ResourceLocation("minecraft", "block/dark_oak_log");
-    private static final ResourceLocation SPLIT = new ResourceLocation("minecraft", "block/stripped_dark_oak_log");
-    private static final ResourceLocation END = new ResourceLocation("minecraft", "block/dark_oak_log_top");
+    /** Текстури за видом дерева шматка: кора, розкол (обтесана), торець */
+    private static final java.util.Map<String, ResourceLocation[]> TEX = new java.util.HashMap<>();
+
+    private static ResourceLocation[] tex(String wood) {
+        return TEX.computeIfAbsent(wood, w -> new ResourceLocation[]{ new ResourceLocation("minecraft", "block/" + w + "_log"),
+                new ResourceLocation("minecraft", "block/stripped_" + w + "_log"), new ResourceLocation("minecraft", "block/" + w + "_log_top") });
+    }
 
     public static final float GAP = 0F;               // щілина між шматками (Fij, 18.11: «дивно, ніби повітря» — було 0,2; тепер чорна лінія)
     public static final double SEAM_OUT = 0.04;      // лінія стику трохи над поверхнею (пікс.), щоб не ховалась у грані
@@ -44,14 +48,16 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
     @Override
     public void render(WoodPileBlockEntity be, float partial, PoseStack pose, MultiBufferSource buf, int light, int overlay) {
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
-        TextureAtlasSprite[] tex = { atlas.apply(BARK), atlas.apply(SPLIT), atlas.apply(END) };
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutoutNoCull(InventoryMenu.BLOCK_ATLAS));
         PoseStack.Pose p = pose.last();
-        for (WoodPiece w : be.pieces())
+        for (WoodPiece w : be.pieces()) {
+            ResourceLocation[] rl = tex(w.wood);
+            TextureAtlasSprite[] tex = { atlas.apply(rl[0]), atlas.apply(rl[1]), atlas.apply(rl[2]) };
             for (Direction d : Direction.values()) {
                 byte kind = w.faces[d.get3DDataValue()];
                 face(vc, p, d, w, tex[Math.max(0, Math.min(2, kind))], shade(d), light);
             }
+        }
         if (be.strings() > 0) strings(be, vc, p, light);   // до ліній: інший буфер закінчує цей
         // стики (Fij): де шматок торкається іншого або це грань розрубу — чорна лінія по краю грані
         List<WoodPiece> all = be.pieces();

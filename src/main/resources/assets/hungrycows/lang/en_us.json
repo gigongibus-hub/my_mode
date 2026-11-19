@@ -90,5 +90,8 @@
   "item.hungrycows.pig_bristle": "Pig Bristle",
   "item.hungrycows.bristle_brush": "Bristle Brush",
   "block.hungrycows.resin_cauldron": "Cauldron with Resin",
-  "block.hungrycows.mug_assembly": "Mug Being Glued"
+  "block.hungrycows.mug_assembly": "Mug Being Glued",
+  "item.hungrycows.wood_piece.log.oak": "Oak Log",
+  "block.hungrycows.felling_cut": "Notched Oak Log",
+  "entity.hungrycows.falling_tree": "Falling Tree"
 }

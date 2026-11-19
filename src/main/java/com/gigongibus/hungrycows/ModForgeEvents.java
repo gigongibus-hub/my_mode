@@ -119,6 +119,17 @@ public class ModForgeEvents {
                 .then(Commands.literal("old").executes(c -> spawnOld(c.getSource())))
                 .then(Commands.literal("sick").executes(c -> spawnSick(c.getSource())))
                 .then(Commands.literal("hay").executes(c -> hayChests(c.getSource())))
+                // звалити дерево (Fij, падіння дуба): /hungrycows fell <де стовбур> <куди: north|south|east|west>
+                .then(Commands.literal("fell").then(Commands.argument("де", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                        .then(Commands.argument("куди", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .executes(c -> {
+                                    var pos = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getLoadedBlockPos(c, "де");
+                                    var d = net.minecraft.core.Direction.byName(com.mojang.brigadier.arguments.StringArgumentType.getString(c, "куди"));
+                                    if (d == null || d.getAxis().isVertical()) d = net.minecraft.core.Direction.EAST;
+                                    boolean ok = com.gigongibus.hungrycows.fell.Felling.fellAt(c.getSource().getLevel(), pos, d) != null;
+                                    c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(ok ? "Дерево падає" : "Тут не дерево"), false);
+                                    return ok ? 1 : 0;
+                                }))))
                 .then(Commands.literal("grass")
                         .then(Commands.literal("on").executes(c -> setGrass(c.getSource(), true)))
                         .then(Commands.literal("off").executes(c -> setGrass(c.getSource(), false))))

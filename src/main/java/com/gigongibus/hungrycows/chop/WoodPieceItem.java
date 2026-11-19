@@ -49,7 +49,10 @@ public class WoodPieceItem extends Item {
 
     @Override
     public Component getName(ItemStack stack) {
-        return Component.translatable("item.hungrycows.wood_piece." + SIZE_KEYS[sizeClass(piece(stack).fraction())]);
+        WoodPiece p = piece(stack);
+        String key = "item.hungrycows.wood_piece." + SIZE_KEYS[sizeClass(p.fraction())];
+        // ціла колода — з назвою дерева (дубова / темного дуба); менші шматки — однаково
+        return Component.translatable(sizeClass(p.fraction()) == 0 && !WoodPiece.DARK_OAK.equals(p.wood) ? key + "." + p.wood : key);
     }
 
     @Override

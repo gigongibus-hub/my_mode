@@ -94,6 +94,12 @@ public final class ChopClient {
                 axis = Direction.Axis.values()[p.notchAxis];
                 at = p.notchAt;
             }
+            // стовбур дерева (Fij): лише горизонтально; рамка — там, де вже є зарубка, або низько
+            if (com.gigongibus.hungrycows.fell.Felling.isTrunk(mc.level, pos)) {
+                axis = Direction.Axis.Y;
+                at = mc.level.getBlockEntity(pos) instanceof com.gigongibus.hungrycows.fell.FellingCutBlockEntity cut
+                        ? cut.at() : com.gigongibus.hungrycows.fell.Felling.DEFAULT_AT;
+            }
             power = 0;
             return;
         }
@@ -122,6 +128,14 @@ public final class ChopClient {
         WoodPiece p = current(mc);
         if (p == null || mc.player == null) return;
         int k = e.getKey();
+        boolean trunk = com.gigongibus.hungrycows.fell.Felling.isTrunk(mc.level, target);
+        if (trunk && mc.level.getBlockEntity(target) instanceof com.gigongibus.hungrycows.fell.FellingCutBlockEntity) return;   // зарубку вже почато
+        if (trunk && k != GLFW.GLFW_KEY_LEFT && k != GLFW.GLFW_KEY_RIGHT) return;   // стовбур — лише горизонтально, висоту стрілками ←/→
+        if (trunk) {
+            at = Math.max(com.gigongibus.hungrycows.fell.Felling.MIN_AT, Math.min(com.gigongibus.hungrycows.fell.Felling.MAX_AT,
+                    at + (k == GLFW.GLFW_KEY_RIGHT ? 1 : -1)));
+            return;
+        }
         if (k == GLFW.GLFW_KEY_UP || k == GLFW.GLFW_KEY_DOWN) {
             for (Direction.Axis a : Direction.Axis.values())
                 if (a != axis && a != face.getAxis() && p.size(a) >= 2) { axis = a; at = p.size(a) / 2; break; }
