@@ -1,0 +1,22 @@
+{
+ "variants": {
+  "level=1,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_1_molten"
+  },
+  "level=1,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_1_solid"
+  },
+  "level=2,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_2_molten"
+  },
+  "level=2,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_2_solid"
+  },
+  "level=3,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_3_molten"
+  },
+  "level=3,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_3_solid"
+  }
+ }
+}

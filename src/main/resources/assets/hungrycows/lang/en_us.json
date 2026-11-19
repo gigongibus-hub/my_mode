@@ -85,5 +85,10 @@
   "item.hungrycows.mug": "Wooden Mug",
   "item.hungrycows.mug.water": "Wooden Mug of Water",
   "item.hungrycows.mug.milk": "Wooden Mug of Milk",
-  "item.hungrycows.wood_bundle": "Bundle of Firewood"
+  "item.hungrycows.wood_bundle": "Bundle of Firewood",
+  "item.hungrycows.resin": "Spruce Resin",
+  "item.hungrycows.pig_bristle": "Pig Bristle",
+  "item.hungrycows.bristle_brush": "Bristle Brush",
+  "block.hungrycows.resin_cauldron": "Cauldron with Resin",
+  "block.hungrycows.mug_assembly": "Mug Being Glued"
 }

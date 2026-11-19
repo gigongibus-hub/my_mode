@@ -1,0 +1,14 @@
+{
+ "parent": "minecraft:item/handheld",
+ "textures": {
+  "layer0": "hungrycows:item/glue/bristle_brush"
+ },
+ "overrides": [
+  {
+   "predicate": {
+    "hungrycows:resin": 1
+   },
+   "model": "hungrycows:item/bristle_brush_resin"
+  }
+ ]
+}

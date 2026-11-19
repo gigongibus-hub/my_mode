@@ -1,0 +1,144 @@
+{
+ "textures": {
+  "resin": "hungrycows:block/glue/resin_smear",
+  "particle": "hungrycows:block/glue/resin_smear"
+ },
+ "elements": [
+  {
+   "from": [
+    7.35,
+    3.75,
+    9.85
+   ],
+   "to": [
+    8.65,
+    4,
+    10.65
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "south": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "east": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "west": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "up": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "down": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    }
+   }
+  },
+  {
+   "from": [
+    7.35,
+    0.5,
+    9.85
+   ],
+   "to": [
+    8.65,
+    0.75,
+    10.65
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "south": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "east": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "west": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "up": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    },
+    "down": {
+     "uv": [
+      0,
+      0,
+      2,
+      2
+     ],
+     "texture": "#resin"
+    }
+   }
+  }
+ ]
+}

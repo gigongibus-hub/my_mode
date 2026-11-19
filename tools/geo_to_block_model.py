@@ -141,7 +141,8 @@ MUG_HELD.update({
 FLIP = {'east': 'west', 'west': 'east'}   # Bedrock X дзеркальна до Java
 
 
-def mug_elements(bones):
+def mug_elements(bones, shift=None):
+    shift = shift or MUG_SHIFT
     g = json.load(open(os.path.join(SRC, 'mug.geo.json')))['minecraft:geometry'][0]
     s = 16.0 / g['description']['texture_width']
     out = []
@@ -149,8 +150,8 @@ def mug_elements(bones):
         if b['name'] not in bones: continue
         for c in b.get('cubes', []):
             (ox, oy, oz), (w, h, d) = c['origin'], c['size']
-            frm = [8 - (ox + w) + MUG_SHIFT[0], oy + MUG_SHIFT[1], oz + 8 + MUG_SHIFT[2]]
-            to = [8 - ox + MUG_SHIFT[0], oy + h + MUG_SHIFT[1], oz + d + 8 + MUG_SHIFT[2]]
+            frm = [8 - (ox + w) + shift[0], oy + shift[1], oz + 8 + shift[2]]
+            to = [8 - ox + shift[0], oy + h + shift[1], oz + d + 8 + shift[2]]
             faces = {}
             for name, f in c['uv'].items():
                 (u, v), (uw, uh) = f['uv'], f['uv_size']
@@ -172,8 +173,74 @@ def mug_model(name, bones, liquid=None, held=False):
     print(name, len(els), 'брусків')
 
 
+# СКЛЕЮВАННЯ (Fij, 19.11): кружка, що стоїть на землі, частинами (заготовка / вушка / ручка) і свіжа смола там, де частини
+# торкаються (тонкий шар трохи ширший за стик — видно, поки сохне). Стоїть на підлозі (y 0), посередині блока.
+MUG_BLOCK_SHIFT = (0, 0, -1)
+RESIN_LAYER = 0.25       # товщина шару смоли (пікс.)
+RESIN_WIDER = 0.15       # смола трохи ширша за стик
+
+
+def resin_patches(base, part):
+    """Стики між брусками base і part: тонкий шар на base з боку part"""
+    out = []
+    for a in base:
+        for b in part:
+            for ax in range(3):
+                for sign in (1, -1):
+                    plane = a['to'][ax] if sign > 0 else a['from'][ax]
+                    other = b['from'][ax] if sign > 0 else b['to'][ax]
+                    if abs(plane - other) > 1e-6: continue
+                    lo, hi = [0, 0, 0], [0, 0, 0]
+                    ok = True
+                    for k in range(3):
+                        if k == ax: continue
+                        l, h = max(a['from'][k], b['from'][k]), min(a['to'][k], b['to'][k])
+                        if h - l <= 1e-6: ok = False
+                        lo[k], hi[k] = l - RESIN_WIDER, h + RESIN_WIDER
+                    if not ok: continue
+                    lo[ax], hi[ax] = (plane, plane + RESIN_LAYER) if sign > 0 else (plane - RESIN_LAYER, plane)
+                    lo[1] = max(lo[1], 0)
+                    faces = {f: {'uv': [0, 0, 2, 2], 'texture': '#resin'} for f in ('north', 'south', 'east', 'west', 'up', 'down')}
+                    out.append({'from': [round(v, 4) for v in lo], 'to': [round(v, 4) for v in hi], 'faces': faces})
+    return out
+
+
+def glue_models():
+    body = mug_elements(['kruzka'], MUG_BLOCK_SHIFT)
+    ears = mug_elements(['vuha_dla_kruzky'], MUG_BLOCK_SHIFT)
+    handle = mug_elements(['rucka'], MUG_BLOCK_SHIFT)
+    tex = {'tex': 'hungrycows:item/carve/mug_wood', 'particle': 'hungrycows:item/carve/mug_wood'}
+    rtex = {'resin': 'hungrycows:block/glue/resin_smear', 'particle': 'hungrycows:block/glue/resin_smear'}
+    for name, els, t in (('body', body, tex), ('ears', ears, tex), ('handle', handle, tex),
+                         ('resin_body', resin_patches(body, ears), rtex), ('resin_ears', resin_patches(ears, handle), rtex)):
+        json.dump({'textures': t, 'elements': els}, open(os.path.join(OUT, 'mug_assembly_' + name + '.json'), 'w'), indent=1)
+        print('mug_assembly_' + name, len(els), 'брусків')
+    # стани: stage 0 заготовка · 1 намазана · 2 + вушка · 3 вушка намазані · 4 + ручка (сохне) · 5 готова
+    parts = [('body', [0, 1, 2, 3, 4, 5]), ('resin_body', [1, 2, 3, 4]), ('ears', [2, 3, 4, 5]), ('resin_ears', [3, 4]), ('handle', [4, 5])]
+    rot = {'north': 0, 'east': 90, 'south': 180, 'west': 270}
+    mp = []
+    for face, y in rot.items():
+        for part, stages in parts:
+            m = {'model': 'hungrycows:block/mug_assembly_' + part}
+            if y: m['y'] = y
+            mp.append({'when': {'facing': face, 'stage': '|'.join(map(str, stages))}, 'apply': m})
+    json.dump({'multipart': mp}, open('src/main/resources/assets/hungrycows/blockstates/mug_assembly.json', 'w'), indent=1)
+    # котел зі смолою: ванільні шаблони котла з рідиною (3 висоти), смола розплавлена / застигла
+    for lvl, parent in ((1, 'template_cauldron_level1'), (2, 'template_cauldron_level2'), (3, 'template_cauldron_full')):
+        for kind in ('molten', 'solid'):
+            json.dump({'parent': 'minecraft:block/' + parent, 'textures': {'content': 'hungrycows:block/glue/resin_' + kind}},
+                      open(os.path.join(OUT, 'resin_cauldron_%d_%s.json' % (lvl, kind)), 'w'), indent=1)
+    variants = {}
+    for lvl in (1, 2, 3):
+        for kind, molten in (('molten', 'true'), ('solid', 'false')):
+            variants['level=%d,molten=%s' % (lvl, molten)] = {'model': 'hungrycows:block/resin_cauldron_%d_%s' % (lvl, kind)}
+    json.dump({'variants': variants}, open('src/main/resources/assets/hungrycows/blockstates/resin_cauldron.json', 'w'), indent=1)
+    print('котел зі смолою: 6 моделей')
+
+
 if __name__ == '__main__':
     ALL = ['kruzka', 'vuha_dla_kruzky', 'rucka']
+    glue_models()
     mug_model('mug_body', ['kruzka'])
     mug_model('mug_ears', ['vuha_dla_kruzky'])
     mug_model('mug_handle', ['rucka'])

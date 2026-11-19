@@ -24,6 +24,8 @@ public class HungryCowsMod {
         com.gigongibus.hungrycows.carve.Carving.init();               // ремесло: зубило й заготовка (Fij)
         com.gigongibus.hungrycows.carve.Carving.register(modEventBus);
         com.gigongibus.hungrycows.chop.Chopping.init();               // розрубка дерева (Fij)
+        com.gigongibus.hungrycows.glue.Glue.init();                   // склеювання кружки смолою (Fij)
+        com.gigongibus.hungrycows.glue.Glue.register(modEventBus);
         com.gigongibus.hungrycows.chop.Chopping.register(modEventBus);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);

@@ -85,5 +85,10 @@
   "item.hungrycows.mug": "Дерев'яна кружка",
   "item.hungrycows.mug.water": "Дерев'яна кружка з водою",
   "item.hungrycows.mug.milk": "Дерев'яна кружка з молоком",
-  "item.hungrycows.wood_bundle": "В'язанка дров"
+  "item.hungrycows.wood_bundle": "В'язанка дров",
+  "item.hungrycows.resin": "Смола",
+  "item.hungrycows.pig_bristle": "Щетина свині",
+  "item.hungrycows.bristle_brush": "Пензлик",
+  "block.hungrycows.resin_cauldron": "Котел зі смолою",
+  "block.hungrycows.mug_assembly": "Кружка, що склеюється"
 }

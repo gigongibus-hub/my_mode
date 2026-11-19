@@ -51,6 +51,9 @@ public class ModEvents {
             event.accept(com.gigongibus.hungrycows.carve.Carving.MALLET);
             event.accept(com.gigongibus.hungrycows.chop.Chopping.WOOD_PIECE);
             event.accept(com.gigongibus.hungrycows.chop.Chopping.WOOD_BUNDLE);
+            event.accept(com.gigongibus.hungrycows.glue.Glue.RESIN);
+            event.accept(com.gigongibus.hungrycows.glue.Glue.PIG_BRISTLE);
+            event.accept(com.gigongibus.hungrycows.glue.Glue.BRISTLE_BRUSH);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_BODY);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_EARS);
             event.accept(com.gigongibus.hungrycows.carve.Carving.BLUEPRINT_MUG_HANDLE);
@@ -130,6 +133,10 @@ public class ModEvents {
                     new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "size"),
                     (stack, level, entity, seed) -> com.gigongibus.hungrycows.chop.WoodPieceItem.sizeClass(
                             com.gigongibus.hungrycows.chop.WoodPieceItem.piece(stack).fraction()) * 0.25F));
+            // пензлик зі смолою (Fij): щетина помаранчева
+            event.enqueueWork(() -> net.minecraft.client.renderer.item.ItemProperties.register(com.gigongibus.hungrycows.glue.Glue.BRISTLE_BRUSH.get(),
+                    new net.minecraft.resources.ResourceLocation(HungryCowsMod.MODID, "resin"),
+                    (stack, level, entity, seed) -> com.gigongibus.hungrycows.glue.ResinBrushItem.hasResin(stack) ? 1F : 0F));
             // сіль: інтерфейс діжки
             event.enqueueWork(() -> net.minecraft.client.gui.screens.MenuScreens.register(com.gigongibus.hungrycows.salt.Salt.TUB_MENU.get(),
                     com.gigongibus.hungrycows.client.TubScreen::new));

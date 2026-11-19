@@ -1,0 +1,76 @@
+{
+ "textures": {
+  "tex": "hungrycows:item/carve/mug_wood",
+  "particle": "hungrycows:item/carve/mug_wood"
+ },
+ "elements": [
+  {
+   "from": [
+    7.5,
+    0.5,
+    10
+   ],
+   "to": [
+    8.5,
+    4.0,
+    10.5
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      1.5,
+      6.5,
+      2.0,
+      8.5
+     ],
+     "texture": "#tex"
+    },
+    "west": {
+     "uv": [
+      2.0,
+      6.5,
+      2.5,
+      8.5
+     ],
+     "texture": "#tex"
+    },
+    "south": {
+     "uv": [
+      2.5,
+      6.5,
+      3.0,
+      8.5
+     ],
+     "texture": "#tex"
+    },
+    "east": {
+     "uv": [
+      3.0,
+      6.5,
+      3.5,
+      8.5
+     ],
+     "texture": "#tex"
+    },
+    "up": {
+     "uv": [
+      8.0,
+      7.0,
+      7.5,
+      6.5
+     ],
+     "texture": "#tex"
+    },
+    "down": {
+     "uv": [
+      8.0,
+      7.5,
+      7.5,
+      7.0
+     ],
+     "texture": "#tex"
+    }
+   }
+  }
+ ]
+}
