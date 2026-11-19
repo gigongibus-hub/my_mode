@@ -128,15 +128,15 @@ MUG_DISPLAY = {
     'firstperson_righthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]},
     'firstperson_lefthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]}}
 
-# Fij (19.11): «чашка дивно тримається — тримати за ручку». Готова кружка: у третій особі стоїть рівно (X 90 — у руці «вгору»
-# це вісь z), ручка в кулаці (зсув на 2,25 пікс. — від середини чашки до ручки), чашка вперед; у першій особі — рівно, ручка
-# праворуч до руки, трохи повернута (70°). Деталі (заготовка, вушка, ручка) — як були.
+# Fij (19.11): «чашка дивно тримається — тримати за ручку»; потім (скріншоти Fij) «дуже погано виглядає» — завелика, ручки не видно.
+# Третя особа: стоїть рівно (X 90 — у руці «вгору» це вісь z), ручкою до тіла (Y −90), зсунута назовні на 1,7 пікс. — ручка в кулаці,
+# чашка збоку від руки; 0,75 розміру. Перша особа: 0,5 розміру, праворуч унизу, ручка праворуч. Деталі (заготовка, вушка, ручка) — як були.
 MUG_HELD = dict(MUG_DISPLAY)
 MUG_HELD.update({
-    'thirdperson_righthand': {'rotation': [90, 0, 0], 'translation': [0, 2.25, 0], 'scale': [1, 1, 1]},
-    'thirdperson_lefthand': {'rotation': [90, 0, 0], 'translation': [0, 2.25, 0], 'scale': [1, 1, 1]},
-    'firstperson_righthand': {'rotation': [0, 70, 0], 'translation': [0, 4.5, -1], 'scale': [0.6, 0.6, 0.6]},
-    'firstperson_lefthand': {'rotation': [0, 70, 0], 'translation': [0, 4.5, -1], 'scale': [0.6, 0.6, 0.6]},
+    'thirdperson_righthand': {'rotation': [90, -90, 0], 'translation': [1.7, 0, 0], 'scale': [0.75, 0.75, 0.75]},
+    'thirdperson_lefthand': {'rotation': [90, -90, 0], 'translation': [1.7, 0, 0], 'scale': [0.75, 0.75, 0.75]},
+    'firstperson_righthand': {'rotation': [0, 75, 5], 'translation': [0.5, 1.5, -1], 'scale': [0.5, 0.5, 0.5]},
+    'firstperson_lefthand': {'rotation': [0, 75, 5], 'translation': [0.5, 1.5, -1], 'scale': [0.5, 0.5, 0.5]},
 })
 FLIP = {'east': 'west', 'west': 'east'}   # Bedrock X дзеркальна до Java
 

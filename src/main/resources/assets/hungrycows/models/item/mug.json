@@ -621,69 +621,69 @@
   "thirdperson_righthand": {
    "rotation": [
     90,
-    0,
+    -90,
     0
    ],
    "translation": [
+    1.7,
     0,
-    2.25,
     0
    ],
    "scale": [
-    1,
-    1,
-    1
+    0.75,
+    0.75,
+    0.75
    ]
   },
   "thirdperson_lefthand": {
    "rotation": [
     90,
-    0,
+    -90,
     0
    ],
    "translation": [
+    1.7,
     0,
-    2.25,
     0
    ],
    "scale": [
-    1,
-    1,
-    1
+    0.75,
+    0.75,
+    0.75
    ]
   },
   "firstperson_righthand": {
    "rotation": [
     0,
-    70,
-    0
+    75,
+    5
    ],
    "translation": [
-    0,
-    4.5,
+    0.5,
+    1.5,
     -1
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.5,
+    0.5,
+    0.5
    ]
   },
   "firstperson_lefthand": {
    "rotation": [
     0,
-    70,
-    0
+    75,
+    5
    ],
    "translation": [
-    0,
-    4.5,
+    0.5,
+    1.5,
     -1
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.5,
+    0.5,
+    0.5
    ]
   }
  },
