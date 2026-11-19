@@ -45,6 +45,7 @@ public class ModEvents {
             event.accept(ModItems.BRAIN_STICK);
             event.accept(ModItems.NEEDLE);
             event.accept(ModItems.MORTAR);
+            event.accept(ModItems.SOUL_SAND_PINCH);              // щіпка піску душ (раніше лише крафтом — у вкладці її не було)
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL_SMALL);
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL);
             event.accept(com.gigongibus.hungrycows.carve.Carving.CHISEL_WIDE);
