@@ -127,6 +127,17 @@ MUG_DISPLAY = {
     'thirdperson_lefthand': {'rotation': [0, 90, 0], 'translation': [0, 1, 1], 'scale': [1, 1, 1]},
     'firstperson_righthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]},
     'firstperson_lefthand': {'rotation': [0, 90, 0], 'translation': [0, 3, 0], 'scale': [0.75, 0.75, 0.75]}}
+
+# Fij (19.11): «чашка дивно тримається — тримати за ручку». Готова кружка: у третій особі стоїть рівно (X 90 — у руці «вгору»
+# це вісь z), ручка в кулаці (зсув на 2,25 пікс. — від середини чашки до ручки), чашка вперед; у першій особі — рівно, ручка
+# праворуч до руки, трохи повернута (70°). Деталі (заготовка, вушка, ручка) — як були.
+MUG_HELD = dict(MUG_DISPLAY)
+MUG_HELD.update({
+    'thirdperson_righthand': {'rotation': [90, 0, 0], 'translation': [0, 2.25, 0], 'scale': [1, 1, 1]},
+    'thirdperson_lefthand': {'rotation': [90, 0, 0], 'translation': [0, 2.25, 0], 'scale': [1, 1, 1]},
+    'firstperson_righthand': {'rotation': [0, 70, 0], 'translation': [0, 4.5, -1], 'scale': [0.6, 0.6, 0.6]},
+    'firstperson_lefthand': {'rotation': [0, 70, 0], 'translation': [0, 4.5, -1], 'scale': [0.6, 0.6, 0.6]},
+})
 FLIP = {'east': 'west', 'west': 'east'}   # Bedrock X дзеркальна до Java
 
 
@@ -149,7 +160,7 @@ def mug_elements(bones):
     return out
 
 
-def mug_model(name, bones, liquid=None):
+def mug_model(name, bones, liquid=None, held=False):
     els = mug_elements(bones)
     tex = {'tex': 'hungrycows:item/carve/mug_wood', 'particle': 'hungrycows:item/carve/mug_wood'}
     if liquid:   # рідина всередині, трохи нижче краю; колір — з коду (вода синя, молоко біле)
@@ -157,7 +168,7 @@ def mug_model(name, bones, liquid=None):
         y = 4.5 + MUG_SHIFT[1]
         els.append({'from': [6.5, y, 6.5 + MUG_SHIFT[2]], 'to': [9.5, y, 9.5 + MUG_SHIFT[2]],
                     'faces': {'up': {'uv': [0, 0, 3, 3], 'texture': '#liquid', 'tintindex': 0}}})
-    json.dump({'textures': tex, 'elements': els, 'display': MUG_DISPLAY}, open(os.path.join(ITEM_OUT, name + '.json'), 'w'), indent=1)
+    json.dump({'textures': tex, 'elements': els, 'display': MUG_HELD if held else MUG_DISPLAY}, open(os.path.join(ITEM_OUT, name + '.json'), 'w'), indent=1)
     print(name, len(els), 'брусків')
 
 
@@ -166,9 +177,9 @@ if __name__ == '__main__':
     mug_model('mug_body', ['kruzka'])
     mug_model('mug_ears', ['vuha_dla_kruzky'])
     mug_model('mug_handle', ['rucka'])
-    mug_model('mug_water', ALL, liquid=True)
-    mug_model('mug_milk', ALL, liquid=True)
-    mug_model('mug_empty', ALL)
+    mug_model('mug_water', ALL, liquid=True, held=True)
+    mug_model('mug_milk', ALL, liquid=True, held=True)
+    mug_model('mug_empty', ALL, held=True)
     # головна модель кружки: порожня + заміна за рідиною (властивість hungrycows:drink: 0,5 вода, 1 молоко)
     m = json.load(open(os.path.join(ITEM_OUT, 'mug_empty.json')))
     m['overrides'] = [{'predicate': {'hungrycows:drink': 0.5}, 'model': 'hungrycows:item/mug_water'},
