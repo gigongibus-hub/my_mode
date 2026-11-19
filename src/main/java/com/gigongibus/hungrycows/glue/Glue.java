@@ -66,8 +66,15 @@ public final class Glue {
     public static void init() {
     }
 
+    // помаранчеві бульбашки на смолі (Fij): спрайти ванільних бульбашок, фарбує `client/ResinBubbleParticle`
+    public static final net.minecraftforge.registries.DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES =
+            net.minecraftforge.registries.DeferredRegister.create(net.minecraftforge.registries.ForgeRegistries.PARTICLE_TYPES, HungryCowsMod.MODID);
+    public static final RegistryObject<net.minecraft.core.particles.SimpleParticleType> RESIN_BUBBLE =
+            PARTICLES.register("resin_bubble", () -> new net.minecraft.core.particles.SimpleParticleType(false));
+
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         BLOCK_ENTITIES.register(bus);
+        PARTICLES.register(bus);
     }
 
     /** ПКМ смолою по порожньому ванільному котлу — котел зі смолою (1 шматок) */

@@ -104,6 +104,11 @@ public class HungryCowGlueTests {
         use(h, p, pot, brush);
         boolean coldBrush = ResinBrushItem.hasResin(brush);
         WorldClock.setSpeed(h.getLevel(), 1000);
+        java.util.Set<Integer> stages = new java.util.TreeSet<>();   // стадії плавлення, які було видно (Fij: «хоча б три»)
+        h.onEachTick(() -> {
+            var st = h.getBlockState(pot);
+            if (st.is(Glue.RESIN_CAULDRON.get())) stages.add(st.getValue(ResinCauldronBlock.MOLTEN) ? 3 : st.getValue(ResinCauldronBlock.MELT));
+        });
         h.runAfterDelay(40, () -> {
             boolean molten = h.getBlockState(pot).getValue(ResinCauldronBlock.MOLTEN);
             LOG.info("[тест] котел: вогонь {} ({}), прогрів {}, швидкість {}", ResinCauldronBlockEntity.hasFire(h.getLevel(), h.absolutePos(pot)),
@@ -120,13 +125,14 @@ public class HungryCowGlueTests {
                 h.runAfterDelay(20, () -> {
                     boolean hard = !h.getBlockState(pot).getValue(ResinCauldronBlock.MOLTEN);
                     WorldClock.setSpeed(h.getLevel(), 1);
-                    LOG.info("[тест] cauldronMeltsResin: після +1 {}, холодним пензлем {}, розплавилась {}, пензлик {}, лишилось {}, свиня сповільнена {}, застигла {}",
-                            afterAdd, coldBrush, molten, got, left, slowed, hard);
+                    LOG.info("[тест] cauldronMeltsResin: стадії {}, після +1 {}, холодним пензлем {}, розплавилась {}, пензлик {}, лишилось {}, свиня сповільнена {}, застигла {}",
+                            stages, afterAdd, coldBrush, molten, got, left, slowed, hard);
                     h.setBlock(pot, Blocks.AIR);
                     h.assertTrue(afterAdd == 6 && !coldBrush, "смола не додається або холодна береться");
                     h.assertTrue(molten && got && left == 5, "не розплавилась або пензлик не набрав");
                     h.assertTrue(slowed, "розплавлена не сповільнює");
                     h.assertTrue(hard, "без вогню не застигла");
+                    h.assertTrue(stages.containsAll(java.util.List.of(0, 1, 2, 3)), "не всі стадії плавлення: " + stages);
                     h.succeed();
                 });
             });

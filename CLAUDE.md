@@ -670,6 +670,11 @@
   glueMug (стадії по черзі, без смоли — ні, знос 2, мокру не забрати, кружка 64), партія "glue_cauldron" окремо (швидкість світу
   спільна на партію): cauldronMeltsResin (додається, холодну не набрати, розплавилась, −1, свиня сповільнена, застигла). У грі видно:
   котел з помаранчевою смолою, дим, бульбашки; кружки на всіх стадіях і смола на стиках. Саму гру ПКМ — не перевіряв.
+  Fij (19.11): «анімація плавлення хоча б у три стадії, бульбашки помаранчеві»: стан котла `melt` 0–2 за прогрівом (до ⅓ застигла,
+  до ⅔ перші розплавлені плями, далі майже розплавлена; `ResinCauldronBlockEntity.meltStage`) → розплавлена; текстури `resin_melt_1/2`
+  і анімована `resin_molten` (8 кадрів, переливається; `tools/make_glue_textures.py`). Бульбашки — своя частинка `resin_bubble`
+  (`Glue.RESIN_BUBBLE`, `client/ResinBubbleParticle`: кадри ванільної бульбашки, помаранчева, вилазить і лопається) — на розплавленій
+  часто, на «майже розплавленій» зрідка, лише коли горить багаття. Тест cauldronMeltsResin: стадії [0, 1, 2, 3]. У грі не дивився.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.

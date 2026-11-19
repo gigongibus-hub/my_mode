@@ -225,17 +225,19 @@ def glue_models():
             if y: m['y'] = y
             mp.append({'when': {'facing': face, 'stage': '|'.join(map(str, stages))}, 'apply': m})
     json.dump({'multipart': mp}, open('src/main/resources/assets/hungrycows/blockstates/mug_assembly.json', 'w'), indent=1)
-    # котел зі смолою: ванільні шаблони котла з рідиною (3 висоти), смола розплавлена / застигла
+    # котел зі смолою: ванільні шаблони котла з рідиною (3 висоти) × вигляд смоли: застигла → плавиться 1 → плавиться 2 → розплавлена
+    kinds = ('solid', 'melt_1', 'melt_2', 'molten')
     for lvl, parent in ((1, 'template_cauldron_level1'), (2, 'template_cauldron_level2'), (3, 'template_cauldron_full')):
-        for kind in ('molten', 'solid'):
+        for kind in kinds:
             json.dump({'parent': 'minecraft:block/' + parent, 'textures': {'content': 'hungrycows:block/glue/resin_' + kind}},
                       open(os.path.join(OUT, 'resin_cauldron_%d_%s.json' % (lvl, kind)), 'w'), indent=1)
     variants = {}
     for lvl in (1, 2, 3):
-        for kind, molten in (('molten', 'true'), ('solid', 'false')):
-            variants['level=%d,molten=%s' % (lvl, molten)] = {'model': 'hungrycows:block/resin_cauldron_%d_%s' % (lvl, kind)}
+        for melt in (0, 1, 2):
+            variants['level=%d,melt=%d,molten=false' % (lvl, melt)] = {'model': 'hungrycows:block/resin_cauldron_%d_%s' % (lvl, kinds[melt])}
+            variants['level=%d,melt=%d,molten=true' % (lvl, melt)] = {'model': 'hungrycows:block/resin_cauldron_%d_molten' % lvl}
     json.dump({'variants': variants}, open('src/main/resources/assets/hungrycows/blockstates/resin_cauldron.json', 'w'), indent=1)
-    print('котел зі смолою: 6 моделей')
+    print('котел зі смолою: 12 моделей, 18 станів')
 
 
 if __name__ == '__main__':

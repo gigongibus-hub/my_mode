@@ -113,6 +113,12 @@ public class ModEvents {
                     com.gigongibus.hungrycows.client.WoodPileRenderer::new);    // купа шматків колоди (розрубка, Fij)
         }
 
+        // помаранчеві бульбашки на смолі (Fij)
+        @SubscribeEvent
+        public static void registerParticles(net.minecraftforge.client.event.RegisterParticleProvidersEvent event) {
+            event.registerSpriteSet(com.gigongibus.hungrycows.glue.Glue.RESIN_BUBBLE.get(), com.gigongibus.hungrycows.client.ResinBubbleParticle.Provider::new);
+        }
+
         // розрубка (Fij): шкала сили біля прицілу
         @SubscribeEvent
         public static void registerOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {

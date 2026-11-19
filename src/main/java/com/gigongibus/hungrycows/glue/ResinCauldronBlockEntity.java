@@ -56,18 +56,30 @@ public class ResinCauldronBlockEntity extends BlockEntity {
             if (!molten) {
                 be.heat = Math.min(MELT_TICKS, be.heat + speed);
                 if (be.heat >= MELT_TICKS) level.setBlock(pos, state.setValue(ResinCauldronBlock.MOLTEN, true), 3);
+                else be.showMelt(level, pos, state);
             }
         } else if (molten) {
             be.cold += speed;
             if (be.cold >= HARDEN_TICKS) {            // застигла: щоб знову розплавити — знову доба на вогні
                 be.cold = 0;
                 be.heat = 0;
-                level.setBlock(pos, state.setValue(ResinCauldronBlock.MOLTEN, false), 3);
+                level.setBlock(pos, state.setValue(ResinCauldronBlock.MOLTEN, false).setValue(ResinCauldronBlock.MELT, 0), 3);
             }
         } else if (be.heat > 0) {
             be.heat = Math.max(0, be.heat - speed * COOL_DOWN);
+            be.showMelt(level, pos, state);
         }
         if (level.getGameTime() % 20 == 0) be.setChanged();
+    }
+
+    /** Стадія плавлення за прогрівом: до ⅓ — застигла, до ⅔ — перші плями, далі — майже розплавлена */
+    public static int meltStage(float heat) {
+        return Math.min(2, (int) (heat * 3 / MELT_TICKS));
+    }
+
+    private void showMelt(Level level, BlockPos pos, BlockState state) {
+        int m = meltStage(heat);
+        if (state.getValue(ResinCauldronBlock.MELT) != m) level.setBlock(pos, state.setValue(ResinCauldronBlock.MELT, m), 3);
     }
 
     public void changed() {

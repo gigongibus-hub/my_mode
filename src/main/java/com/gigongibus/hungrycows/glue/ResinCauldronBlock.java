@@ -52,6 +52,8 @@ public class ResinCauldronBlock extends BaseEntityBlock {
 
     public static final BooleanProperty MOLTEN = BooleanProperty.create("molten");
     public static final IntegerProperty LEVEL = IntegerProperty.create("level", 1, 3);
+    /** Плавлення (Fij: «хоча б три стадії»): 0 застигла, 1 перші плями, 2 майже розплавлена; далі MOLTEN */
+    public static final IntegerProperty MELT = IntegerProperty.create("melt", 0, 2);
     // форма ванільного котла
     private static final VoxelShape INSIDE = box(2, 4, 2, 14, 16, 14);
     private static final VoxelShape SHAPE = Shapes.join(Shapes.block(), Shapes.or(box(0, 0, 4, 16, 3, 12), box(4, 0, 0, 12, 3, 16),
@@ -59,12 +61,12 @@ public class ResinCauldronBlock extends BaseEntityBlock {
 
     public ResinCauldronBlock(Properties p) {
         super(p);
-        registerDefaultState(stateDefinition.any().setValue(MOLTEN, false).setValue(LEVEL, 1));
+        registerDefaultState(stateDefinition.any().setValue(MOLTEN, false).setValue(LEVEL, 1).setValue(MELT, 0));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) {
-        b.add(MOLTEN, LEVEL);
+        b.add(MOLTEN, LEVEL, MELT);
     }
 
     /** Висота смоли в котлі: 1–10 шматків — низько, 11–20 — середньо, 21–30 — повний */
@@ -149,13 +151,16 @@ public class ResinCauldronBlock extends BaseEntityBlock {
         le.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOW_TICKS, 1, false, false, true));
     }
 
-    /** Бульбашки й пара, поки розплавлена й під котлом горить багаття */
+    /** Помаранчеві бульбашки (Fij) і пара на вогні: розплавлена кипить, майже розплавлена — зрідка */
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource r) {
-        if (!state.getValue(MOLTEN) || !ResinCauldronBlockEntity.hasFire(level, pos)) return;
-        double y = pos.getY() + (6 + 3 * state.getValue(LEVEL)) / 16.0;
-        if (r.nextInt(3) == 0)
-            level.addParticle(ParticleTypes.BUBBLE_POP, pos.getX() + 0.2 + r.nextDouble() * 0.6, y, pos.getZ() + 0.2 + r.nextDouble() * 0.6, 0, 0.02, 0);
+        if (!ResinCauldronBlockEntity.hasFire(level, pos)) return;
+        boolean molten = state.getValue(MOLTEN);
+        if (!molten && state.getValue(MELT) < 2) return;
+        double y = pos.getY() + (6 + 3 * state.getValue(LEVEL)) / 16.0 + 0.01;
+        if (r.nextInt(molten ? 2 : 6) == 0)
+            level.addParticle(Glue.RESIN_BUBBLE.get(), pos.getX() + 0.2 + r.nextDouble() * 0.6, y, pos.getZ() + 0.2 + r.nextDouble() * 0.6, 0, 0, 0);
+        if (!molten) return;
         if (r.nextInt(6) == 0)
             level.addParticle(ParticleTypes.SMOKE, pos.getX() + 0.3 + r.nextDouble() * 0.4, y + 0.1, pos.getZ() + 0.3 + r.nextDouble() * 0.4, 0, 0.03, 0);
         if (r.nextInt(25) == 0) level.playLocalSound(pos.getX() + 0.5, y, pos.getZ() + 0.5, SoundEvents.LAVA_POP, SoundSource.BLOCKS, 0.3F, 1.4F, false);
