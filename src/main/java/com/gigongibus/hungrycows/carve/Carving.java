@@ -72,10 +72,7 @@ public final class Carving {
     public static final RegistryObject<Item> BLUEPRINT_MUG_HANDLE = HungryCowsMod.ITEMS.register("blueprint_mug_handle", () ->
             new BlueprintItem("mug_handle", MUG_HANDLE, new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> MUG = HungryCowsMod.ITEMS.register("mug", () -> new MugItem(new Item.Properties()));
-    public static final DeferredRegister<net.minecraft.world.item.crafting.RecipeSerializer<?>> SERIALIZERS =
-            DeferredRegister.create(ForgeRegistries.RECIPE_SERIALIZERS, HungryCowsMod.MODID);
-    public static final RegistryObject<net.minecraft.world.item.crafting.RecipeSerializer<MugRecipe>> MUG_RECIPE = SERIALIZERS.register("mug", () ->
-            new net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer<>(MugRecipe::new));
+    // Fij (19.11): кружку більше НЕ складають у верстаку — лише склеюють смолою (пакет `glue/`)
 
     public static final RegistryObject<Block> WORKPIECE = HungryCowsMod.BLOCKS.register("workpiece", () ->
             new WorkpieceBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(1.5F).sound(SoundType.WOOD).noOcclusion()));
@@ -89,7 +86,6 @@ public final class Carving {
 
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         BLOCK_ENTITIES.register(bus);
-        SERIALIZERS.register(bus);
     }
 
     /** Точність (0…1) зі схожості на шаблон; нижче MATCH_MIN — не вийшло (−1) */

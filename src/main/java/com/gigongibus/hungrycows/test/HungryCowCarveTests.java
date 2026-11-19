@@ -62,7 +62,7 @@ public class HungryCowCarveTests {
         ItemStack part = com.gigongibus.hungrycows.carve.WorkpieceBlock.finish(h.getLevel(), be);
         float q = com.gigongibus.hungrycows.carve.CarvedPartItem.quality(part);
         boolean blueprintStays = be.blueprint() == Carving.BLUEPRINT_MUG_BODY.get();
-        // кружка з трьох деталей: точність 1, 1, 0,4 → середня 0,8
+        // кружка з трьох деталей у верстаку — більше НЕ складається (Fij, 19.11: лише склеюванням); кружка точності 0,8 — пити
         var g = new net.minecraft.world.inventory.TransientCraftingContainer(new net.minecraft.world.inventory.AbstractContainerMenu(null, -1) {
             @Override public ItemStack quickMoveStack(net.minecraft.world.entity.player.Player pl, int i) { return ItemStack.EMPTY; }
             @Override public boolean stillValid(net.minecraft.world.entity.player.Player pl) { return true; }
@@ -71,7 +71,8 @@ public class HungryCowCarveTests {
         g.setItem(4, com.gigongibus.hungrycows.carve.CarvedPartItem.withQuality(new ItemStack(Carving.MUG_EARS.get()), 1));
         g.setItem(8, com.gigongibus.hungrycows.carve.CarvedPartItem.withQuality(new ItemStack(Carving.MUG_HANDLE.get()), 0.4F));
         var r = h.getLevel().getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, g, h.getLevel());
-        ItemStack mug = r.map(x -> x.assemble(g, h.getLevel().registryAccess())).orElse(ItemStack.EMPTY);
+        boolean noRecipe = r.isEmpty();
+        ItemStack mug = com.gigongibus.hungrycows.carve.MugItem.withUses(new ItemStack(Carving.MUG.get()), Carving.usesFor(0.8F));
         int uses = mug.isEmpty() ? -1 : mug.getMaxDamage() - mug.getDamageValue();
         com.gigongibus.hungrycows.carve.MugItem.fillWater(mug);
         boolean water = com.gigongibus.hungrycows.carve.MugItem.drinkKind(mug) == 1;
@@ -95,7 +96,7 @@ public class HungryCowCarveTests {
             h.assertTrue(ruined.is(Items.STICK), "ледь почата дала не палиці: " + ruined);
             h.assertTrue(part.is(Carving.MUG_BODY.get()) && q > 0.95F, "точно за шаблоном — не заготовка кружки ~1: " + part + " " + q);
             h.assertTrue(blueprintStays, "креслення зникло з верстака");
-            h.assertTrue(uses == Carving.usesFor(0.8F), "кружка не з тією кількістю використань: " + uses);
+            h.assertTrue(noRecipe && uses == Carving.usesFor(0.8F), "кружка ще складається у верстаку або не та: " + noRecipe + " " + uses);
             h.assertTrue(water && usesAfter == uses - 1 && emptied, "налити й випити не працює: " + water + " " + usesAfter + " " + emptied);
             h.assertTrue(handEmpty && items.size() == 1, "зубило не випало: рука порожня " + handEmpty + ", на землі " + items.size());
             h.succeed();
