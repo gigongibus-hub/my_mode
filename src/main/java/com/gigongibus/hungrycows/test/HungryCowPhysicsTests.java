@@ -250,7 +250,39 @@ public class HungryCowPhysicsTests {
             LOG.info("[тест] standOnBody: верх колоди {}, ноги стійки {} (почала з {}), тверді частини {}", top, feet, startY, colliders);
             pig.discard();
             HungryCowFellTests.clear(h, 0);
-            h.assertTrue(colliders == 1 && feet > top - 0.1 && feet < top + 0.2, "стійка не стоїть на колоді: " + feet + ", верх " + top);
+            h.assertTrue(colliders == 9 && feet > top - 0.1 && feet < top + 0.2, "стійка не стоїть на колоді: " + feet + ", верх " + top);
+            h.succeed();
+        });
+    }
+
+    // 9. Fij (20.11): «гравець в'язне в дереві» — колода навскіс (45°): стійка, що була в ній, виштовхнута одразу й не застрягла;
+    //    рамки щільні — біля колоди за 0,4 бл. від її краю стійка стоїть на землі, а не «на невидимій стіні»
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 100)
+    public static void diagonalLogNotSticky(GameTestHelper h) {
+        TestWorld.calm(h);
+        BlockPos a = h.absolutePos(new BlockPos(10, 2, 3));
+        var log = WoodBodyEntity.spawnPiece(h.getLevel(), WoodPiece.whole(Direction.Axis.X, true, false, WoodPiece.OAK),
+                new Vector3d(a.getX(), a.getY() + 0.01, a.getZ()), new Vector3d(), new Vector3d());
+        // повернута навскіс довкола свого центру
+        Vector3d mid = log.body.comWorld(new Vector3d());
+        log.body.q.rotateY(Math.toRadians(45));
+        log.body.updateWorld();
+        log.body.pos.set(mid).sub(log.body.rot.transform(new Vector3d(log.body.com)));
+        var inside = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(10, 2, 3));
+        inside.moveTo(mid.x, a.getY(), mid.z);                                    // посередині колоди
+        var nearCorner = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(10, 2, 3));
+        // кут прямої рамки навколо повернутої колоди: колода туди не дістає (≈0,3 бл. від її грані)
+        nearCorner.moveTo(mid.x + 0.75, a.getY() + 1.5, mid.z + 0.75);   // край стійки — за 0,2 бл. від колоди
+        h.runAfterDelay(20, () -> {
+            double top = log.body.aabb()[4], floor = a.getY();
+            int n = log.getParts().length;
+            LOG.info("[тест] diagonalLogNotSticky: рамок {}, стійка з середини — ноги {} (верх колоди {}), стійка біля кута — ноги {} (підлога {})",
+                    n, inside.getY(), top, nearCorner.getY(), floor);
+            inside.discard();
+            nearCorner.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(inside.getY() > top - 0.1, "з колоди не виштовхнуло на неї");
+            h.assertTrue(n == 9 && nearCorner.getY() < floor + 0.2, "біля колоди «невидима стіна»: стоїть на висоті " + (nearCorner.getY() - floor));
             h.succeed();
         });
     }

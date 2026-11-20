@@ -31,7 +31,7 @@ public class WoodBodyRenderer extends EntityRenderer<WoodBodyEntity> {
         for (Part p : e.body.parts) {
             if (p.gone) continue;
             Vector3f wc = q.transform(new Vector3f((float) p.c.x, (float) p.c.y, (float) p.c.z));
-            int l = LevelRenderer.getLightColor(e.level(), BlockPos.containing(origin.x + wc.x, origin.y + wc.y, origin.z + wc.z));
+            int l = light(e, origin.x + wc.x, origin.y + wc.y, origin.z + wc.z);
             pose.pushPose();
             pose.mulPose(q);
             if (p.kind == Part.PIECE) {
@@ -46,6 +46,21 @@ public class WoodBodyRenderer extends EntityRenderer<WoodBodyEntity> {
             pose.popPose();
         }
         super.render(e, yaw, partial, pose, buf, light);
+    }
+
+    /**
+     * Світло для бруска — найсвітліше з його середини, над ним і з боків (Fij, 20.11: «обрубок, що падає з деревом, дуже темний» —
+     * середина обрубка була всередині пня/землі, де світла немає).
+     */
+    private static int light(WoodBodyEntity e, double x, double y, double z) {
+        BlockPos c = BlockPos.containing(x, y, z);
+        int best = LevelRenderer.getLightColor(e.level(), c);
+        for (BlockPos p : new BlockPos[]{ c.above(), c.north(), c.south(), c.east(), c.west(), BlockPos.containing(x, y + 0.6, z) }) {
+            if (e.level().getBlockState(p).isSolidRender(e.level(), p)) continue;
+            int l = LevelRenderer.getLightColor(e.level(), p);
+            best = Math.max(best & 0xFFFF, l & 0xFFFF) | Math.max(best >>> 16, l >>> 16) << 16;
+        }
+        return best;
     }
 
     @Override

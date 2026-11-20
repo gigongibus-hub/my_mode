@@ -90,14 +90,30 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
     // ---------- тверді частини (по них ходять) ----------
 
     private WoodBodyPart[] colliders;
+    public static final double COLLIDER_SPLIT_FROM = 0.4;   // брусок довший за 0,8 бл. …
+    public static final int COLLIDER_SUBS = 3;              // … — на 3 (колода — 3 × 3 рамки)
 
-    /** Частини незмінні з появи тіла (гра реєструє їх один раз): по одній на кожну колоду/шматок, листя — ні */
+    /**
+     * Частини незмінні з появи тіла (гра реєструє їх один раз): на кожну колоду/шматок, листя — ні. Рамка гри завжди пряма, тож
+     * повернута колода обіймається кількома тіснішими рамками (уздовж довшої осі) — інакше навскіс лежача колода мала б
+     * «невидимі стіни» довкола й гравець у них застрягав (Fij, 20.11).
+     */
     @Override
     public WoodBodyPart[] getParts() {
         if (colliders == null) {
             if (body.parts.isEmpty()) return new WoodBodyPart[0];      // ще не завантажене — не запам'ятовувати
             java.util.List<WoodBodyPart> l = new java.util.ArrayList<>();
-            for (int i = 0; i < body.parts.size(); i++) if (!body.parts.get(i).leaf) l.add(new WoodBodyPart(this, i));
+            for (int i = 0; i < body.parts.size(); i++) {
+                Part p = body.parts.get(i);
+                if (p.leaf) continue;
+                // дві найдовші осі бруска; довша за 0,8 бл. ділиться на 3
+                double[] h = { p.hx, p.hy, p.hz };
+                int a = h[0] >= h[1] && h[0] >= h[2] ? 0 : h[1] >= h[2] ? 1 : 2;
+                int b = -1;
+                for (int k = 0; k < 3; k++) if (k != a && (b < 0 || h[k] > h[b])) b = k;
+                int na = h[a] >= COLLIDER_SPLIT_FROM ? COLLIDER_SUBS : 1, nb = h[b] >= COLLIDER_SPLIT_FROM ? COLLIDER_SUBS : 1;
+                for (int ia = 0; ia < na; ia++) for (int ib = 0; ib < nb; ib++) l.add(new WoodBodyPart(this, i, a, na, ia, b, nb, ib));
+            }
             colliders = l.toArray(new WoodBodyPart[0]);
         }
         return colliders;
@@ -115,10 +131,14 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         for (WoodBodyPart wp : getParts()) {
             Part p = wp.index < body.parts.size() ? body.parts.get(wp.index) : null;
             if (p == null || p.gone) { wp.place(null); continue; }
-            body.toWorld(p.c.x, p.c.y, p.c.z, c);
-            double ex = Math.abs(body.rot.m00()) * p.hx + Math.abs(body.rot.m10()) * p.hy + Math.abs(body.rot.m20()) * p.hz;
-            double ey = Math.abs(body.rot.m01()) * p.hx + Math.abs(body.rot.m11()) * p.hy + Math.abs(body.rot.m21()) * p.hz;
-            double ez = Math.abs(body.rot.m02()) * p.hx + Math.abs(body.rot.m12()) * p.hy + Math.abs(body.rot.m22()) * p.hz;
+            double[] h = { p.hx, p.hy, p.hz };
+            double[] lc = { p.c.x, p.c.y, p.c.z };
+            if (wp.na > 1) { double seg = h[wp.a] / wp.na; lc[wp.a] += -h[wp.a] + seg * (2 * wp.ia + 1); h[wp.a] = seg; }
+            if (wp.nb > 1) { double seg = h[wp.b] / wp.nb; lc[wp.b] += -h[wp.b] + seg * (2 * wp.ib + 1); h[wp.b] = seg; }
+            body.toWorld(lc[0], lc[1], lc[2], c);
+            double ex = Math.abs(body.rot.m00()) * h[0] + Math.abs(body.rot.m10()) * h[1] + Math.abs(body.rot.m20()) * h[2];
+            double ey = Math.abs(body.rot.m01()) * h[0] + Math.abs(body.rot.m11()) * h[1] + Math.abs(body.rot.m21()) * h[2];
+            double ez = Math.abs(body.rot.m02()) * h[0] + Math.abs(body.rot.m12()) * h[1] + Math.abs(body.rot.m22()) * h[2];
             wp.place(new AABB(c.x - ex, c.y - ey, c.z - ez, c.x + ex, c.y + ey, c.z + ez));
         }
     }
@@ -199,6 +219,8 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
                 if (++b.still >= PhysicsWorld.SLEEP_TICKS) { b.asleep = true; b.v.zero(); b.w.zero(); }
             } else b.still = 0;
         }
+        setPos(b.pos.x, b.pos.y, b.pos.z);
+        placeColliders();                                             // спершу рамки — за ними виштовхуємо істот
         world.entities(this);
         b.asleepTicks = b.asleep ? b.asleepTicks + 1 : 0;
         if (b.asleepTicks >= (kind == TREE ? TREE_REST_TICKS : PIECE_REST_TICKS) || tickCount > MAX_AGE) { toBlocks(); return; }

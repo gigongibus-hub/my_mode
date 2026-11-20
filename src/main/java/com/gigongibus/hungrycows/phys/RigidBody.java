@@ -22,7 +22,8 @@ public final class RigidBody {
     public final Vector3d com = new Vector3d();       // центр мас у системі тіла
     public double mass, invMass, radius, leafMass;
     final Matrix3d iLocal = new Matrix3d(), iLocalInv = new Matrix3d();
-    final Matrix3d rot = new Matrix3d(), iWorldInv = new Matrix3d();
+    public final Matrix3d rot = new Matrix3d();
+    final Matrix3d iWorldInv = new Matrix3d();
 
     // сон: лежить нерухомо — не рахується
     public boolean asleep;

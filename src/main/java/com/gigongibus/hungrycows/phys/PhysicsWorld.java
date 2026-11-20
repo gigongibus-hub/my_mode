@@ -78,9 +78,9 @@ public final class PhysicsWorld {
     public static final double LEAF_HIT = 0.2;        // листя б'є слабше
     public static final int HIT_COOLDOWN = 10;        // ту саму істоту — не частіше раз на 0,5 с
     public static final double ENTITY_DENSITY = 0.17; // маса істоти: об'єм рамки × 0,17 (гравець ≈ 0,11 колоди)
-    public static final double PUSH_OUT = 0.12;       // істоту, що влізла в брусок, виштовхує не швидше (бл./тік) …
-    public static final double PUSH_PER_DEPTH = 0.5;  // … пропорційно глибині (половина за тік)
     public static final double PUSH_SLOP = 0.04;      // торкається ледь-ледь — не штовхає (не тремтить)
+    public static final double STEP_UP_OUT = 1.1;     // тіло наїхало на істоту: до верху ≤ 1,1 бл. (колода) — охочіше ставить зверху, ніж убік
+    public static final double PUSHABLE_MASS = 1.5;   // легші тіла (шматки, колода) істота штовхає ногою; дерево — ні
     public static final double THUD_SPEED = 3.0;      // удар швидше — гупає (звук, пил)
     public static final double ACTIVE_RANGE = 96;     // далі від усіх гравців — не рахується (спить)
     public static final int MAX_BODIES = 300;         // більше — найстаріші сплячі стають блоками
@@ -696,46 +696,41 @@ public final class PhysicsWorld {
 
     // ---------- істоти ----------
 
-    /** Після кроку: хто в брусках — удар (якщо тіло швидке) і виштовхнути; хто йде на легке тіло — штовхає його */
+    /**
+     * Після кроку (рамки частин уже на місці): кого зачепило швидке тіло — удар; хто опинився всередині твердої рамки (тіло на
+     * нього наїхало) — виштовхнути одразу на поверхню (на колоду, якщо невисоко, інакше вбік), без «пружини», що трясла б екран;
+     * хто йде на легке тіло — штовхає його. Fij (20.11): «гравець в'язне в дереві, тяжко вибратись, екран бігає вгору-вниз» — раніше
+     * сервер щотіку підкидав гравцю швидкість, а гравець (рух рахується в нього) з нею боровся.
+     */
     void entities(WoodBodyEntity owner) {
         RigidBody b = owner.body;
         double[] bb = b.aabb();
         AABB box = new AABB(bb[0], bb[1], bb[2], bb[3], bb[4], bb[5]).inflate(0.1);
         List<Entity> list = level.getEntities(owner, box, x -> x instanceof LivingEntity || x instanceof net.minecraft.world.entity.item.ItemEntity);
         if (list.isEmpty()) return;
-        Vector3d cw = b.comWorld(new Vector3d()), lp = new Vector3d(), pw = new Vector3d(), vp = new Vector3d();
+        Vector3d cw = b.comWorld(new Vector3d()), lp = new Vector3d(), vp = new Vector3d();
         double weight = Math.max(0.5, Math.min(3, Math.sqrt(b.mass / 5)));
         for (Entity en : list) {
             if (en instanceof Player pl && pl.isSpectator()) continue;
             AABB eb = en.getBoundingBox();
-            double hw = eb.getXsize() / 2, hh = eb.getYsize() / 2;
             Vector3d center = new Vector3d(eb.getCenter().x, eb.getCenter().y, eb.getCenter().z);
-            b.toLocal(center, lp);
-            for (int i = 0; i < b.parts.size(); i++) {
-                Part p = b.parts.get(i);
-                if (p.gone) continue;
-                // Fij (20.11: «гравець відскакує, коли підходить») — справжнє перекриття рамки істоти з бруском (за осями бруска),
-                // а не «ближче половини зросту»
-                double[] gap = new double[3];
-                for (int a = 0; a < 3; a++) {
-                    double e = Math.abs(b.rot.get(a, 0)) * hw + Math.abs(b.rot.get(a, 1)) * hh + Math.abs(b.rot.get(a, 2)) * hw;
-                    double d = a == 0 ? lp.x - p.c.x : a == 1 ? lp.y - p.c.y : lp.z - p.c.z;
-                    gap[a] = Math.abs(d) - p.h(a) - e;
-                }
-                if (gap[0] >= 0 || gap[1] >= 0 || gap[2] >= 0) continue;
-                if (p.leaf && b.v.lengthSquared() < 1) continue;            // листя крізь себе пропускає
-                int ax = gap[0] > gap[1] && gap[0] > gap[2] ? 0 : gap[1] > gap[2] ? 1 : 2;
-                double pen = -gap[ax];
-                double sg = (ax == 0 ? lp.x - p.c.x : ax == 1 ? lp.y - p.c.y : lp.z - p.c.z) >= 0 ? 1 : -1;
-                Vector3d nrm = b.rot.transform(new Vector3d(ax == 0 ? sg : 0, ax == 1 ? sg : 0, ax == 2 ? sg : 0));
-                b.toWorld(p.c.x, p.c.y, p.c.z, pw);
-                b.velAt(center, cw, vp);
-                double speed = vp.length();
-                Vec3 ev = en.getDeltaMovement();
-                if (en instanceof Player) ev = new Vec3(en.getX() - en.xo, en.getY() - en.yo, en.getZ() - en.zo);
-                Vector3d evd = new Vector3d(ev.x * 20, ev.y * 20, ev.z * 20);
-                // удар
-                if (speed > HIT_MIN && en instanceof LivingEntity le && !(en instanceof Player pl && pl.isCreative())) {
+            b.velAt(center, cw, vp);
+            double speed = vp.length();
+            Vec3 ev = en instanceof Player ? new Vec3(en.getX() - en.xo, en.getY() - en.yo, en.getZ() - en.zo) : en.getDeltaMovement();
+            Vector3d evd = new Vector3d(ev.x * 20, ev.y * 20, ev.z * 20);
+            // 1) удар — лише швидке тіло, за справжнім (повернутим) бруском
+            if (speed > HIT_MIN && en instanceof LivingEntity le && !(en instanceof Player pl && pl.isCreative())) {
+                b.toLocal(center, lp);
+                double hw = eb.getXsize() / 2, hh = eb.getYsize() / 2;
+                for (Part p : b.parts) {
+                    if (p.gone) continue;
+                    boolean touch = true;
+                    for (int a2 = 0; a2 < 3 && touch; a2++) {
+                        double e = Math.abs(b.rot.get(a2, 0)) * hw + Math.abs(b.rot.get(a2, 1)) * hh + Math.abs(b.rot.get(a2, 2)) * hw;
+                        double d = a2 == 0 ? lp.x - p.c.x : a2 == 1 ? lp.y - p.c.y : lp.z - p.c.z;
+                        if (Math.abs(d) - p.h(a2) - e >= 0) touch = false;
+                    }
+                    if (!touch) continue;
                     long now = level.getGameTime();
                     String key = en.getUUID() + ":" + owner.getId();
                     Long last = hitTimes.get(key);
@@ -745,33 +740,68 @@ public final class PhysicsWorld {
                         if (dmg >= 1) {
                             hitTimes.put(key, now);
                             le.hurt(level.damageSources().fallingBlock(owner), dmg);
+                            if (!p.leaf) {
+                                en.setDeltaMovement(en.getDeltaMovement().add(vp.x * 0.05 * 0.6, Math.max(0, vp.y) * 0.05 * 0.6 + 0.1, vp.z * 0.05 * 0.6));
+                                en.hurtMarked = true;
+                            }
                         }
                     }
+                    break;
                 }
-                if (p.leaf) break;
-                // виштовхнути (лише на глибину занурення, не накопичуючи швидкість) і передати рух тіла
-                Vec3 cur = en.getDeltaMovement();
-                double want = Math.min(PUSH_OUT, pen * PUSH_PER_DEPTH), along = cur.x * nrm.x + cur.y * nrm.y + cur.z * nrm.z;
-                boolean moving = speed > 0.5;
-                if ((pen > PUSH_SLOP || moving) && along < want) {
-                    double add = want - along;
-                    Vec3 push = new Vec3(nrm.x * add, Math.max(0, nrm.y) * add, nrm.z * add);
-                    if (moving) push = push.add(vp.x * 0.05 * 0.6, Math.max(0, vp.y) * 0.05 * 0.6, vp.z * 0.05 * 0.6);
-                    en.setDeltaMovement(cur.add(push));
-                    if (!(en instanceof Player) || moving || en.tickCount % 4 == 0) en.hurtMarked = true;   // гравцю не щотіку
+            }
+            // 2) усередині твердої рамки — виштовхнути одразу: найкоротший вихід (угору на колоду або вбік), де вже вільно
+            double top = -Double.MAX_VALUE, minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+            boolean inside = false;
+            for (WoodBodyPart wp : owner.getParts()) {
+                AABB c = wp.getBoundingBox();
+                if (!c.deflate(PUSH_SLOP).intersects(eb)) continue;
+                inside = true;
+                top = Math.max(top, c.maxY);
+                minX = Math.min(minX, c.minX);
+                maxX = Math.max(maxX, c.maxX);
+                minZ = Math.min(minZ, c.minZ);
+                maxZ = Math.max(maxZ, c.maxZ);
+            }
+            if (inside) {
+                double[][] moves = { { 0, top - eb.minY + 0.01, 0 }, { maxX - eb.minX + 0.01, 0, 0 }, { minX - eb.maxX - 0.01, 0, 0 },
+                        { 0, 0, maxZ - eb.minZ + 0.01 }, { 0, 0, minZ - eb.maxZ - 0.01 } };
+                double[] best = null;
+                double bestLen = Double.MAX_VALUE;
+                for (int k = 0; k < moves.length; k++) {
+                    double[] m = moves[k];
+                    double len = Math.abs(m[0]) + Math.abs(m[1]) * (m[1] <= STEP_UP_OUT ? 0.5 : 1.5) + Math.abs(m[2]);   // невисоко — краще на колоду
+                    if (len >= bestLen || !level.noCollision(en, eb.move(m[0], m[1], m[2]))) continue;
+                    best = m;
+                    bestLen = len;
                 }
-                // істота штовхає тіло (легкі шматки котяться від ноги)
-                double into = -(evd.x - vp.x) * nrm.x - (evd.y - vp.y) * nrm.y - (evd.z - vp.z) * nrm.z;
-                // лише вбік: той, хто стоїть на тілі, не тисне його щотіку донизу (тіло б не засинало)
-                if (into > 0.3 && Math.abs(nrm.y) < 0.7 && !(en instanceof net.minecraft.world.entity.item.ItemEntity)) {
-                    double em = eb.getXsize() * eb.getYsize() * eb.getZsize() * ENTITY_DENSITY;
-                    Vector3d j = new Vector3d(nrm).mul(-into * em);
-                    j.y = Math.max(j.y, 0);
-                    Vector3d at = new Vector3d(center).fma(-0.3, nrm);
-                    b.impulse(j, at, cw);
-                    if (b.asleep && j.length() * b.invMass > 0.05) { b.asleep = false; b.still = 0; }
+                if (best != null) {
+                    if (en instanceof net.minecraft.server.level.ServerPlayer sp)
+                        sp.connection.teleport(sp.getX() + best[0], sp.getY() + best[1], sp.getZ() + best[2], sp.getYRot(), sp.getXRot());
+                    else en.setPos(en.getX() + best[0], en.getY() + best[1], en.getZ() + best[2]);
+                    if (speed > 0.5) {                                 // тіло рухається — бере з собою
+                        en.setDeltaMovement(vp.x * 0.05, Math.max(0, vp.y * 0.05), vp.z * 0.05);
+                        en.hurtMarked = true;
+                    }
                 }
-                break;
+            }
+            // 3) істота йде на легке тіло — штовхає його (лише вбік; хто стоїть зверху — не тисне)
+            if (!(en instanceof net.minecraft.world.entity.item.ItemEntity) && b.mass < PUSHABLE_MASS) {
+                AABB reach = eb.inflate(0.06, 0, 0.06);
+                for (WoodBodyPart wp : owner.getParts()) {
+                    AABB c = wp.getBoundingBox();
+                    if (!c.intersects(reach) || eb.minY >= c.maxY - 0.05) continue;
+                    double hx = evd.x - vp.x, hz = evd.z - vp.z;
+                    Vec3 to = c.getCenter().subtract(eb.getCenter());
+                    double into = (hx * to.x + hz * to.z) / Math.max(1e-6, Math.sqrt(to.x * to.x + to.z * to.z));
+                    if (into > 0.3) {
+                        double em = eb.getXsize() * eb.getYsize() * eb.getZsize() * ENTITY_DENSITY;
+                        double len = Math.sqrt(hx * hx + hz * hz);
+                        Vector3d j = new Vector3d(hx / len, 0, hz / len).mul(into * em);
+                        b.impulse(j, new Vector3d(c.getCenter().x, c.getCenter().y, c.getCenter().z), cw);
+                        if (b.asleep && j.length() * b.invMass > 0.05) { b.asleep = false; b.still = 0; }
+                    }
+                    break;
+                }
             }
         }
     }

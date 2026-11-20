@@ -11,10 +11,14 @@ import net.minecraftforge.entity.PartEntity;
  */
 public class WoodBodyPart extends PartEntity<WoodBodyEntity> {
     public final int index;      // котра частина тіла
+    // котрий шматочок бруска (повернута колода — кількома тіснішими рамками): по двох найдовших осях a і b, n шматочків уздовж кожної
+    public final int a, b, na, nb, ia, ib;
 
-    public WoodBodyPart(WoodBodyEntity parent, int index) {
+    public WoodBodyPart(WoodBodyEntity parent, int index, int a, int na, int ia, int b, int nb, int ib) {
         super(parent);
         this.index = index;
+        this.a = a; this.na = na; this.ia = ia;
+        this.b = b; this.nb = nb; this.ib = ib;
         noPhysics = true;
     }
 
