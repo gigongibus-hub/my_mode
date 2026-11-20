@@ -83,6 +83,21 @@ public final class Physics {
         wake(level, e.getPos(), look.scale(k), p.getEyePosition().add(look.scale(Math.sqrt(p.distanceToSqr(Vec3.atCenterOf(e.getPos()))) - 0.4)));
     }
 
+    /** Лежача дубова колода з len блоків уздовж x, повернута на angle° довкола свого центру (команда для перевірки) */
+    public static WoodBodyEntity spawnLog(ServerLevel level, BlockPos pos, double angle, int len) {
+        RigidBody b = new RigidBody();
+        BlockState log = net.minecraft.world.level.block.Blocks.OAK_LOG.defaultBlockState().setValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS, Direction.Axis.X);
+        for (int i = 0; i < len; i++) b.parts.add(Part.block(log, new Vector3d(i, 0, 0), PhysicsWorld.LOG_MASS, false));
+        b.recompute();
+        Vector3d mid = new Vector3d(pos.getX() + len / 2.0, pos.getY() + 0.5 + 0.01, pos.getZ() + 0.5);
+        b.q.rotateY(Math.toRadians(angle));
+        b.updateWorld();
+        b.pos.set(mid).sub(b.rot.transform(new Vector3d(b.com)));
+        WoodBodyEntity e = new WoodBodyEntity(level, b, WoodBodyEntity.TREE);
+        level.addFreshEntity(e);
+        return e;
+    }
+
     /** Колоди поваленого дерева, з'єднані з pos, і листя біля них — знову одне фізичне тіло */
     public static WoodBodyEntity wake(ServerLevel level, BlockPos start, Vec3 impulse, Vec3 at) {
         FallenLogs fallen = FallenLogs.get(level);

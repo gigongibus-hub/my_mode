@@ -68,7 +68,7 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
     public byte kind = TREE;
     private long lastThud = -100;
     private int thudSeq;
-    private boolean thudded;
+    private boolean thudded, shook;
     // гравцю: попередній і теперішній поворот (плавно між тіками)
     public final Quaternionf prevQ = new Quaternionf(), curQ = new Quaternionf();
     private boolean gotQ;
@@ -260,7 +260,8 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             CowHearing.onSound(level, "hungrycows:tree_fall", new Vec3(at.x, at.y, at.z), this, vol);
             thudded = true;
         }
-        if (body.mass >= 4 && energy > 20)
+        // земля здригається один раз — від першого великого удару (Fij: «екран бігає вгору-вниз» — раніше від кожного підскоку)
+        if (body.mass >= 4 && energy > 20 && !shook && (shook = true))
             entityData.set(DATA_THUD, ++thudSeq * 1000 + (int) Math.min(100, body.mass / HEAVY * 100 * Math.min(1, speed / 8)));
     }
 
@@ -535,6 +536,32 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         b.updateWorld();
         body = b;
         setPos(b.pos.x, b.pos.y, b.pos.z);
+        registerClientParts();
+    }
+
+    /**
+     * Fij (20.11): «гравець в'язне в дереві, екран бігає» — ГОЛОВНА ПРИЧИНА: Forge у гравця спершу додає сутність у світ (і саме
+     * тоді питає її тверді частини), а вже потім читає `readSpawnData` — тож тіло було ще порожнє, частин 0, і гра гравця колод не
+     * бачила твердими: гравець провалювався в колоду, сервер його виштовхував, і так по колу. Тепер, щойно тіло прочитане,
+     * частини дописуються в список частин світу гравця самі (поле `partEntities` додав Forge, тож назва та сама й у справжній грі).
+     */
+    private void registerClientParts() {
+        colliders = null;
+        WoodBodyPart[] parts = getParts();
+        try {
+            Class<?> c = level().getClass();
+            java.lang.reflect.Field f = null;
+            while (c != null && f == null) {
+                try { f = c.getDeclaredField("partEntities"); } catch (NoSuchFieldException ex) { c = c.getSuperclass(); }
+            }
+            if (f == null) return;
+            f.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            var map = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraftforge.entity.PartEntity<?>>) f.get(level());
+            for (WoodBodyPart wp : parts) map.put(wp.getId(), wp);
+        } catch (ReflectiveOperationException | ClassCastException ignored) {
+        }
+        placeColliders();
     }
 
     @Override

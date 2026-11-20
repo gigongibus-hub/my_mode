@@ -130,6 +130,12 @@ public class ModForgeEvents {
                                     c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(ok ? "Дерево падає" : "Тут не дерево"), false);
                                     return ok ? 1 : 0;
                                 }))))
+                // фізична колода для перевірки (Fij, фізика): /hungrycows log <де> <поворот°> [довжина]
+                .then(Commands.literal("log").then(Commands.argument("де", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                        .then(Commands.argument("кут", com.mojang.brigadier.arguments.IntegerArgumentType.integer(-180, 180))
+                                .executes(c -> spawnLog(c, 1))
+                                .then(Commands.argument("довжина", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 12))
+                                        .executes(c -> spawnLog(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "довжина")))))))
                 .then(Commands.literal("grass")
                         .then(Commands.literal("on").executes(c -> setGrass(c.getSource(), true)))
                         .then(Commands.literal("off").executes(c -> setGrass(c.getSource(), false))))
@@ -384,6 +390,13 @@ public class ModForgeEvents {
         event.getRareTrades().add((trader, random) -> new net.minecraft.world.item.trading.MerchantOffer(
                 new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD, CALF_PRICE),
                 new net.minecraft.world.item.ItemStack(ModItems.CALF_TICKET.get()), CALF_TRADES, 10, 0.05F));
+    }
+
+    private static int spawnLog(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> c, int len) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var pos = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getLoadedBlockPos(c, "де");
+        int angle = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "кут");
+        com.gigongibus.hungrycows.phys.Physics.spawnLog(c.getSource().getLevel(), pos, angle, len);
+        return 1;
     }
 
     @SubscribeEvent

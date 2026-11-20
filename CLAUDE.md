@@ -767,6 +767,15 @@
   `COLLIDER_SUBS`), бо пряма рамка навколо колоди навскіс давала «невидимі стіни». 3) світло бруска (`WoodBodyRenderer.light`) —
   найсвітліше з середини, над ним і з боків (середина обрубка була в пні). Тест `diagonalLogNotSticky` (колода під 45°: стійка з
   середини — на колоді; стійка за 0,2 бл. від колоди — на землі). 18/18. У грі знову не зняв (камера датапака не туди).
+  АУДИТ (Fij, 20.11: «нічого не помінялось») — відтворено в СПРАВЖНІЙ грі (runClient, живий гравець, `-PphysDebug` →
+  `client/PhysDebugClient` пише висоту гравця щотіку; команда `/hungrycows log <де> <кут> [довжина]` — фізична колода):
+  ГОЛОВНА ПРИЧИНА — у гравця твердих частин було 0: Forge (`PlayMessages.SpawnEntity`) СПЕРШУ додає сутність у світ гравця
+  (`putNonPlayerEntity` → `onTrackingStart` → `getParts()`), а ПОТІМ читає `readSpawnData` — тіло ще порожнє. Гра гравця колод не
+  бачила твердими (провалювався), сервер бачив і виштовхував → застрягання й тремтіння. GameTest (лише сервер) цього не ловив.
+  Виправлення: `WoodBodyEntity.registerClientParts()` після `readSpawnData` дописує частини в `partEntities` світу гравця (поле Forge,
+  назва та сама в справжній грі). Після: частин 108, гравець стоїть на колоді рівно (y однаковий щотіку), іде вздовж, зістрибує;
+  дерево впало на гравця — удар, вийшов з-під крони; «moved wrongly» — 0. Ще: земля здригається лише від ПЕРШОГО великого удару
+  тіла (`shook`; раніше від кожного підскоку — теж «екран бігає»). Тести 16/16.
 - `ІДЕЇ_НА_ПОТІМ.md` (корінь репозиторію): ідеї, відкладені Fij (жаркий біом: удень спати, вночі пастися).
 - `ai/`: 18 цілей (+ `MateGoal`, `BullCourtGoal`, `HerdUpGoal`, `RuminateGoal`, `InvestigateGoal`, `MotherCalfGoal`): `LaborGoal`, `DefendCalfGoal`, `FearGoal`, `NurseGoal`, `DrinkMilkGoal`, `SeekGrassGoal`,
   `RestGoal`, `FindFosterGoal`, `AvoidBluetGoal`, `ApproachPlayerGoal`, `GrieveGoal`, `FollowMotherGoal`.
