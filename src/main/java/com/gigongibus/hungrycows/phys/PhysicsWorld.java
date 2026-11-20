@@ -762,7 +762,8 @@ public final class PhysicsWorld {
                 }
                 // істота штовхає тіло (легкі шматки котяться від ноги)
                 double into = -(evd.x - vp.x) * nrm.x - (evd.y - vp.y) * nrm.y - (evd.z - vp.z) * nrm.z;
-                if (into > 0.3 && !(en instanceof net.minecraft.world.entity.item.ItemEntity)) {
+                // лише вбік: той, хто стоїть на тілі, не тисне його щотіку донизу (тіло б не засинало)
+                if (into > 0.3 && Math.abs(nrm.y) < 0.7 && !(en instanceof net.minecraft.world.entity.item.ItemEntity)) {
                     double em = eb.getXsize() * eb.getYsize() * eb.getZsize() * ENTITY_DENSITY;
                     Vector3d j = new Vector3d(nrm).mul(-into * em);
                     j.y = Math.max(j.y, 0);

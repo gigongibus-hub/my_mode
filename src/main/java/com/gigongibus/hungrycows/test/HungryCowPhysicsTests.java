@@ -228,4 +228,30 @@ public class HungryCowPhysicsTests {
             h.succeed();
         });
     }
+
+    // 8. Fij (20.11): «по фізичних блоках можна бігати» — свиня падає на колоду-тіло й стоїть на ній, а не проходить крізь
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 120)
+    public static void standOnBody(GameTestHelper h) {
+        TestWorld.calm(h);
+        BlockPos a = h.absolutePos(new BlockPos(3, 2, 3));
+        var log = WoodBodyEntity.spawnPiece(h.getLevel(), WoodPiece.whole(Direction.Axis.X, true, false, WoodPiece.OAK),
+                new Vector3d(a.getX(), a.getY() + 0.01, a.getZ()), new Vector3d(), new Vector3d());
+        // стійка для броні: без розуму, але падає (свиня з вимкненим розумом висить у повітрі)
+        var pig = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(3, 5, 3));
+        pig.moveTo(a.getX() + 0.5, a.getY() + 2.2, a.getZ() + 0.5);
+        double startY = pig.getY();
+        h.runAfterDelay(24, () -> {   // шматок за 1,5 с лягає купою — перевірити раніше
+            double top = log.body.aabb()[4], feet = pig.getY();
+            int colliders = log.getParts().length;
+            LOG.info("[тест] standOnBody: частин у світі {}, рамка частини {}, зіткнень над колодою {}", h.getLevel().getPartEntities().size(),
+                    log.getParts()[0].getBoundingBox(), h.getLevel().getEntityCollisions(pig, pig.getBoundingBox().move(0, -1.5, 0).inflate(0, 1, 0)).size()
+                    + " стійка " + pig.position() + " усі поруч " + h.getLevel().getEntities(pig, log.getParts()[0].getBoundingBox().inflate(0.5), e -> true)
+                    + " canCollideWith " + pig.canCollideWith(log.getParts()[0]) + " зареєстрована " + h.getLevel().getPartEntities().contains(log.getParts()[0]) + " id " + log.getParts()[0].getId() + " усі " + h.getLevel().getPartEntities().stream().map(e -> e.getId() + "@" + e.getBoundingBox().minY).toList());
+            LOG.info("[тест] standOnBody: верх колоди {}, ноги стійки {} (почала з {}), тверді частини {}", top, feet, startY, colliders);
+            pig.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(colliders == 1 && feet > top - 0.1 && feet < top + 0.2, "стійка не стоїть на колоді: " + feet + ", верх " + top);
+            h.succeed();
+        });
+    }
 }

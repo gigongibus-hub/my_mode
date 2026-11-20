@@ -87,6 +87,42 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         syncQ();
     }
 
+    // ---------- тверді частини (по них ходять) ----------
+
+    private WoodBodyPart[] colliders;
+
+    /** Частини незмінні з появи тіла (гра реєструє їх один раз): по одній на кожну колоду/шматок, листя — ні */
+    @Override
+    public WoodBodyPart[] getParts() {
+        if (colliders == null) {
+            if (body.parts.isEmpty()) return new WoodBodyPart[0];      // ще не завантажене — не запам'ятовувати
+            java.util.List<WoodBodyPart> l = new java.util.ArrayList<>();
+            for (int i = 0; i < body.parts.size(); i++) if (!body.parts.get(i).leaf) l.add(new WoodBodyPart(this, i));
+            colliders = l.toArray(new WoodBodyPart[0]);
+        }
+        return colliders;
+    }
+
+    @Override
+    public boolean isMultipartEntity() {
+        return true;
+    }
+
+    /** Рамки частин — за теперішнім положенням тіла (і на сервері, і в гравця: ходить гравець у себе) */
+    void placeColliders() {
+        body.updateWorld();
+        Vector3d c = new Vector3d();
+        for (WoodBodyPart wp : getParts()) {
+            Part p = wp.index < body.parts.size() ? body.parts.get(wp.index) : null;
+            if (p == null || p.gone) { wp.place(null); continue; }
+            body.toWorld(p.c.x, p.c.y, p.c.z, c);
+            double ex = Math.abs(body.rot.m00()) * p.hx + Math.abs(body.rot.m10()) * p.hy + Math.abs(body.rot.m20()) * p.hz;
+            double ey = Math.abs(body.rot.m01()) * p.hx + Math.abs(body.rot.m11()) * p.hy + Math.abs(body.rot.m21()) * p.hz;
+            double ez = Math.abs(body.rot.m02()) * p.hx + Math.abs(body.rot.m12()) * p.hy + Math.abs(body.rot.m22()) * p.hz;
+            wp.place(new AABB(c.x - ex, c.y - ey, c.z - ez, c.x + ex, c.y + ey, c.z + ez));
+        }
+    }
+
     @Override
     protected void defineSynchedData() {
         entityData.define(DATA_Q, new Quaternionf());
@@ -135,6 +171,7 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             body.q.set(curQ.x, curQ.y, curQ.z, curQ.w);
             body.pos.set(getX(), getY(), getZ());
             body.updateWorld();
+            placeColliders();
             shedLeaves();
             return;
         }
@@ -168,6 +205,7 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         if (b.pos.y < level.getMinBuildHeight() - 32) { discard(); return; }
         setPos(b.pos.x, b.pos.y, b.pos.z);
         syncQ();
+        placeColliders();
         if (b.hinged && tickCount % CREAK_EVERY == 0)                 // тріщить волокно в зарубці
             level.playSound(null, BlockPos.containing(b.pivot.x, b.pivot.y, b.pivot.z), level.random.nextBoolean()
                     ? SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR : SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 0.7F, 0.4F + level.random.nextFloat() * 0.2F);
