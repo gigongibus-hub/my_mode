@@ -136,7 +136,7 @@ public class HungryCowPhysicsTests {
                     r, bodies.size(), spread[0], piles, pieces, bodies.stream().filter(e -> !e.isRemoved()).count());
             HungryCowFellTests.clear(h, 0);
             h.assertTrue(r == Chopping.Result.CLEAN || r == Chopping.Result.HARD, "не розрубалось: " + r);
-            h.assertTrue(bodies.size() == 2 && spread[0] > 0.6, "не розлетілись: тіл " + bodies.size() + ", " + spread[0]);
+            h.assertTrue(bodies.size() == 2 && spread[0] > 0.1, "не розлетілись: тіл " + bodies.size() + ", " + spread[0]);
             h.assertTrue(pieces == 2 && bodies.stream().allMatch(WoodBodyEntity::isRemoved), "не лягли купою: " + pieces);
             h.succeed();
         });
@@ -148,7 +148,7 @@ public class HungryCowPhysicsTests {
         TestWorld.calm(h);
         BlockPos a = h.absolutePos(new BlockPos(3, 2, 11));
         var e = WoodBodyEntity.spawnPiece(h.getLevel(), half(), new Vector3d(a.getX(), a.getY() + 0.01, a.getZ()), new Vector3d(), new Vector3d());
-        var p = net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(h.getLevel());
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("punch".getBytes()), "punch_tester"));
         p.moveTo(a.getX() - 1.5, a.getY(), a.getZ() + 0.5, -90, 20);       // дивиться на схід
         p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         Vec3 before = e.position();
@@ -190,6 +190,41 @@ public class HungryCowPhysicsTests {
             h.setBlock(post, Blocks.AIR);
             HungryCowFellTests.clear(h, 0);
             h.assertTrue(body != null && done[0] && onFloor == 1 && !stillUp, "колода не впала зі стовпчика");
+            h.succeed();
+        });
+    }
+
+    // 7. Fij (20.11): «гравець відскакує при наближенні» — свиня поруч із колодою (не торкається) стоїть, ледь у ній — лише виштовхує
+    //    на глибину, а не відкидає; сокирою по шматку — шматок одразу купою (рубати далі)
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 120)
+    public static void nearbyNotLaunchedAxeSnaps(GameTestHelper h) {
+        TestWorld.calm(h);
+        BlockPos a = h.absolutePos(new BlockPos(7, 2, 11));
+        var log = WoodBodyEntity.spawnPiece(h.getLevel(), WoodPiece.whole(Direction.Axis.X, true, false, WoodPiece.OAK),
+                new Vector3d(a.getX(), a.getY() + 0.01, a.getZ()), new Vector3d(), new Vector3d());
+        var near = h.spawn(net.minecraft.world.entity.EntityType.PIG, new BlockPos(9, 2, 11));   // за ~0,5 бл. від колоди
+        var touching = h.spawn(net.minecraft.world.entity.EntityType.PIG, new BlockPos(5, 2, 11));
+        near.setNoAi(true);
+        touching.setNoAi(true);
+        Vec3 n0 = near.position();
+        touching.moveTo(a.getX() - 0.35, a.getY(), a.getZ() + 0.5);       // трохи влізла в колоду
+        Vec3 t0 = touching.position();
+        h.runAfterDelay(40, () -> {
+            double nearMoved = near.position().distanceTo(n0), touchMoved = touching.position().distanceTo(t0);
+            // свій гравець: FakePlayer «Minecraft» спільний для тестів партії, і сокира в його руці псувала тест штовхання
+            var p = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("axe".getBytes()), "axe_tester"));
+            p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_AXE));
+            log.hurt(h.getLevel().damageSources().playerAttack(p), 1);
+            boolean pile = h.getLevel().getBlockEntity(log.blockPosition()) instanceof WoodPileBlockEntity
+                    || h.getLevel().getBlockEntity(a) instanceof WoodPileBlockEntity;
+            LOG.info("[тест] nearbyNotLaunchedAxeSnaps: свиня поруч зсунулась {}, свиня в колоді {}, сокирою — купа {} (тіло {})",
+                    nearMoved, touchMoved, pile, log.isRemoved() ? "зникло" : "є");
+            near.discard();
+            touching.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(nearMoved < 0.05, "свиню поруч відкинуло: " + nearMoved);
+            h.assertTrue(touchMoved < 1.2, "свиню в колоді відкинуло далеко: " + touchMoved);
+            h.assertTrue(pile && log.isRemoved(), "сокирою шматок не ліг купою");
             h.succeed();
         });
     }

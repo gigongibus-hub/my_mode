@@ -54,7 +54,7 @@ public class HungryCowFellTests {
         p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_AXE));
         boolean trunk = Felling.isTrunk(h.getLevel(), h.absolutePos(base));
         BlockPos fence = new BlockPos(7, 2, 7);
-        for (int dz = -1; dz <= 1; dz++) h.setBlock(fence.offset(0, 0, dz), Blocks.OAK_FENCE);   // паркан упоперек падіння
+        for (int dz = -3; dz <= 3; dz++) h.setBlock(fence.offset(0, 0, dz), Blocks.OAK_FENCE);   // паркан упоперек падіння (дуб лягає ±1,5 бл. убік)
         var pig = h.spawn(EntityType.PIG, new BlockPos(6, 2, 7));
         pig.setNoAi(true);
         float pigHp = pig.getHealth();
@@ -98,8 +98,8 @@ public class HungryCowFellTests {
                 if (s.is(Chopping.WOOD_PILE.get())) piles++;
             }
             int fences = 0;
-            for (int dz = -1; dz <= 1; dz++) if (h.getBlockState(fence.offset(0, 0, dz)).is(Blocks.OAK_FENCE)) fences++;
-            boolean fenceGone = fences < 3;
+            for (int dz = -3; dz <= 3; dz++) if (h.getBlockState(fence.offset(0, 0, dz)).is(Blocks.OAK_FENCE)) fences++;
+            boolean fenceGone = fences < 7;
             float pigDmg = pig.isAlive() ? pigHp - pig.getHealth() : pigHp;
             boolean stump = cut != null && cut.felled();
             int left = bodies(h, h.absolutePos(base), 30).size();

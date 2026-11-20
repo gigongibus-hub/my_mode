@@ -51,7 +51,7 @@ import java.util.BitSet;
 public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final int TREE_REST_TICKS = 400;     // дерево лежить нерухомо 20 с — стає блоками
-    public static final int PIECE_REST_TICKS = 60;     // шматок — 3 с, і стає купою
+    public static final int PIECE_REST_TICKS = 30;     // шматок — 1,5 с, і стає купою (рубати далі; було 3 с)
     public static final int THUD_GAP = 6;              // гупає не частіше раз на 0,3 с
     public static final double HEAVY = 40;             // така вага — найсильніше тремтіння землі
     public static final double PUNCH = 1.5;            // ЛКМ по шматку: поштовх (маса × бл./с; половинка — ~3 бл./с)
@@ -256,17 +256,21 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         double halfY = Math.abs(body.rot.m01()) * p.hx + Math.abs(body.rot.m11()) * p.hy + Math.abs(body.rot.m21()) * p.hz;
         BlockPos cell = BlockPos.containing(c.x, c.y - halfY + 0.05, c.z);
         double tx = (c.x - cell.getX()) * 16, tz = (c.z - cell.getZ()) * 16;
-        for (int k = 0; k < 2; k++, cell = cell.above()) {
-            if (level.getBlockEntity(cell) instanceof WoodPileBlockEntity pile) {
-                if (pile.add(w, lying, tx, tz, lying ? g : Direction.Axis.X)) { level.playSound(null, cell, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 0.6F, 0.9F); return; }
+        // спершу там, де лежить, потім вище, потім поруч (на пні, на колоді — місце зайняте)
+        BlockPos base = cell;
+        BlockPos[] tries = { base, base.above(), base.above(2), base.north(), base.south(), base.east(), base.west(),
+                base.north().above(), base.south().above(), base.east().above(), base.west().above() };
+        for (BlockPos at : tries) {
+            if (level.getBlockEntity(at) instanceof WoodPileBlockEntity pile) {
+                if (pile.add(w, lying, tx, tz, lying ? g : Direction.Axis.X)) { level.playSound(null, at, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 0.6F, 0.9F); return; }
                 continue;
             }
-            BlockState there = level.getBlockState(cell);
+            BlockState there = level.getBlockState(at);
             if (!there.canBeReplaced() || !there.getFluidState().isEmpty()) continue;
-            if (!there.isAir()) level.destroyBlock(cell, true);
-            level.setBlock(cell, Chopping.WOOD_PILE.get().defaultBlockState(), 3);
-            if (level.getBlockEntity(cell) instanceof WoodPileBlockEntity pile && pile.add(w, lying, tx, tz, lying ? g : Direction.Axis.X)) return;
-            level.removeBlock(cell, false);
+            if (!there.isAir()) level.destroyBlock(at, true);
+            level.setBlock(at, Chopping.WOOD_PILE.get().defaultBlockState(), 3);
+            if (level.getBlockEntity(at) instanceof WoodPileBlockEntity pile && pile.add(w, lying, tx, tz, lying ? g : Direction.Axis.X)) return;
+            level.removeBlock(at, false);
         }
         Block.popResource(level, BlockPos.containing(c.x, c.y, c.z), WoodPieceItem.of(w));
     }
@@ -302,6 +306,11 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
     @Override
     public boolean hurt(DamageSource src, float amount) {
         if (level().isClientSide || !isPiece()) return false;
+        if (src.getEntity() instanceof Player pl && Chopping.holdsAxe(pl) && !pl.isShiftKeyDown()) {
+            // Fij (20.11: «фізичні частинки не можна розрубити»): сокирою — шматок одразу лягає купою, і його рубаєш як завжди
+            toBlocks();
+            return true;
+        }
         if (src.getEntity() instanceof Player pl) {
             Vec3 look = pl.getLookAngle();
             Vector3d cw = body.comWorld(new Vector3d());

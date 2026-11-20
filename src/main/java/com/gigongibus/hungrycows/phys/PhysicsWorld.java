@@ -62,7 +62,7 @@ public final class PhysicsWorld {
     public static final double BREAK_BASE = 2;        // зламати блок коштує енергії удару: 2 + 6 × міцність (паркан 14, скло 4) …
     public static final double BREAK_PER_HARDNESS = 6;  // … (енергія = ½ × маса, що «припадає» на точку удару × швидкість²)
     public static final double JOINT_CHECK = 1.5;     // згин на стиках рахується лише від поштовху сильніше за цей
-    public static final double JOINT_STRENGTH = 2200; // міцність стику колод гранню (згин) …
+    public static final double JOINT_STRENGTH = 6000; // міцність стику колод гранню (згин; Fij «баг»: стовбур розпадався на окремі колоди — було 2200) …
     public static final double JOINT_WEAK = 0.35;     // … навскіс (гілка) — частка від неї
     public static final double HINGE_FREE = 1.3;      // поки на шарнірі — частини ближче до пня не б'ються об землю
     public static final double THIN = 0.6;            // тонші блоки (паркан, шибка) ловляться ще й своїми кутами
@@ -78,7 +78,9 @@ public final class PhysicsWorld {
     public static final double LEAF_HIT = 0.2;        // листя б'є слабше
     public static final int HIT_COOLDOWN = 10;        // ту саму істоту — не частіше раз на 0,5 с
     public static final double ENTITY_DENSITY = 0.17; // маса істоти: об'єм рамки × 0,17 (гравець ≈ 0,11 колоди)
-    public static final double PUSH_OUT = 0.15;       // істоту, що влізла в брусок, виштовхує з такою швидкістю
+    public static final double PUSH_OUT = 0.12;       // істоту, що влізла в брусок, виштовхує не швидше (бл./тік) …
+    public static final double PUSH_PER_DEPTH = 0.5;  // … пропорційно глибині (половина за тік)
+    public static final double PUSH_SLOP = 0.04;      // торкається ледь-ледь — не штовхає (не тремтить)
     public static final double THUD_SPEED = 3.0;      // удар швидше — гупає (звук, пил)
     public static final double ACTIVE_RANGE = 96;     // далі від усіх гравців — не рахується (спить)
     public static final int MAX_BODIES = 300;         // більше — найстаріші сплячі стають блоками
@@ -712,12 +714,18 @@ public final class PhysicsWorld {
             for (int i = 0; i < b.parts.size(); i++) {
                 Part p = b.parts.get(i);
                 if (p.gone) continue;
-                double ex = Math.abs(lp.x - p.c.x) - p.hx, ey = Math.abs(lp.y - p.c.y) - p.hy, ez = Math.abs(lp.z - p.c.z) - p.hz;
-                double reach = Math.max(hw, hh * 0.8);
-                if (ex > reach || ey > reach || ez > reach) continue;
+                // Fij (20.11: «гравець відскакує, коли підходить») — справжнє перекриття рамки істоти з бруском (за осями бруска),
+                // а не «ближче половини зросту»
+                double[] gap = new double[3];
+                for (int a = 0; a < 3; a++) {
+                    double e = Math.abs(b.rot.get(a, 0)) * hw + Math.abs(b.rot.get(a, 1)) * hh + Math.abs(b.rot.get(a, 2)) * hw;
+                    double d = a == 0 ? lp.x - p.c.x : a == 1 ? lp.y - p.c.y : lp.z - p.c.z;
+                    gap[a] = Math.abs(d) - p.h(a) - e;
+                }
+                if (gap[0] >= 0 || gap[1] >= 0 || gap[2] >= 0) continue;
                 if (p.leaf && b.v.lengthSquared() < 1) continue;            // листя крізь себе пропускає
-                // куди виштовхувати: найменше занурення
-                int ax = ex > ey && ex > ez ? 0 : ey > ez ? 1 : 2;
+                int ax = gap[0] > gap[1] && gap[0] > gap[2] ? 0 : gap[1] > gap[2] ? 1 : 2;
+                double pen = -gap[ax];
                 double sg = (ax == 0 ? lp.x - p.c.x : ax == 1 ? lp.y - p.c.y : lp.z - p.c.z) >= 0 ? 1 : -1;
                 Vector3d nrm = b.rot.transform(new Vector3d(ax == 0 ? sg : 0, ax == 1 ? sg : 0, ax == 2 ? sg : 0));
                 b.toWorld(p.c.x, p.c.y, p.c.z, pw);
@@ -741,11 +749,17 @@ public final class PhysicsWorld {
                     }
                 }
                 if (p.leaf) break;
-                // виштовхнути і передати рух тіла
-                Vec3 push = new Vec3(nrm.x * PUSH_OUT, Math.max(0, nrm.y) * PUSH_OUT, nrm.z * PUSH_OUT);
-                if (speed > 0.5) push = push.add(vp.x * 0.05 * 0.6, Math.max(0, vp.y) * 0.05 * 0.6 + 0.05, vp.z * 0.05 * 0.6);
-                en.setDeltaMovement(en.getDeltaMovement().add(push));
-                en.hurtMarked = true;
+                // виштовхнути (лише на глибину занурення, не накопичуючи швидкість) і передати рух тіла
+                Vec3 cur = en.getDeltaMovement();
+                double want = Math.min(PUSH_OUT, pen * PUSH_PER_DEPTH), along = cur.x * nrm.x + cur.y * nrm.y + cur.z * nrm.z;
+                boolean moving = speed > 0.5;
+                if ((pen > PUSH_SLOP || moving) && along < want) {
+                    double add = want - along;
+                    Vec3 push = new Vec3(nrm.x * add, Math.max(0, nrm.y) * add, nrm.z * add);
+                    if (moving) push = push.add(vp.x * 0.05 * 0.6, Math.max(0, vp.y) * 0.05 * 0.6, vp.z * 0.05 * 0.6);
+                    en.setDeltaMovement(cur.add(push));
+                    if (!(en instanceof Player) || moving || en.tickCount % 4 == 0) en.hurtMarked = true;   // гравцю не щотіку
+                }
                 // істота штовхає тіло (легкі шматки котяться від ноги)
                 double into = -(evd.x - vp.x) * nrm.x - (evd.y - vp.y) * nrm.y - (evd.z - vp.z) * nrm.z;
                 if (into > 0.3 && !(en instanceof net.minecraft.world.entity.item.ItemEntity)) {

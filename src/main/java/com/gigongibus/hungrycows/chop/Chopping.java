@@ -262,11 +262,12 @@ public final class Chopping {
         return r;
     }
 
-    public static final double SPLIT_SPEED = 1.0;            // половинки розлітаються: 1 бл./с …
-    public static final double SPLIT_PER_POWER = 1.5;        // … + 1,5 за повну шкалу
+    // Fij (20.11: «відскакує занадто сильно») — було 1 + 1,5 × сила, угору 0,8, обертання 3
+    public static final double SPLIT_SPEED = 0.35;           // половинки розпадаються: 0,35 бл./с …
+    public static final double SPLIT_PER_POWER = 0.5;        // … + 0,5 за повну шкалу
     public static final double SPLIT_HARD = 1.5;             // засильно — у 1,5 раза швидше
-    public static final double SPLIT_UP = 0.8;               // і трохи вгору
-    public static final double SPLIT_SPIN = 3.0;             // обертаються до 3 рад/с
+    public static final double SPLIT_UP = 0.25;              // і ледь угору
+    public static final double SPLIT_SPIN = 1.0;             // обертаються до 1 рад/с
 
     /** Дві половинки — у різні боки від площини розрубу (вниз, у землю, не летять), трохи вгору й з обертанням */
     private static void flyApart(ServerLevel level, BlockPos pos, List<WoodPiece> halves, Direction.Axis axis, float power, boolean hard, Player player) {
