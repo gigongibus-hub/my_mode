@@ -94,6 +94,15 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
      * Нитки (Fij): кільця навколо купи впоперек волокон — перша на ¼ довжини, друга на ¾. Fij: «вилазить за текстуру» — тепер
      * нитка лягає на кожен шматок, який перетинає, і лише на ті його грані, що зовні (не торкаються іншого шматка), впритул.
      */
+    /** Один шматок (для фізичного тіла): грані з текстурами його дерева, як у купі */
+    public static void drawPiece(WoodPiece w, VertexConsumer vc, PoseStack.Pose p, int light) {
+        var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
+        ResourceLocation[] rl = tex(w.wood);
+        TextureAtlasSprite[] tex = { atlas.apply(rl[0]), atlas.apply(rl[1]), atlas.apply(rl[2]) };
+        for (Direction d : Direction.values())
+            face(vc, p, d, w, tex[Math.max(0, Math.min(2, w.faces[d.get3DDataValue()]))], shade(d), light);
+    }
+
     private static void strings(WoodPileBlockEntity be, VertexConsumer vc, PoseStack.Pose p, int light) {
         List<WoodPiece> all = be.pieces();
         float[] mn = { 16, 16, 16 }, mx = { 0, 0, 0 };

@@ -15,6 +15,7 @@ public class FellingCutBlockEntity extends BlockEntity {
     private int at = 8;                          // висота розрубу, пікс. від низу колоди
     private float depth;                         // глибина зарубки, пікс. (0…16)
     private boolean felled;                      // дерево впало — лишився пень заввишки at
+    private String wood = "oak";                 // вид дерева (дуб, ялина)
 
     public FellingCutBlockEntity(BlockPos pos, BlockState state) {
         super(Felling.FELLING_CUT_BE.get(), pos, state);
@@ -24,10 +25,12 @@ public class FellingCutBlockEntity extends BlockEntity {
     public int at() { return at; }
     public float depth() { return depth; }
     public boolean felled() { return felled; }
+    public String wood() { return wood; }
 
-    public void start(Direction side, int at) {
+    public void start(Direction side, int at, String wood) {
         this.side = side;
         this.at = at;
+        this.wood = wood;
         changed();
     }
 
@@ -53,6 +56,7 @@ public class FellingCutBlockEntity extends BlockEntity {
         tag.putInt("At", at);
         tag.putFloat("Depth", depth);
         tag.putBoolean("Felled", felled);
+        tag.putString("Wood", wood);
     }
 
     @Override
@@ -63,6 +67,7 @@ public class FellingCutBlockEntity extends BlockEntity {
         at = tag.contains("At") ? tag.getInt("At") : 8;
         depth = tag.getFloat("Depth");
         felled = tag.getBoolean("Felled");
+        wood = tag.contains("Wood") ? tag.getString("Wood") : "oak";
     }
 
     @Override

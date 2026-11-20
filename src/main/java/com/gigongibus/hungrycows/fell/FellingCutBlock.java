@@ -40,12 +40,13 @@ public class FellingCutBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("deprecation")
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder b) {
-        return List.of(new ItemStack(Items.OAK_LOG));
+        var be = b.getOptionalParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.BLOCK_ENTITY);
+        return List.of(new ItemStack(be instanceof FellingCutBlockEntity f ? com.gigongibus.hungrycows.chop.WoodPiece.block(f.wood(), false) : net.minecraft.world.level.block.Blocks.OAK_LOG));
     }
 
     @Override
     public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
-        return new ItemStack(Items.OAK_LOG);
+        return new ItemStack(level.getBlockEntity(pos) instanceof FellingCutBlockEntity f ? com.gigongibus.hungrycows.chop.WoodPiece.block(f.wood(), false) : net.minecraft.world.level.block.Blocks.OAK_LOG);
     }
 
     @Override

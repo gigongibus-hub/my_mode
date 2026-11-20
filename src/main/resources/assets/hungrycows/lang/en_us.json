@@ -93,5 +93,6 @@
   "block.hungrycows.mug_assembly": "Mug Being Glued",
   "item.hungrycows.wood_piece.log.oak": "Oak Log",
   "block.hungrycows.felling_cut": "Notched Oak Log",
-  "entity.hungrycows.falling_tree": "Falling Tree"
+  "item.hungrycows.wood_piece.log.spruce": "Spruce Log",
+  "entity.hungrycows.wood_body": "Wood"
 }

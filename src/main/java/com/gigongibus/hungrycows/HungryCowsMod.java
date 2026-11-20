@@ -27,6 +27,7 @@ public class HungryCowsMod {
         com.gigongibus.hungrycows.glue.Glue.init();                   // склеювання кружки смолою (Fij)
         com.gigongibus.hungrycows.fell.Felling.init();                // падіння дерева (Fij)
         com.gigongibus.hungrycows.fell.Felling.register(modEventBus);
+        com.gigongibus.hungrycows.phys.Physics.register(modEventBus);   // фізичні тіла (Fij)
         com.gigongibus.hungrycows.glue.Glue.register(modEventBus);
         com.gigongibus.hungrycows.chop.Chopping.register(modEventBus);
         BLOCKS.register(modEventBus);

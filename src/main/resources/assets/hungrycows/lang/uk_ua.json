@@ -93,5 +93,6 @@
   "block.hungrycows.mug_assembly": "Кружка, що склеюється",
   "item.hungrycows.wood_piece.log.oak": "Дубова колода",
   "block.hungrycows.felling_cut": "Дуб із зарубкою",
-  "entity.hungrycows.falling_tree": "Дерево, що падає"
+  "item.hungrycows.wood_piece.log.spruce": "Ялинова колода",
+  "entity.hungrycows.wood_body": "Деревина"
 }

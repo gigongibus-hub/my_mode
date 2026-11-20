@@ -91,17 +91,28 @@ public final class Chopping {
         return s.is(Blocks.OAK_LOG) || s.is(Blocks.OAK_WOOD) || s.is(Blocks.STRIPPED_OAK_LOG) || s.is(Blocks.STRIPPED_OAK_WOOD);
     }
 
-    /** Вид дерева колоди, яку можна рубати; null — не рубається */
-    public static String woodOf(BlockState s) {
-        return isDarkOak(s) ? WoodPiece.DARK_OAK : isOak(s) ? WoodPiece.OAK : null;
+    /** Ялина (Fij, 20.11: «додай ще сосну» — у грі сосни немає) */
+    public static boolean isSpruce(BlockState s) {
+        return s.is(Blocks.SPRUCE_LOG) || s.is(Blocks.SPRUCE_WOOD) || s.is(Blocks.STRIPPED_SPRUCE_LOG) || s.is(Blocks.STRIPPED_SPRUCE_WOOD);
     }
 
-    /** Колода «на землі»: під нею твердий верх, над нею не стовбур і не листя (дерево в лісі рубається, як завжди) */
+    /** Вид дерева колоди, яку можна рубати; null — не рубається */
+    public static String woodOf(BlockState s) {
+        return isDarkOak(s) ? WoodPiece.DARK_OAK : isOak(s) ? WoodPiece.OAK : isSpruce(s) ? WoodPiece.SPRUCE : null;
+    }
+
+    /**
+     * Колода «на землі»: під нею твердий верх, над нею не стовбур і не листя (дерево в лісі рубається, як завжди). Лежача колода
+     * (поваленого дерева) — і з листям над нею (Fij, 20.11: повалене дерево лягає разом з листям).
+     */
     public static boolean loggable(BlockGetter level, BlockPos pos) {
         BlockState s = level.getBlockState(pos);
         if (woodOf(s) == null) return false;
         BlockState up = level.getBlockState(pos.above());
-        return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP) && !up.is(BlockTags.LOGS) && !up.is(BlockTags.LEAVES);
+        boolean lying = s.hasProperty(RotatedPillarBlock.AXIS) && s.getValue(RotatedPillarBlock.AXIS) != Direction.Axis.Y;
+        return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
+                && !(up.is(BlockTags.LOGS) && up.hasProperty(RotatedPillarBlock.AXIS) && up.getValue(RotatedPillarBlock.AXIS) == Direction.Axis.Y)
+                && (lying || !up.is(BlockTags.LEAVES));
     }
 
     /** Шматки, які можна рубати на цьому місці (колода — одна ціла); null — тут нічого рубати */
@@ -109,15 +120,16 @@ public final class Chopping {
         // стовбур дерева (Fij): ціла колода, рубати лише горизонтально (`Felling`)
         if (com.gigongibus.hungrycows.fell.Felling.isTrunk(level, pos)) {
             List<WoodPiece> l = new ArrayList<>();
-            l.add(WoodPiece.whole(Direction.Axis.Y, true, false, WoodPiece.OAK));
+            l.add(WoodPiece.whole(Direction.Axis.Y, true, false, com.gigongibus.hungrycows.fell.Felling.woodAt(level, pos)));
             return l;
         }
         if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) return pile.pieces().isEmpty() || pile.strings() > 0 ? null : pile.pieces();
         if (!loggable(level, pos)) return null;
         BlockState s = level.getBlockState(pos);
         Direction.Axis axis = s.hasProperty(RotatedPillarBlock.AXIS) ? s.getValue(RotatedPillarBlock.AXIS) : Direction.Axis.Y;
-        boolean bark = s.is(Blocks.DARK_OAK_LOG) || s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.OAK_LOG) || s.is(Blocks.OAK_WOOD);
-        boolean allSides = s.is(Blocks.DARK_OAK_WOOD) || s.is(Blocks.STRIPPED_DARK_OAK_WOOD) || s.is(Blocks.OAK_WOOD) || s.is(Blocks.STRIPPED_OAK_WOOD);
+        String id = net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(s.getBlock()).getPath();
+        boolean bark = !id.startsWith("stripped_");
+        boolean allSides = id.endsWith("_wood");
         List<WoodPiece> l = new ArrayList<>();
         l.add(WoodPiece.whole(axis, bark, allSides, woodOf(s)));
         return l;
@@ -210,8 +222,18 @@ public final class Chopping {
         work.set(index, target);
         Result r = chopPieces(work, index, axis, at, power, level.random);
         if (r == Result.NONE) return r;
-        if (wasLog) level.setBlock(pos, WOOD_PILE.get().defaultBlockState(), 3);
-        if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) pile.setPieces(work);
+        // Fij (20.11): розрубані половинки розлітаються — фізичними тілами (`phys/WoodBodyEntity`), лягли — знову купа
+        List<WoodPiece> halves = new ArrayList<>();
+        if (r != Result.STUCK) {
+            halves.add(work.remove(index));
+            halves.add(work.remove(index));
+        }
+        if (wasLog) level.setBlock(pos, work.isEmpty() ? Blocks.AIR.defaultBlockState() : WOOD_PILE.get().defaultBlockState(), 3);
+        if (level.getBlockEntity(pos) instanceof WoodPileBlockEntity pile) {
+            if (work.isEmpty()) level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+            else pile.setPieces(work);
+        }
+        if (!halves.isEmpty()) flyApart(level, pos, halves, axis, power, r == Result.HARD, player);
         // видно й чути
         double cx = pos.getX() + (target.x + target.sx / 2.0) / 16, cy = pos.getY() + (target.y + target.sy / 2.0) / 16,
                 cz = pos.getZ() + (target.z + target.sz / 2.0) / 16;
@@ -238,6 +260,28 @@ public final class Chopping {
             player.getMainHandItem().hurtAndBreak(AXE_WEAR + (r == Result.HARD ? HARD_EXTRA_WEAR : 0), player,
                     pl -> pl.broadcastBreakEvent(EquipmentSlot.MAINHAND));
         return r;
+    }
+
+    public static final double SPLIT_SPEED = 1.0;            // половинки розлітаються: 1 бл./с …
+    public static final double SPLIT_PER_POWER = 1.5;        // … + 1,5 за повну шкалу
+    public static final double SPLIT_HARD = 1.5;             // засильно — у 1,5 раза швидше
+    public static final double SPLIT_UP = 0.8;               // і трохи вгору
+    public static final double SPLIT_SPIN = 3.0;             // обертаються до 3 рад/с
+
+    /** Дві половинки — у різні боки від площини розрубу (вниз, у землю, не летять), трохи вгору й з обертанням */
+    private static void flyApart(ServerLevel level, BlockPos pos, List<WoodPiece> halves, Direction.Axis axis, float power, boolean hard, Player player) {
+        double speed = (SPLIT_SPEED + SPLIT_PER_POWER * power) * (hard ? SPLIT_HARD : 1);
+        for (int i = 0; i < halves.size(); i++) {
+            double sg = i == 0 ? -1 : 1;
+            org.joml.Vector3d v = new org.joml.Vector3d(axis == Direction.Axis.X ? sg : 0, axis == Direction.Axis.Y ? sg : 0, axis == Direction.Axis.Z ? sg : 0)
+                    .mul(speed);
+            if (v.y < 0) v.y = 0;
+            v.y += SPLIT_UP * (0.5 + power);
+            org.joml.Vector3d w = new org.joml.Vector3d(level.random.nextGaussian(), level.random.nextGaussian(), level.random.nextGaussian())
+                    .mul(SPLIT_SPIN * power / 2);
+            com.gigongibus.hungrycows.phys.WoodBodyEntity.spawnPiece(level, halves.get(i),
+                    new org.joml.Vector3d(pos.getX(), pos.getY(), pos.getZ()), v, w);
+        }
     }
 
     /** Для клієнта: чи можна рубати те, на що дивиться гравець */

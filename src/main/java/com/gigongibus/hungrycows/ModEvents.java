@@ -109,7 +109,7 @@ public class ModEvents {
                     com.gigongibus.hungrycows.client.WickerBundleRenderer::new);
             event.registerBlockEntityRenderer(com.gigongibus.hungrycows.carve.Carving.WORKPIECE_BE.get(),
                     com.gigongibus.hungrycows.client.WorkpieceRenderer::new);   // колода на верстаку   // пучки лози, розкидані по блоку
-            event.registerEntityRenderer(com.gigongibus.hungrycows.fell.Felling.FALLING_TREE.get(), com.gigongibus.hungrycows.client.FallingTreeRenderer::new);
+            event.registerEntityRenderer(com.gigongibus.hungrycows.phys.Physics.WOOD_BODY.get(), com.gigongibus.hungrycows.client.WoodBodyRenderer::new);
             event.registerBlockEntityRenderer(com.gigongibus.hungrycows.fell.Felling.FELLING_CUT_BE.get(), com.gigongibus.hungrycows.client.FellingCutRenderer::new);
             event.registerBlockEntityRenderer(com.gigongibus.hungrycows.chop.Chopping.WOOD_PILE_BE.get(),
                     com.gigongibus.hungrycows.client.WoodPileRenderer::new);    // купа шматків колоди (розрубка, Fij)

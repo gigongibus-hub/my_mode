@@ -23,7 +23,7 @@ public final class WoodPiece {
     public int notchAxis = -1, notchAt = -1;
     /** Вид дерева (Fij, 19.11: після падіння дуба — і дубові колоди): «dark_oak» чи «oak»; від нього текстури й тріски */
     public String wood = DARK_OAK;
-    public static final String DARK_OAK = "dark_oak", OAK = "oak";
+    public static final String DARK_OAK = "dark_oak", OAK = "oak", SPRUCE = "spruce";
 
     public WoodPiece(int x, int y, int z, int sx, int sy, int sz, Direction.Axis grain) {
         this.x = x; this.y = y; this.z = z;

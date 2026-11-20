@@ -19,9 +19,6 @@ import net.minecraft.world.inventory.InventoryMenu;
  * то глибше; усередині видно свіже дерево. Після падіння — лише пень (низ колоди до висоти розрубу, зверху — кільця).
  */
 public class FellingCutRenderer implements BlockEntityRenderer<FellingCutBlockEntity> {
-    private static final ResourceLocation BARK = new ResourceLocation("minecraft", "block/oak_log");
-    private static final ResourceLocation INNER = new ResourceLocation("minecraft", "block/stripped_oak_log");
-    private static final ResourceLocation TOP = new ResourceLocation("minecraft", "block/oak_log_top");
     public static final float GAP = 2.5F;     // висота щілини (пікс.): клин від сокири
 
     public FellingCutRenderer(BlockEntityRendererProvider.Context ctx) {
@@ -30,7 +27,10 @@ public class FellingCutRenderer implements BlockEntityRenderer<FellingCutBlockEn
     @Override
     public void render(FellingCutBlockEntity be, float partial, PoseStack pose, MultiBufferSource buf, int light, int overlay) {
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
-        TextureAtlasSprite bark = atlas.apply(BARK), inner = atlas.apply(INNER), top = atlas.apply(TOP);
+        String w = be.wood();
+        TextureAtlasSprite bark = atlas.apply(new ResourceLocation("minecraft", "block/" + w + "_log")),
+                inner = atlas.apply(new ResourceLocation("minecraft", "block/stripped_" + w + "_log")),
+                top = atlas.apply(new ResourceLocation("minecraft", "block/" + w + "_log_top"));
         VertexConsumer vc = buf.getBuffer(RenderType.entityCutout(InventoryMenu.BLOCK_ATLAS));
         PoseStack.Pose p = pose.last();
         float at = be.at();

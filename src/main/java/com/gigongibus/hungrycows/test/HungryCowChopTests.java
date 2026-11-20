@@ -99,18 +99,22 @@ public class HungryCowChopTests {
         var sneak = Chopping.chop(h.getLevel(), p, h.absolutePos(log), 0, Direction.Axis.X, 8, 0.8F);
         p.setShiftKeyDown(false);
         var r = Chopping.chop(h.getLevel(), p, h.absolutePos(log), 0, Direction.Axis.X, 8, 0.8F);
-        var pile = h.getLevel().getBlockEntity(h.absolutePos(log)) instanceof WoodPileBlockEntity be ? be : null;
+        // Fij (20.11): половинки розлітаються фізичними тілами
+        var flew = h.getLevel().getEntitiesOfClass(com.gigongibus.hungrycows.phys.WoodBodyEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(log)).inflate(1.5));
+        int halves = flew.size();
+        flew.forEach(net.minecraft.world.entity.Entity::discard);
         int wear = p.getMainHandItem().getDamageValue();
         var onTrunk = Chopping.chop(h.getLevel(), p, h.absolutePos(trunk), 0, Direction.Axis.X, 8, 0.8F);
         var onOak = Chopping.chop(h.getLevel(), p, h.absolutePos(oak), 0, Direction.Axis.X, 8, 0.8F);
-        var oakPile = h.getLevel().getBlockEntity(h.absolutePos(oak)) instanceof WoodPileBlockEntity op ? op : null;
-        String oakWood = oakPile == null || oakPile.pieces().isEmpty() ? "-" : oakPile.pieces().get(0).wood;
+        var oakFlew = h.getLevel().getEntitiesOfClass(com.gigongibus.hungrycows.phys.WoodBodyEntity.class, new net.minecraft.world.phys.AABB(h.absolutePos(oak)).inflate(1.5));
+        String oakWood = oakFlew.isEmpty() ? "-" : oakFlew.get(0).body.parts.get(0).piece.wood;
+        oakFlew.forEach(net.minecraft.world.entity.Entity::discard);
         var onBirch = Chopping.chop(h.getLevel(), p, h.absolutePos(birch), 0, Direction.Axis.X, 8, 0.8F);
-        LOG.info("[тест] chopInWorld: присівши {}, удар {}, купа {} шматків, знос сокири {}; стовбур {}, дуб {}", sneak, r,
-                pile == null ? -1 : pile.pieces().size(), wear, onTrunk, onOak + " (" + oakWood + "), береза " + onBirch);
+        LOG.info("[тест] chopInWorld: присівши {}, удар {}, розлетілось {} половинок, знос сокири {}; стовбур {}, дуб {}", sneak, r,
+                halves, wear, onTrunk, onOak + " (" + oakWood + "), береза " + onBirch);
         for (BlockPos b : new BlockPos[]{ log, trunk, trunk.above(), oak, birch }) h.setBlock(b, Blocks.AIR);
         h.assertTrue(sneak == Chopping.Result.NONE, "присівши теж рубає");
-        h.assertTrue(r == Chopping.Result.CLEAN && pile != null && pile.pieces().size() == 2 && wear == 1, "колода не стала купою з 2 половинок");
+        h.assertTrue(r == Chopping.Result.CLEAN && halves == 2 && wear == 1, "колода не розлетілась на 2 половинки");
         h.assertTrue(onTrunk == Chopping.Result.NONE && onBirch == Chopping.Result.NONE, "рубає стовбур або березу");
         h.assertTrue(onOak == Chopping.Result.CLEAN && "oak".equals(oakWood), "дубова колода не рубається: " + onOak + " " + oakWood);
         h.succeed();
