@@ -76,6 +76,7 @@ minecraft {
             // мод GeckoLib має mixin-и з SRG-назвами — у розробці їх треба перекладати (у справжній грі не потрібно)
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            arg '-mixin.config=hungrycows.mixins.json'   // наш mixin (точне зіткнення з фізичними тілами); у jar — MixinConfigs нижче
             if (project.hasProperty('physDebug')) property 'hungrycows.physdebug', 'true'   // -PphysDebug: висота гравця біля фізичних тіл у журнал
             if (project.hasProperty('quickPlay')) args '--quickPlaySingleplayer', project.property('quickPlay')   // -PquickPlay=світ: одразу у світ (перевірка моделі)
 
@@ -185,7 +186,8 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'hungrycows.mixins.json'
         ])
     }
 

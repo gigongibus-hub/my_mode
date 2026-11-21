@@ -87,61 +87,9 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         syncQ();
     }
 
-    // ---------- тверді частини (по них ходять) ----------
-
-    private WoodBodyPart[] colliders;
-    public static final double COLLIDER_SPLIT_FROM = 0.4;   // брусок довший за 0,8 бл. …
-    public static final int COLLIDER_SUBS = 3;              // … — на 3 (колода — 3 × 3 рамки)
-
-    /**
-     * Частини незмінні з появи тіла (гра реєструє їх один раз): на кожну колоду/шматок, листя — ні. Рамка гри завжди пряма, тож
-     * повернута колода обіймається кількома тіснішими рамками (уздовж довшої осі) — інакше навскіс лежача колода мала б
-     * «невидимі стіни» довкола й гравець у них застрягав (Fij, 20.11).
-     */
-    @Override
-    public WoodBodyPart[] getParts() {
-        if (colliders == null) {
-            if (body.parts.isEmpty()) return new WoodBodyPart[0];      // ще не завантажене — не запам'ятовувати
-            java.util.List<WoodBodyPart> l = new java.util.ArrayList<>();
-            for (int i = 0; i < body.parts.size(); i++) {
-                Part p = body.parts.get(i);
-                if (p.leaf) continue;
-                // дві найдовші осі бруска; довша за 0,8 бл. ділиться на 3
-                double[] h = { p.hx, p.hy, p.hz };
-                int a = h[0] >= h[1] && h[0] >= h[2] ? 0 : h[1] >= h[2] ? 1 : 2;
-                int b = -1;
-                for (int k = 0; k < 3; k++) if (k != a && (b < 0 || h[k] > h[b])) b = k;
-                int na = h[a] >= COLLIDER_SPLIT_FROM ? COLLIDER_SUBS : 1, nb = h[b] >= COLLIDER_SPLIT_FROM ? COLLIDER_SUBS : 1;
-                for (int ia = 0; ia < na; ia++) for (int ib = 0; ib < nb; ib++) l.add(new WoodBodyPart(this, i, a, na, ia, b, nb, ib));
-            }
-            colliders = l.toArray(new WoodBodyPart[0]);
-        }
-        return colliders;
-    }
-
-    @Override
-    public boolean isMultipartEntity() {
-        return true;
-    }
-
-    /** Рамки частин — за теперішнім положенням тіла (і на сервері, і в гравця: ходить гравець у себе) */
-    void placeColliders() {
-        body.updateWorld();
-        Vector3d c = new Vector3d();
-        for (WoodBodyPart wp : getParts()) {
-            Part p = wp.index < body.parts.size() ? body.parts.get(wp.index) : null;
-            if (p == null || p.gone) { wp.place(null); continue; }
-            double[] h = { p.hx, p.hy, p.hz };
-            double[] lc = { p.c.x, p.c.y, p.c.z };
-            if (wp.na > 1) { double seg = h[wp.a] / wp.na; lc[wp.a] += -h[wp.a] + seg * (2 * wp.ia + 1); h[wp.a] = seg; }
-            if (wp.nb > 1) { double seg = h[wp.b] / wp.nb; lc[wp.b] += -h[wp.b] + seg * (2 * wp.ib + 1); h[wp.b] = seg; }
-            body.toWorld(lc[0], lc[1], lc[2], c);
-            double ex = Math.abs(body.rot.m00()) * h[0] + Math.abs(body.rot.m10()) * h[1] + Math.abs(body.rot.m20()) * h[2];
-            double ey = Math.abs(body.rot.m01()) * h[0] + Math.abs(body.rot.m11()) * h[1] + Math.abs(body.rot.m21()) * h[2];
-            double ez = Math.abs(body.rot.m02()) * h[0] + Math.abs(body.rot.m12()) * h[1] + Math.abs(body.rot.m22()) * h[2];
-            wp.place(new AABB(c.x - ex, c.y - ey, c.z - ez, c.x + ex, c.y + ey, c.z + ez));
-        }
-    }
+    // ---------- тверде (по ньому ходять) ----------
+    // Fij (21.11, «як у Create Aeronautics»): рамок-латок більше немає — крок кожної істоти перевіряється з повернутими брусками
+    // точно (`BodyCollision`, через mixin у `Entity.collide`).
 
     @Override
     protected void defineSynchedData() {
@@ -172,12 +120,14 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
     @Override
     public void onAddedToWorld() {
         super.onAddedToWorld();
+        BodyCollision.add(this);
         if (level() instanceof ServerLevel sl) PhysicsWorld.of(sl).add(this);
     }
 
     @Override
     public void onRemovedFromWorld() {
         super.onRemovedFromWorld();
+        BodyCollision.remove(this);
         if (level() instanceof ServerLevel sl) PhysicsWorld.of(sl).remove(this);
     }
 
@@ -191,7 +141,6 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             body.q.set(curQ.x, curQ.y, curQ.z, curQ.w);
             body.pos.set(getX(), getY(), getZ());
             body.updateWorld();
-            placeColliders();
             shedLeaves();
             return;
         }
@@ -220,14 +169,12 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             } else b.still = 0;
         }
         setPos(b.pos.x, b.pos.y, b.pos.z);
-        placeColliders();                                             // спершу рамки — за ними виштовхуємо істот
         world.entities(this);
         b.asleepTicks = b.asleep ? b.asleepTicks + 1 : 0;
         if (b.asleepTicks >= (kind == TREE ? TREE_REST_TICKS : PIECE_REST_TICKS) || tickCount > MAX_AGE) { toBlocks(); return; }
         if (b.pos.y < level.getMinBuildHeight() - 32) { discard(); return; }
         setPos(b.pos.x, b.pos.y, b.pos.z);
         syncQ();
-        placeColliders();
         if (b.hinged && tickCount % CREAK_EVERY == 0)                 // тріщить волокно в зарубці
             level.playSound(null, BlockPos.containing(b.pivot.x, b.pivot.y, b.pivot.z), level.random.nextBoolean()
                     ? SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR : SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 0.7F, 0.4F + level.random.nextFloat() * 0.2F);
@@ -536,32 +483,6 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         b.updateWorld();
         body = b;
         setPos(b.pos.x, b.pos.y, b.pos.z);
-        registerClientParts();
-    }
-
-    /**
-     * Fij (20.11): «гравець в'язне в дереві, екран бігає» — ГОЛОВНА ПРИЧИНА: Forge у гравця спершу додає сутність у світ (і саме
-     * тоді питає її тверді частини), а вже потім читає `readSpawnData` — тож тіло було ще порожнє, частин 0, і гра гравця колод не
-     * бачила твердими: гравець провалювався в колоду, сервер його виштовхував, і так по колу. Тепер, щойно тіло прочитане,
-     * частини дописуються в список частин світу гравця самі (поле `partEntities` додав Forge, тож назва та сама й у справжній грі).
-     */
-    private void registerClientParts() {
-        colliders = null;
-        WoodBodyPart[] parts = getParts();
-        try {
-            Class<?> c = level().getClass();
-            java.lang.reflect.Field f = null;
-            while (c != null && f == null) {
-                try { f = c.getDeclaredField("partEntities"); } catch (NoSuchFieldException ex) { c = c.getSuperclass(); }
-            }
-            if (f == null) return;
-            f.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            var map = (it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraftforge.entity.PartEntity<?>>) f.get(level());
-            for (WoodBodyPart wp : parts) map.put(wp.getId(), wp);
-        } catch (ReflectiveOperationException | ClassCastException ignored) {
-        }
-        placeColliders();
     }
 
     @Override

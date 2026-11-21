@@ -78,8 +78,6 @@ public final class PhysicsWorld {
     public static final double LEAF_HIT = 0.2;        // листя б'є слабше
     public static final int HIT_COOLDOWN = 10;        // ту саму істоту — не частіше раз на 0,5 с
     public static final double ENTITY_DENSITY = 0.17; // маса істоти: об'єм рамки × 0,17 (гравець ≈ 0,11 колоди)
-    public static final double PUSH_SLOP = 0.04;      // торкається ледь-ледь — не штовхає (не тремтить)
-    public static final double STEP_UP_OUT = 1.1;     // тіло наїхало на істоту: до верху ≤ 1,1 бл. (колода) — охочіше ставить зверху, ніж убік
     public static final double PUSHABLE_MASS = 1.5;   // легші тіла (шматки, колода) істота штовхає ногою; дерево — ні
     public static final double THUD_SPEED = 3.0;      // удар швидше — гупає (звук, пил)
     public static final double ACTIVE_RANGE = 96;     // далі від усіх гравців — не рахується (спить)
@@ -749,55 +747,21 @@ public final class PhysicsWorld {
                     break;
                 }
             }
-            // 2) усередині твердої рамки — виштовхнути одразу: найкоротший вихід (угору на колоду або вбік), де вже вільно
-            double top = -Double.MAX_VALUE, minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
-            boolean inside = false;
-            for (WoodBodyPart wp : owner.getParts()) {
-                AABB c = wp.getBoundingBox();
-                if (!c.deflate(PUSH_SLOP).intersects(eb)) continue;
-                inside = true;
-                top = Math.max(top, c.maxY);
-                minX = Math.min(minX, c.minX);
-                maxX = Math.max(maxX, c.maxX);
-                minZ = Math.min(minZ, c.minZ);
-                maxZ = Math.max(maxZ, c.maxZ);
-            }
-            if (inside) {
-                double[][] moves = { { 0, top - eb.minY + 0.01, 0 }, { maxX - eb.minX + 0.01, 0, 0 }, { minX - eb.maxX - 0.01, 0, 0 },
-                        { 0, 0, maxZ - eb.minZ + 0.01 }, { 0, 0, minZ - eb.maxZ - 0.01 } };
-                double[] best = null;
-                double bestLen = Double.MAX_VALUE;
-                for (int k = 0; k < moves.length; k++) {
-                    double[] m = moves[k];
-                    double len = Math.abs(m[0]) + Math.abs(m[1]) * (m[1] <= STEP_UP_OUT ? 0.5 : 1.5) + Math.abs(m[2]);   // невисоко — краще на колоду
-                    if (len >= bestLen || !level.noCollision(en, eb.move(m[0], m[1], m[2]))) continue;
-                    best = m;
-                    bestLen = len;
-                }
-                if (best != null) {
-                    if (en instanceof net.minecraft.server.level.ServerPlayer sp)
-                        sp.connection.teleport(sp.getX() + best[0], sp.getY() + best[1], sp.getZ() + best[2], sp.getYRot(), sp.getXRot());
-                    else en.setPos(en.getX() + best[0], en.getY() + best[1], en.getZ() + best[2]);
-                    if (speed > 0.5) {                                 // тіло рухається — бере з собою
-                        en.setDeltaMovement(vp.x * 0.05, Math.max(0, vp.y * 0.05), vp.z * 0.05);
-                        en.hurtMarked = true;
-                    }
-                }
-            }
+            // 2) застрягла в тілі (тіло наїхало) — виштовхує сам крок істоти (`BodyCollision`), тут нічого
             // 3) істота йде на легке тіло — штовхає його (лише вбік; хто стоїть зверху — не тисне)
-            if (!(en instanceof net.minecraft.world.entity.item.ItemEntity) && b.mass < PUSHABLE_MASS) {
-                AABB reach = eb.inflate(0.06, 0, 0.06);
-                for (WoodBodyPart wp : owner.getParts()) {
-                    AABB c = wp.getBoundingBox();
-                    if (!c.intersects(reach) || eb.minY >= c.maxY - 0.05) continue;
+            if (!(en instanceof net.minecraft.world.entity.item.ItemEntity) && b.mass < PUSHABLE_MASS && BodyCollision.standsOn(en) != owner) {
+                AABB reach = eb.inflate(0.06, -0.05, 0.06);
+                for (Part p : b.parts) {
+                    if (p.gone || p.leaf || !BodyCollision.overlaps(reach, owner, p, -1)) continue;
                     double hx = evd.x - vp.x, hz = evd.z - vp.z;
-                    Vec3 to = c.getCenter().subtract(eb.getCenter());
-                    double into = (hx * to.x + hz * to.z) / Math.max(1e-6, Math.sqrt(to.x * to.x + to.z * to.z));
+                    Vector3d pc = b.toWorld(p.c.x, p.c.y, p.c.z, new Vector3d());
+                    double tx = pc.x - center.x, tz = pc.z - center.z;
+                    double into = (hx * tx + hz * tz) / Math.max(1e-6, Math.sqrt(tx * tx + tz * tz));
                     if (into > 0.3) {
                         double em = eb.getXsize() * eb.getYsize() * eb.getZsize() * ENTITY_DENSITY;
                         double len = Math.sqrt(hx * hx + hz * hz);
                         Vector3d j = new Vector3d(hx / len, 0, hz / len).mul(into * em);
-                        b.impulse(j, new Vector3d(c.getCenter().x, c.getCenter().y, c.getCenter().z), cw);
+                        b.impulse(j, pc, cw);
                         if (b.asleep && j.length() * b.invMass > 0.05) { b.asleep = false; b.still = 0; }
                     }
                     break;

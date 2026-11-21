@@ -242,15 +242,11 @@ public class HungryCowPhysicsTests {
         double startY = pig.getY();
         h.runAfterDelay(24, () -> {   // шматок за 1,5 с лягає купою — перевірити раніше
             double top = log.body.aabb()[4], feet = pig.getY();
-            int colliders = log.getParts().length;
-            LOG.info("[тест] standOnBody: частин у світі {}, рамка частини {}, зіткнень над колодою {}", h.getLevel().getPartEntities().size(),
-                    log.getParts()[0].getBoundingBox(), h.getLevel().getEntityCollisions(pig, pig.getBoundingBox().move(0, -1.5, 0).inflate(0, 1, 0)).size()
-                    + " стійка " + pig.position() + " усі поруч " + h.getLevel().getEntities(pig, log.getParts()[0].getBoundingBox().inflate(0.5), e -> true)
-                    + " canCollideWith " + pig.canCollideWith(log.getParts()[0]) + " зареєстрована " + h.getLevel().getPartEntities().contains(log.getParts()[0]) + " id " + log.getParts()[0].getId() + " усі " + h.getLevel().getPartEntities().stream().map(e -> e.getId() + "@" + e.getBoundingBox().minY).toList());
-            LOG.info("[тест] standOnBody: верх колоди {}, ноги стійки {} (почала з {}), тверді частини {}", top, feet, startY, colliders);
+            boolean on = com.gigongibus.hungrycows.phys.BodyCollision.standsOn(pig) == log;
+            LOG.info("[тест] standOnBody: верх колоди {}, ноги стійки {} (почала з {}), стоїть на тілі {}", top, feet, startY, on);
             pig.discard();
             HungryCowFellTests.clear(h, 0);
-            h.assertTrue(colliders == 9 && feet > top - 0.1 && feet < top + 0.2, "стійка не стоїть на колоді: " + feet + ", верх " + top);
+            h.assertTrue(on && feet > top - 0.1 && feet < top + 0.2, "стійка не стоїть на колоді: " + feet + ", верх " + top);
             h.succeed();
         });
     }
@@ -275,14 +271,107 @@ public class HungryCowPhysicsTests {
         nearCorner.moveTo(mid.x + 0.75, a.getY() + 1.5, mid.z + 0.75);   // край стійки — за 0,2 бл. від колоди
         h.runAfterDelay(20, () -> {
             double top = log.body.aabb()[4], floor = a.getY();
-            int n = log.getParts().length;
-            LOG.info("[тест] diagonalLogNotSticky: рамок {}, стійка з середини — ноги {} (верх колоди {}), стійка біля кута — ноги {} (підлога {})",
-                    n, inside.getY(), top, nearCorner.getY(), floor);
+            LOG.info("[тест] diagonalLogNotSticky: стійка з середини — ноги {} (верх колоди {}), стійка біля кута — ноги {} (підлога {})",
+                    inside.getY(), top, nearCorner.getY(), floor);
             inside.discard();
             nearCorner.discard();
             HungryCowFellTests.clear(h, 0);
             h.assertTrue(inside.getY() > top - 0.1, "з колоди не виштовхнуло на неї");
-            h.assertTrue(n == 9 && nearCorner.getY() < floor + 0.2, "біля колоди «невидима стіна»: стоїть на висоті " + (nearCorner.getY() - floor));
+            h.assertTrue(nearCorner.getY() < floor + 0.2, "біля колоди «невидима стіна»: стоїть на висоті " + (nearCorner.getY() - floor));
+            h.succeed();
+        });
+    }
+
+    // 10. Fij (21.11): «гравця смикає, коли стоїть на дереві» — колода похило (25°): стійка стоїть на схилі рівно (висота не скаче,
+    //     не з'їжджає), а колода, що їде, везе її з собою
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 140)
+    public static void slopeSteadyAndCarries(GameTestHelper h) {
+        TestWorld.calm(h);
+        BlockPos a = h.absolutePos(new BlockPos(7, 3, 9));
+        var log = WoodBodyEntity.spawnPiece(h.getLevel(), WoodPiece.whole(Direction.Axis.X, true, false, WoodPiece.OAK),
+                new Vector3d(a.getX(), a.getY(), a.getZ()), new Vector3d(), new Vector3d());
+        Vector3d mid = log.body.comWorld(new Vector3d());
+        log.body.q.rotateZ(Math.toRadians(25));
+        log.body.updateWorld();
+        log.body.pos.set(mid).sub(log.body.rot.transform(new Vector3d(log.body.com)));
+        log.body.asleep = true;
+        Vector3d hold = new Vector3d(log.body.pos);
+        var stand = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(7, 5, 9));
+        stand.moveTo(mid.x, mid.y + 1.2, mid.z);
+        double[] ys = new double[40], xs = new double[40];
+        double[] carried = new double[2];
+        for (int t = 0; t < 100; t++) {
+            final int k = t;
+            h.runAfterDelay(t + 1, () -> {
+                log.body.asleep = true;             // фізика колоду не рухає: тест сам її тримає
+                log.body.asleepTicks = 0;
+                log.body.v.zero(); log.body.w.zero();
+                log.body.pos.set(hold);             // висить у повітрі там, де поставили (фізика раз на 0,5 с її «відпускала»)
+                if (k >= 20 && k < 60) { ys[k - 20] = stand.getY(); xs[k - 20] = stand.getX(); }
+                if (k == 60) carried[0] = stand.getX();
+                if (k >= 60 && k < 80) hold.add(0, 0, 0.08);
+                log.body.pos.set(hold);   // колода їде вбік (уздовж z) 1,6 бл.
+                if (k == 90) carried[1] = stand.getZ() - mid.z;
+            });
+        }
+        h.runAfterDelay(95, () -> {
+            double ymin = 1e9, ymax = -1e9;
+            for (double y : ys) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
+            double slide = Math.abs(xs[39] - xs[0]);
+            LOG.info("[тест] slopeSteadyAndCarries: на схилі висота скаче на {}, з'їхала на {}; колода проїхала 1,6 — стійка {} (на тілі {})",
+                    ymax - ymin, slide, carried[1], com.gigongibus.hungrycows.phys.BodyCollision.standsOn(stand) == log);
+            stand.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(ymax - ymin < 0.01, "на схилі смикає: " + (ymax - ymin));
+            h.assertTrue(slide < 0.05, "з'їжджає зі схилу: " + slide);
+            h.assertTrue(carried[1] > 1.4, "колода не везе: " + carried[1]);
+            h.succeed();
+        });
+    }
+
+    // 11. по похилій колоді (20°) можна йти вгору й униз: висота міняється плавно, без провалів і стрибків
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 120)
+    public static void walkUpSlope(GameTestHelper h) {
+        TestWorld.calm(h);
+        BlockPos a = h.absolutePos(new BlockPos(3, 3, 11));
+        var log = Physics.spawnLog(h.getLevel(), a, 0, 6);
+        Vector3d mid = log.body.comWorld(new Vector3d());
+        log.body.q.rotateZ(Math.toRadians(20));
+        log.body.updateWorld();
+        log.body.pos.set(mid).sub(log.body.rot.transform(new Vector3d(log.body.com)));
+        Vector3d hold = new Vector3d(log.body.pos);
+        var stand = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(3, 6, 11));
+        stand.moveTo(mid.x - 2, mid.y + 1.5, mid.z);
+        java.util.List<double[]> path = new java.util.ArrayList<>();
+        for (int t = 0; t < 90; t++) {
+            final int k = t;
+            h.runAfterDelay(t + 1, () -> {
+                log.body.asleep = true;
+                log.body.asleepTicks = 0;
+                log.body.v.zero(); log.body.w.zero();
+                log.body.pos.set(hold);
+                if (k >= 15 && k < 45) stand.setDeltaMovement(0.12, stand.getDeltaMovement().y, 0);    // угору
+                if (k >= 55 && k < 85) stand.setDeltaMovement(-0.12, stand.getDeltaMovement().y, 0);   // униз
+                if (k >= 15) path.add(new double[]{ stand.getX(), stand.getY() });
+            });
+        }
+        h.runAfterDelay(92, () -> {
+            double worst = 0, climbed = 0, x0 = path.get(0)[0], y0 = path.get(0)[1];
+            for (int i = 1; i < path.size(); i++) {
+                double dx = path.get(i)[0] - path.get(i - 1)[0], dy = path.get(i)[1] - path.get(i - 1)[1];
+                // на 20° висота на крок — tan20 × зсув; більше — ривок
+                worst = Math.max(worst, Math.abs(dy) - Math.abs(dx) * Math.tan(Math.toRadians(20)));
+            }
+            double maxX = path.stream().mapToDouble(p -> p[0]).max().orElse(0);
+            double topY = path.stream().mapToDouble(p -> p[1]).max().orElse(0);
+            climbed = topY - y0;
+            LOG.info("[тест] walkUpSlope: пройшла вгору {} бл., піднялась на {} (очікувано ~{}), найбільший ривок {}; кінець x {} y {}",
+                    maxX - x0, climbed, (maxX - x0) * Math.tan(Math.toRadians(20)), worst, path.get(path.size() - 1)[0], path.get(path.size() - 1)[1]);
+            stand.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(maxX - x0 > 2, "не йде вгору схилом: " + (maxX - x0));
+            h.assertTrue(Math.abs(climbed - (maxX - x0) * Math.tan(Math.toRadians(20))) < 0.15, "висота не за схилом: " + climbed);
+            h.assertTrue(worst < 0.05, "ривок висоти: " + worst);
             h.succeed();
         });
     }

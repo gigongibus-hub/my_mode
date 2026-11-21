@@ -24,7 +24,7 @@ public final class PhysDebugClient {
         var near = mc.level.getEntitiesOfClass(WoodBodyEntity.class, mc.player.getBoundingBox().inflate(4));
         if (near.isEmpty()) return;
         var p = mc.player;
-        System.out.printf("[гравець] %d y %.4f x %.3f z %.3f на землі %s, частин поруч %d, тіло %.4f%n", mc.level.getGameTime(), p.getY(), p.getX(), p.getZ(),
-                p.onGround(), mc.level.getPartEntities().size(), near.get(0).getY());
+        System.out.printf("[гравець] %d y %.4f x %.3f z %.3f на землі %s, стоїть на тілі %s, тіл поруч %d%n", mc.level.getGameTime(), p.getY(), p.getX(), p.getZ(),
+                p.onGround(), com.gigongibus.hungrycows.phys.BodyCollision.standsOn(p) != null, near.size());
     }
 }
