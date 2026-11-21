@@ -63,11 +63,17 @@ public final class Physics {
         if (!(e.getLevel() instanceof ServerLevel level)) return;
         PhysicsWorld.of(level).wakeNear(e.getPos());
         FallenLogs.get(level).unmark(e.getPos());
-        BlockPos up = e.getPos().above();
-        level.getServer().execute(() -> {
-            if (FallenLogs.get(level).isFallen(level, up) && !level.getBlockState(up.below()).isFaceSturdy(level, up.below(), Direction.UP))
+        BlockPos pos = e.getPos().immutable(), up = pos.above();
+        // зламали колоду (чи зарубку) під деревом — дерево над нею падає (Fij, 21.11: «зламав нижній — дерево не падає»)
+        boolean trunk = com.gigongibus.hungrycows.fell.TreeShape.woodOf(e.getState()) != null || e.getState().is(com.gigongibus.hungrycows.fell.Felling.FELLING_CUT.get());
+        Vec3 from = e.getPlayer() != null ? e.getPlayer().position() : Vec3.atCenterOf(pos);
+        // наступного тіку: подія ламання — ДО того, як блок зникає (`execute` на потоці сервера виконується одразу)
+        level.getServer().tell(new net.minecraft.server.TickTask(level.getServer().getTickCount() + 1, () -> {
+            if (trunk && level.getBlockState(pos).isAir() && com.gigongibus.hungrycows.fell.TreeShape.woodOf(level.getBlockState(up)) != null)
+                com.gigongibus.hungrycows.fell.Felling.collapse(level, pos, Vec3.atCenterOf(pos).subtract(from));
+            else if (FallenLogs.get(level).isFallen(level, up) && !level.getBlockState(up.below()).isFaceSturdy(level, up.below(), Direction.UP))
                 wake(level, up, new Vec3(0, 0, 0), Vec3.atCenterOf(up));
-        });
+        }));
     }
 
     /** ЛКМ без сокири по колоді поваленого дерева — тіло знову фізичне й відчуває поштовх */

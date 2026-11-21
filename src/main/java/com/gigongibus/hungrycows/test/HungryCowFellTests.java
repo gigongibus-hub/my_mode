@@ -287,4 +287,39 @@ public class HungryCowFellTests {
         h.assertFalse(trunk, "стовп без листя визнано деревом");
         h.succeed();
     }
+
+    // Fij (21.11): «зарубав нижню, потім трохи вищу — і зламав нижню: дерево не впало / колода з зарубкою висить над пнем».
+    // Над зарубкою другої не почати; зламав колоду під дубом (гравець) — дерево падає фізичним тілом
+    @GameTest(template = "arena", batch = "fell_break", timeoutTicks = 200)
+    public static void breakUnderTreeFalls(GameTestHelper h) {
+        TestWorld.calm(h);
+        Wind.set(h.getLevel(), 0, true);
+        BlockPos base = new BlockPos(7, 2, 7);
+        boolean grown = growOak(h, base, 7);
+        var lvl = h.getLevel();
+        BlockPos abs = h.absolutePos(base);
+        Felling.cut(lvl, axePlayer(h), abs, 5, 0.3F);                         // почата зарубка внизу
+        boolean secondAllowed = Felling.isTrunk(lvl, abs.above());
+        var p = axePlayer(h);
+        p.moveTo(abs.getX() - 2, abs.getY(), abs.getZ() + 0.5);
+        boolean broke = p.gameMode.destroyBlock(abs);
+        h.runAfterDelay(5, () -> {
+            var bodies = lvl.getEntitiesOfClass(com.gigongibus.hungrycows.phys.WoodBodyEntity.class, new net.minecraft.world.phys.AABB(abs).inflate(8));
+            boolean logsLeft = lvl.getBlockState(abs.above()).is(Blocks.OAK_LOG);
+            LOG.info("[тест] breakUnderTreeFalls: дуб {}, друга зарубка над першою {}, зламав {}, тіл {}, колода над місцем лишилась {}",
+                    grown, secondAllowed, broke, bodies.size(), logsLeft);
+            bodies.forEach(e -> e.discard());
+            clear(h, 0);
+            h.assertTrue(grown && !secondAllowed, "другу зарубку над першою можна почати");
+            h.assertTrue(broke && bodies.size() == 1 && !logsLeft, "дерево не впало, коли зламали колоду під ним");
+            h.succeed();
+        });
+    }
+
+    static net.minecraftforge.common.util.FakePlayer axePlayer(GameTestHelper h) {
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("breaker".getBytes()), "break_tester"));
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_AXE));
+        p.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        return p;
+    }
 }

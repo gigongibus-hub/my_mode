@@ -28,5 +28,7 @@ public final class ModNetwork {
                 com.gigongibus.hungrycows.chop.ChopPacket::decode, com.gigongibus.hungrycows.chop.ChopPacket::handle);
         CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.phys.ChopBodyPacket.class, com.gigongibus.hungrycows.phys.ChopBodyPacket::encode,
                 com.gigongibus.hungrycows.phys.ChopBodyPacket::decode, com.gigongibus.hungrycows.phys.ChopBodyPacket::handle);
+        CHANNEL.registerMessage(id++, com.gigongibus.hungrycows.phys.RopeUntiePacket.class, com.gigongibus.hungrycows.phys.RopeUntiePacket::encode,
+                com.gigongibus.hungrycows.phys.RopeUntiePacket::decode, com.gigongibus.hungrycows.phys.RopeUntiePacket::handle);
     }
 }

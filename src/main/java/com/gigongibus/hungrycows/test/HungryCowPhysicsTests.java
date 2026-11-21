@@ -425,12 +425,14 @@ public class HungryCowPhysicsTests {
         Vector3d knot = new Vector3d(2.9, 0.5, 0.5);                       // торець колоди, ближчий до коня
         com.gigongibus.hungrycows.phys.Rope.tie(log, horse, knot, p, lead);
         double startX = log.body.comWorld(new Vector3d()).x;
-        double[] worst = { 0 }, slowSpeed = { 0 };
+        double[] worst = { 0 }, slowSpeed = { 0 }, horseHurt = { 0 }, fastest = { 0 };
         for (int t = 0; t < 120; t++) {
             final int k = t;
             h.runAfterDelay(t + 2, () -> {
-                if (k < 80) horse.setPos(horse.getX() + 0.075, horse.getY(), horse.getZ());   // кінь іде 1,5 бл./с, 6 бл.
-                if (k > 10) {
+                if (k < 80) horse.setPos(horse.getX() + (k == 40 ? 1.5 : 0.075), horse.getY(), horse.getZ());   // кінь іде 1,5 бл./с; раз — ривок на 1,5 бл.
+                horseHurt[0] = horse.getMaxHealth() - horse.getHealth();
+                fastest[0] = Math.max(fastest[0], log.body.v.length());
+                if (k > 10 && (k < 40 || k > 105)) {                      // після ривка мотузка вирівнюється м'яко (~2 с) — не міряти
                     Vector3d kw = log.body.toWorld(knot.x, knot.y, knot.z, new Vector3d());
                     Vector3d hw = com.gigongibus.hungrycows.phys.Rope.hitch(horse, new Vector3d());
                     worst[0] = Math.max(worst[0], kw.distance(hw));
@@ -446,6 +448,7 @@ public class HungryCowPhysicsTests {
             com.gigongibus.hungrycows.phys.Rope.untie(log, p);
             boolean gotLead = p.getInventory().countItem(Items.LEAD) == 1;
             double after = horse.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+            LOG.info("[тест] horseDragsLog: найшвидша колода {}, шкода коню {}", fastest[0], horseHurt[0]);
             LOG.info("[тест] horseDragsLog: колода проїхала {} бл. (кінь 6), мотузка найдовша {}, швидкість коня {} → {} → {}, повідців у руці лишилось {}, відв'язав — повідець {}, фізична {}",
                     moved, worst[0], baseSpeed, slowSpeed[0], after, leadsBefore, gotLead, physical);
             log.discard();
@@ -455,6 +458,7 @@ public class HungryCowPhysicsTests {
             h.assertTrue(worst[0] < com.gigongibus.hungrycows.phys.Rope.LENGTH + 0.8, "мотузка розтягнулась: " + worst[0]);
             h.assertTrue(slowSpeed[0] < baseSpeed * 0.8 && Math.abs(after - baseSpeed) < 1e-6, "кінь не сповільнився / не відновився");
             h.assertTrue(leadsBefore == 1 && gotLead && physical, "повідець не забрало / не повернуло");
+            h.assertTrue(horseHurt[0] == 0 && fastest[0] < 4, "колода б'є коня / смикається: шкода " + horseHurt[0] + ", найшвидше " + fastest[0]);
             h.succeed();
         });
     }
@@ -493,6 +497,71 @@ public class HungryCowPhysicsTests {
             h.assertTrue(r1 == com.gigongibus.hungrycows.chop.Chopping.Result.CLEAN && afterAcross == 2 && log.isRemoved(), "упоперек не розпалось на 2: " + afterAcross);
             h.assertTrue(r2 != com.gigongibus.hungrycows.chop.Chopping.Result.NONE && near.size() == 2, "уздовж не дві половинки: " + near.size());
             h.assertTrue(r3 == com.gigongibus.hungrycows.chop.Chopping.Result.STUCK && notch && afterStuck.size() == 2, "засічки немає");
+            h.succeed();
+        });
+    }
+
+    // 15. Fij (21.11): «дерево плаває — стою на ньому й іду, а стрибати не можна»: стійка на плавучій колоді стрибає
+    @GameTest(template = "arena", batch = "phys_water", timeoutTicks = 260)
+    public static void jumpOnFloatingLog(GameTestHelper h) {
+        TestWorld.calm(h, false);
+        for (int x = 2; x <= 12; x++) for (int z = 2; z <= 12; z++) {
+            h.setBlock(new BlockPos(x, 0, z), Blocks.WATER);
+            h.setBlock(new BlockPos(x, 1, z), Blocks.WATER);
+        }
+        BlockPos a = h.absolutePos(new BlockPos(4, 3, 7));
+        var log = Physics.spawnLog(h.getLevel(), a, 0, 5);
+        var stand = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(6, 6, 7));
+        var ground = h.spawn(net.minecraft.world.entity.EntityType.ARMOR_STAND, new BlockPos(13, 2, 13));   // для порівняння — на камені
+        double[] gBase = { 0 }, gPeak = { -1e9 };
+        double[] onGround = { 0 }, seen = { 0 }, base = { 0 }, peak = { -1e9 };
+        for (int t = 100; t < 240; t++) {
+            final int k = t;
+            h.runAfterDelay(t, () -> {
+                if (k < 160) { seen[0]++; if (stand.onGround()) onGround[0]++; base[0] = stand.getY(); gBase[0] = ground.getY(); }
+                else { ground.setJumping(k < 165); gPeak[0] = Math.max(gPeak[0], ground.getY());
+                    stand.setJumping(k < 165); peak[0] = Math.max(peak[0], stand.getY());
+ }
+            });
+        }
+        h.runAfterDelay(245, () -> {
+            LOG.info("[тест] jumpOnFloatingLog: на камені стрибок {}", gPeak[0] - gBase[0]);
+            ground.discard();
+            LOG.info("[тест] jumpOnFloatingLog: на землі {} з {} тіків, на тілі {}, колода у воді {} спить {}, стрибок {} бл.",
+                    onGround[0], seen[0], com.gigongibus.hungrycows.phys.BodyCollision.standsOn(stand) == log, log.body.inWater, log.body.asleep, peak[0] - base[0]);
+            stand.discard();
+            log.discard();
+            for (int x = 2; x <= 12; x++) for (int z = 2; z <= 12; z++) for (int y = 0; y <= 1; y++) h.setBlock(new BlockPos(x, y, z), Blocks.STONE);
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(peak[0] - base[0] > 0.8, "не стрибає з плавучої колоди: " + (peak[0] - base[0]) + ", на землі " + onGround[0] + "/" + seen[0]);
+            h.succeed();
+        });
+    }
+
+    // 16. Fij (21.11): «дерево падає на інше — не ламає листя, а підскакує доволі високо»: колода на крону (3×3×2 листя)
+    //     ламає листя й лягає на землю, не відскакує вгору
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 140)
+    public static void logBreaksThroughLeaves(GameTestHelper h) {
+        TestWorld.calm(h);
+        for (int x = 9; x <= 13; x++) for (int z = 9; z <= 13; z++) for (int y = 2; y <= 3; y++)
+            h.setBlock(new BlockPos(x, y, z), Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true));
+        BlockPos a = h.absolutePos(new BlockPos(9, 8, 11));
+        var log = Physics.spawnLog(h.getLevel(), a, 0, 4);
+        double[] lowest = { 1e9 }, bounce = { 0 };
+        for (int t = 1; t < 100; t++) h.runAfterDelay(t, () -> {
+            if (log.isRemoved()) return;
+            double y = log.body.aabb()[1];
+            if (y < lowest[0]) lowest[0] = y; else bounce[0] = Math.max(bounce[0], y - lowest[0]);
+        });
+        h.runAfterDelay(110, () -> {
+            int left = 0;
+            for (int x = 9; x <= 13; x++) for (int z = 9; z <= 13; z++) for (int y = 2; y <= 3; y++) if (h.getBlockState(new BlockPos(x, y, z)).is(Blocks.OAK_LEAVES)) left++;
+            double floor = h.absolutePos(new BlockPos(0, 2, 0)).getY();
+            LOG.info("[тест] logBreaksThroughLeaves: листя лишилось {} з 50, найнижче {} (підлога {}), найбільший підскок {}", left, lowest[0], floor, bounce[0]);
+            log.discard();
+            for (int x = 9; x <= 13; x++) for (int z = 9; z <= 13; z++) for (int y = 2; y <= 3; y++) h.setBlock(new BlockPos(x, y, z), Blocks.AIR);
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(left < 46 && lowest[0] < floor + 0.2 && bounce[0] < 0.5, "колода не пройшла крізь листя: лишилось " + left + ", низ " + (lowest[0] - floor) + ", підскок " + bounce[0]);
             h.succeed();
         });
     }

@@ -92,6 +92,9 @@ public final class Felling {
         String wood = TreeShape.woodOf(s);
         if (wood == null || s.getValue(RotatedPillarBlock.AXIS) != Direction.Axis.Y) return false;
         if (TreeShape.isLog(level.getBlockState(pos.below()), wood) || !TreeShape.isLog(level.getBlockState(pos.above()), wood)) return false;
+        // під нею вже зарубка чи пень — це не низ стовбура (Fij, 21.11: дві зарубки одна над одною — дерево падало з однієї, а
+        // друга колода з зарубкою лишалась висіти в повітрі над пнем)
+        if (level.getBlockState(pos.below()).is(FELLING_CUT.get())) return false;
         return cachedScan(level, pos);
     }
 
@@ -223,6 +226,34 @@ public final class Felling {
         level.addFreshEntity(e);
         level.playSound(null, pos, SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, SoundSource.BLOCKS, 1.2F, 0.5F);
         level.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 1.5F, 0.4F);
+        return e;
+    }
+
+    public static final double COLLAPSE_SPIN = 0.35;    // дерево без опори (зламали колоду під ним) починає хилитися з 0,35 рад/с
+
+    /**
+     * Під деревом зламали колоду чи зарубку (Fij, 21.11): дерево над base падає фізичним тілом — без шарніра, хилиться туди, куди
+     * штовхнули (від того, хто ламав) і куди тягне крона. Не дерево (стовп будинку, мало листя) — нічого.
+     */
+    public static WoodBodyEntity collapse(ServerLevel level, BlockPos base, Vec3 push) {
+        TreeShape tree = TreeShape.scan(level, base);
+        if (tree == null) return null;
+        Vector3d o = new Vector3d(base.getX() + 0.5, base.getY() + 1, base.getZ() + 0.5);
+        Direction side = Direction.getNearest(push.x, 0, push.z);
+        Vec3 dir = fallDirection(level, tree, new Vec3(o.x, o.y, o.z), side);
+        RigidBody body = new RigidBody();
+        for (BlockPos p : tree.logs)
+            body.parts.add(Part.block(level.getBlockState(p), new Vector3d(p.getX(), p.getY(), p.getZ()).sub(o), PhysicsWorld.LOG_MASS, false));
+        for (BlockPos p : tree.leaves)
+            body.parts.add(Part.block(level.getBlockState(p), new Vector3d(p.getX(), p.getY(), p.getZ()).sub(o), PhysicsWorld.LEAF_MASS, true));
+        for (BlockPos p : tree.leaves) level.setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+        for (BlockPos p : tree.logs) level.setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        body.pos.set(o);
+        body.recompute();
+        body.w.set(dir.z, 0, -dir.x).mul(COLLAPSE_SPIN);               // хилиться в бік dir
+        WoodBodyEntity e = new WoodBodyEntity(level, body, WoodBodyEntity.TREE);
+        level.addFreshEntity(e);
+        level.playSound(null, base, SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, SoundSource.BLOCKS, 1.2F, 0.5F);
         return e;
     }
 

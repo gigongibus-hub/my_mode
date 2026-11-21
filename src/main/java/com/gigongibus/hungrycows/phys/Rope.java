@@ -38,8 +38,10 @@ public final class Rope {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
     public static final double LENGTH = 3.0;           // довжина мотузки, бл.
     public static final double BREAK_AT = 12;          // кінь далі 12 бл. від вузла (застрягло, телепорт) — мотузка рветься
-    public static final double PULL_BIAS = 0.3;        // натягнуту мотузку вирівнює за підкрок на таку частку
-    public static final double MAX_PULL_SPEED = 6;     // і не швидше 6 бл./с (ривок)
+    // Fij (21.11: «колода надто сильно відскакує вперед і б'є коня до смерті»): було «вирівняти за підкрок на 30%, до 6 бл./с»
+    // — колода летіла й обганяла коня. Тепер вузол лише йде за конем з його швидкістю (уздовж мотузки), а розтяг вирівнює м'яко
+    public static final double PULL_BIAS = 2.0;        // розтяг на 1 бл. — додатково 2 бл./с до коня …
+    public static final double MAX_PULL_SPEED = 1.5;   // … але не більше 1,5 бл./с понад швидкість коня
     public static final double HORSE_PULL = 6;         // «сила» коня в колодах: сповільнення = маса / (маса + 6) …
     public static final double MAX_SLOW = 0.85;        // … не більше 85% (ціле дерево — кінь ледь іде)
     public static final double REACH = 5;              // клацнути по колоді можна з 5 бл.
@@ -146,6 +148,13 @@ public final class Rope {
         return hitch(horse, new Vector3d());
     }
 
+    /** Швидкість коня (бл./с): верхи її рахує гра гравця, тож — за зсувом за тік */
+    static Vector3d horseVelocity(ServerLevel level, WoodBodyEntity body) {
+        Entity h = body.ropeHorse == null ? null : level.getEntity(body.ropeHorse);
+        if (h == null) return new Vector3d();
+        return new Vector3d(h.getX() - h.xo, h.getY() - h.yo, h.getZ() - h.zo).mul(20);
+    }
+
     /** Де мотузка тримається за коня: позаду сідла, на висоті ~0,7 зросту */
     public static Vector3d hitch(Entity horse, Vector3d out) {
         double yaw = Math.toRadians(horse.getYRot());
@@ -153,8 +162,8 @@ public final class Rope {
                 horse.getZ() - Math.cos(yaw) * horse.getBbWidth() * 0.6);
     }
 
-    /** Натягнута мотузка (за підкрок): вузол не відходить від коня далі довжини — поштовх тілу в точці вузла */
-    static void pull(RigidBody b, Vector3d localKnot, Vector3d to, double dt) {
+    /** Натягнута мотузка (за підкрок): вузол не відходить від коня далі довжини — поштовх тілу в точці вузла, без ривка */
+    static void pull(RigidBody b, Vector3d localKnot, Vector3d to, Vector3d horseVel, double dt) {
         Vector3d knot = b.toWorld(localKnot.x, localKnot.y, localKnot.z, new Vector3d());
         Vector3d n = new Vector3d(to).sub(knot);
         double dist = n.length();
@@ -162,8 +171,8 @@ public final class Rope {
         n.div(dist);
         Vector3d cw = b.comWorld(new Vector3d());
         double vn = b.velAt(knot, cw, new Vector3d()).dot(n);
-        double want = Math.min(MAX_PULL_SPEED, (dist - LENGTH) * PULL_BIAS / dt);
-        if (vn >= want) return;
+        double want = Math.max(0, horseVel.dot(n)) + Math.min(MAX_PULL_SPEED, (dist - LENGTH) * PULL_BIAS);
+        if (vn >= want) return;                                         // мотузка лише тягне, не штовхає
         double k = b.invMassAlong(new Vector3d(knot).sub(cw), n);
         if (k <= 0) return;
         b.impulse(new Vector3d(n).mul((want - vn) / k), knot, cw);

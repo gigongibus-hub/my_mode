@@ -6,7 +6,6 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -15,9 +14,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(Entity.class)
 public abstract class EntityMixin {
-    @ModifyVariable(method = "collide", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private Vec3 hungrycows$carry(Vec3 move) {
-        return BodyCollision.carry((Entity) (Object) this, move);
+    @Inject(method = "collide", at = @At("HEAD"))
+    private void hungrycows$carry(Vec3 move, CallbackInfoReturnable<Vec3> cir) {
+        BodyCollision.carry((Entity) (Object) this);
     }
 
     @Inject(method = "collide", at = @At("RETURN"), cancellable = true)

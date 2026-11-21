@@ -65,6 +65,8 @@ public final class PhysicsWorld {
     public static final double LEAF_R = 0.3;          // листок торкається землі нижче свого центру
     public static final double LEAF_HOLD = 1.5;       // листок тримає не більше такої сили (сам важить ~0,7; крона не тримає стовбур) …
     public static final double LEAF_CRUSH = 0.35;     // … втиснутий глибше — розчавлено
+    public static final double LEAF_BRAKE = 0.985;    // кожен зламаний листок чужої крони гальмує колоду на 1,5%
+    public static final float LEAF_DROP = 0.5F;       // з нього падає (саджанець, палиця, яблуко) — через раз
     public static final double LEAF_SNAP = 6.0;       // удар листком швидше 6 бл./с — ламається
     public static final double BREAK_BASE = 1.5;     // Fij «сильніше б'є» (було 2);        // зламати блок коштує енергії удару: 2 + 6 × міцність (паркан 14, скло 4) …
     public static final double BREAK_PER_HARDNESS = 4;  // (було 6)  // … (енергія = ½ × маса, що «припадає» на точку удару × швидкість²)
@@ -132,7 +134,9 @@ public final class PhysicsWorld {
         if (s != null) return s;
         BlockPos p = new BlockPos(x, y, z);
         BlockState st = level.getBlockState(p);
-        var shape = st.getCollisionShape(level, p);
+        // листя (крона іншого дерева) для колод — не тверде: колода крізь нього ламає (Fij, 21.11: «падає на інше дерево — не
+        // ламає листя, а відскакує доволі високо»); ламає `crushPlants`
+        var shape = st.is(BlockTags.LEAVES) ? net.minecraft.world.phys.shapes.Shapes.empty() : st.getCollisionShape(level, p);
         s = shape.isEmpty() ? new AABB[0] : shape.toAabbs().stream().map(b -> b.move(p)).toArray(AABB[]::new);
         shapes.put(k, s);
         return s;
@@ -220,7 +224,7 @@ public final class PhysicsWorld {
         for (WoodBodyEntity e : active) {
             Vector3d to = Rope.anchor(level, e);
             if (to == null) continue;
-            ropes.put(e.body, new Vector3d[]{ new Vector3d(e.ropeLocal), to });
+            ropes.put(e.body, new Vector3d[]{ new Vector3d(e.ropeLocal), to, Rope.horseVelocity(level, e) });
             Vector3d knot = e.body.toWorld(e.ropeLocal.x, e.ropeLocal.y, e.ropeLocal.z, new Vector3d());
             if (knot.distance(to) > Rope.LENGTH) { e.body.asleep = false; e.body.still = 0; }
         }
@@ -332,8 +336,6 @@ public final class PhysicsWorld {
             b.w.mul(Math.max(0, 1 - drag * dt));
             b.updateWorld();
             if (b.inWater) buoyancy(b, dt);
-            Vector3d[] rope = ropes.get(b);
-            if (rope != null) Rope.pull(b, rope[0], rope[1], dt);
         }
         // дотики
         List<Contact> cs = new ArrayList<>();
@@ -356,6 +358,8 @@ public final class PhysicsWorld {
         for (int it = 0; it < ITERATIONS; it++) {
             for (RigidBody b : moving) if (b.hinged) solveHinge(b, dt);
             for (Contact c : cs) if (!c.dead) solve(c);
+            // мотузка до коня — разом з дотиками (як і вони): інакше тертя об землю щоразу гасило натяг і колода лишалась позаду
+            for (RigidBody b : moving) { Vector3d[] rope = ropes.get(b); if (rope != null) Rope.pull(b, rope[0], rope[1], rope[2], dt); }
         }
         if (DEBUG) for (Contact c : cs) if (c.jn > 0.3 && c.a.mass > 3)
             System.out.printf("[фізика]   удар jn %.2f vn0 %.2f глиб %.2f n (%.2f %.2f %.2f) лист %s блок %s част %d %s%n", c.jn, c.vn0, c.depth, c.n.x, c.n.y, c.n.z, c.leaf,
@@ -807,7 +811,8 @@ public final class PhysicsWorld {
             Vec3 ev = en instanceof Player ? new Vec3(en.getX() - en.xo, en.getY() - en.yo, en.getZ() - en.zo) : en.getDeltaMovement();
             Vector3d evd = new Vector3d(ev.x * 20, ev.y * 20, ev.z * 20);
             // 1) удар — лише швидке тіло, за справжнім (повернутим) бруском
-            if (speed > HIT_MIN && en instanceof LivingEntity le && !(en instanceof Player pl && pl.isCreative())) {
+            // свого коня колода на мотузці не б'є (Fij: «б'є коня до смерті»)
+            if (speed > HIT_MIN && en instanceof LivingEntity le && !(en instanceof Player pl && pl.isCreative()) && !en.getUUID().equals(owner.ropeHorse)) {
                 b.toLocal(center, lp);
                 double hw = eb.getXsize() / 2, hh = eb.getYsize() / 2;
                 for (Part p : b.parts) {
@@ -875,7 +880,12 @@ public final class PhysicsWorld {
                 BlockPos pos = BlockPos.containing(p.x, p.y, p.z);
                 BlockState s = level.getBlockState(pos);
                 if (s.isAir() || !s.getFluidState().isEmpty()) continue;
-                if (s.canBeReplaced() || s.getCollisionShape(level, pos).isEmpty() && s.getDestroySpeed(level, pos) >= 0 && !s.hasBlockEntity()) {
+                if (s.is(BlockTags.LEAVES)) {                         // крону іншого дерева ламає й трохи гальмує
+                    level.destroyBlock(pos, level.random.nextFloat() < LEAF_DROP);
+                    b.v.mul(LEAF_BRAKE);
+                    b.w.mul(LEAF_BRAKE);
+                    n++;
+                } else if (s.canBeReplaced() || s.getCollisionShape(level, pos).isEmpty() && s.getDestroySpeed(level, pos) >= 0 && !s.hasBlockEntity()) {
                     level.destroyBlock(pos, true);
                     n++;
                 }

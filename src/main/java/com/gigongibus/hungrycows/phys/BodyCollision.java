@@ -73,18 +73,24 @@ public final class BodyCollision {
 
     // ---------- 1) перед кроком: тіло під ногами зсунулось — везти ----------
 
-    public static Vec3 carry(Entity e, Vec3 move) {
-        if (skip(e)) return move;
+    /**
+     * Тіло під ногами зсунулось — переставити істоту разом з ним (одразу, до кроку). Не додавати до кроку: гра порівнює задуманий
+     * крок із зробленим і різницю вважає ударом об підлогу/стелю — на плавучій колоді, що ледь гойдається, це гасило стрибок
+     * (Fij, 21.11: «на плаваючому дереві не можна стрибати»).
+     */
+    public static void carry(Entity e) {
+        if (skip(e)) return;
         Ride r = RIDES.get(e);
-        if (r == null) return move;
+        if (r == null) return;
         WoodBodyEntity b = r.body;
-        if (b.isRemoved() || b.level() != e.level()) { RIDES.remove(e); return move; }
+        if (b.isRemoved() || b.level() != e.level()) { RIDES.remove(e); return; }
         Vector3d w = b.body.toWorld(r.lx, r.ly, r.lz, new Vector3d());
         double dx = w.x - e.getX(), dy = w.y - e.getY(), dz = w.z - e.getZ();
-        if (dx * dx + dy * dy + dz * dz > CARRY_MAX * CARRY_MAX) { RIDES.remove(e); return move; }
-        if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) < 1e-5) return move;
+        if (dx * dx + dy * dy + dz * dz > CARRY_MAX * CARRY_MAX) { RIDES.remove(e); return; }
+        if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) < 1e-5) return;
+        if (!e.level().noCollision(e, e.getBoundingBox().move(dx, Math.max(dy, 0), dz))) return;   // упрись у блок — не везти крізь нього
         if (DEBUG == e) org.slf4j.LoggerFactory.getLogger("BodyCollision").info("везе {} {} {}", dx, dy, dz);
-        return move.add(dx, dy, dz);
+        e.setPos(e.getX() + dx, e.getY() + dy, e.getZ() + dz);
     }
 
     // ---------- 2) після ванільного кроку (блоки): ще й тіла ----------
