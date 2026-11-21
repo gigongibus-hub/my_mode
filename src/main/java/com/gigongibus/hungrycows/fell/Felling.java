@@ -63,8 +63,8 @@ public final class Felling {
     // Fij (20.11, «реальна фізика»): дерево хилиться на «шарнірі» — недорубаних волокнах — і відривається від пня
     public static final double HINGE_RELEASE_DEG = 30;   // волокна рвуться на 30° …
     public static final double HINGE_PER_PX = 3;         // … +3° за кожен недорубаний піксель (товща зарубка тримає довше)
-    public static final double KICK_ALPHA = 0.12;        // поки центр ваги не перейшов через край пня — хилиться з таким прискоренням (рад/с²)
-    public static final double START_OMEGA = 0.012;      // з чого починає (рад/с) — тріщить і ледь-ледь хилиться (Fij: «тяжкість»)
+    public static final double KICK_ALPHA = 0.25;        // поки центр ваги не перейшов через край пня — хилиться з таким прискоренням (рад/с²; Fij «падає швидше»: було 0,12)
+    public static final double START_OMEGA = 0.03;       // з чого починає (рад/с) — тріщить і хилиться (було 0,012)
 
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, HungryCowsMod.MODID);
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, HungryCowsMod.MODID);

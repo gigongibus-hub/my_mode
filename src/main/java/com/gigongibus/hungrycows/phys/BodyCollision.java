@@ -52,7 +52,7 @@ public final class BodyCollision {
     }
 
     /** Тіла, чиї межі перетинають box */
-    static synchronized List<WoodBodyEntity> near(Level level, AABB box) {
+    public static synchronized List<WoodBodyEntity> near(Level level, AABB box) {
         Set<WoodBodyEntity> s = BODIES.get(level);
         if (s == null || s.isEmpty()) return List.of();
         List<WoodBodyEntity> out = new ArrayList<>();

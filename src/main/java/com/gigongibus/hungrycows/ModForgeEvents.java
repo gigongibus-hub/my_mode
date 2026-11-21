@@ -130,6 +130,8 @@ public class ModForgeEvents {
                                     c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(ok ? "Дерево падає" : "Тут не дерево"), false);
                                     return ok ? 1 : 0;
                                 }))))
+                // мотузка (Fij, кінь тягне колоду): /hungrycows rope — найближча фізична колода до найближчого коня (до 16 бл.)
+                .then(Commands.literal("rope").executes(c -> ropeNearest(c.getSource())))
                 // фізична колода для перевірки (Fij, фізика): /hungrycows log <де> <поворот°> [довжина]
                 .then(Commands.literal("log").then(Commands.argument("де", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
                         .then(Commands.argument("кут", com.mojang.brigadier.arguments.IntegerArgumentType.integer(-180, 180))
@@ -390,6 +392,30 @@ public class ModForgeEvents {
         event.getRareTrades().add((trader, random) -> new net.minecraft.world.item.trading.MerchantOffer(
                 new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD, CALF_PRICE),
                 new net.minecraft.world.item.ItemStack(ModItems.CALF_TICKET.get()), CALF_TRADES, 10, 0.05F));
+    }
+
+    private static int ropeNearest(net.minecraft.commands.CommandSourceStack src) {
+        ServerLevel level = src.getLevel();
+        var at = src.getPosition();
+        var box = new net.minecraft.world.phys.AABB(at, at).inflate(16);
+        var horse = level.getEntitiesOfClass(net.minecraft.world.entity.animal.horse.AbstractHorse.class, box).stream()
+                .min(java.util.Comparator.comparingDouble(h -> h.distanceToSqr(at))).orElse(null);
+        var log = com.gigongibus.hungrycows.phys.BodyCollision.near(level, box).stream()
+                .min(java.util.Comparator.comparingDouble(e -> e.body.comWorld(new org.joml.Vector3d()).distanceSquared(at.x, at.y, at.z))).orElse(null);
+        if (horse == null || log == null) { src.sendFailure(Component.literal("Немає коня чи фізичної колоди поруч")); return 0; }
+        // вузол — на тій частині колоди, що найближча до коня
+        org.joml.Vector3d best = null;
+        double bd = Double.MAX_VALUE;
+        for (var p : log.body.parts) {
+            if (p.gone || p.leaf) continue;
+            double d = log.body.toWorld(p.c.x, p.c.y, p.c.z, new org.joml.Vector3d()).distanceSquared(horse.getX(), horse.getY(), horse.getZ());
+            if (d < bd) { bd = d; best = new org.joml.Vector3d(p.c); }
+        }
+        if (best == null) return 0;
+        var p = src.getPlayer();
+        com.gigongibus.hungrycows.phys.Rope.tie(log, horse, best, p != null ? p : net.minecraftforge.common.util.FakePlayerFactory.getMinecraft(level),
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.LEAD));
+        return 1;
     }
 
     private static int spawnLog(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> c, int len) throws com.mojang.brigadier.exceptions.CommandSyntaxException {

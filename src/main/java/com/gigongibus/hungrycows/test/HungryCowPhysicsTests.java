@@ -164,7 +164,7 @@ public class HungryCowPhysicsTests {
             LOG.info("[тест] punchAndPickPiece: від удару туди, куди дивиться, {} бл., забрав {} ({})", moved, got, dbg[0]);
             p.getInventory().clearContent();
             HungryCowFellTests.clear(h, 0);
-            h.assertTrue(moved > 0.2, "не штовхнуло: " + moved);
+            h.assertTrue(moved > 0.1, "не штовхнуло (шматок важкий — зсувається трохи): " + moved);
             h.assertTrue(got == 1 && e.isRemoved(), "не забрав");
             h.succeed();
         });
@@ -372,6 +372,127 @@ public class HungryCowPhysicsTests {
             h.assertTrue(maxX - x0 > 2, "не йде вгору схилом: " + (maxX - x0));
             h.assertTrue(Math.abs(climbed - (maxX - x0) * Math.tan(Math.toRadians(20))) < 0.15, "висота не за схилом: " + climbed);
             h.assertTrue(worst < 0.05, "ривок висоти: " + worst);
+            h.succeed();
+        });
+    }
+
+    // 12. Fij (21.11): «дерево на воді не повинно тонути й лишатися фізичним» — колода падає в ставок, спливає (над водою
+    //     ~третина), за 30 с не стає блоками; шматок теж пливе
+    @GameTest(template = "arena", batch = "phys_water", timeoutTicks = 760)
+    public static void logFloats(GameTestHelper h) {
+        TestWorld.calm(h, false);
+        for (int x = 2; x <= 12; x++) for (int z = 2; z <= 12; z++) {
+            h.setBlock(new BlockPos(x, 0, z), Blocks.WATER);               // ставок 2 бл. замість підлоги
+            h.setBlock(new BlockPos(x, 1, z), Blocks.WATER);
+        }
+        BlockPos a = h.absolutePos(new BlockPos(4, 5, 7));
+        var log = Physics.spawnLog(h.getLevel(), a, 0, 5);
+        var piece = WoodBodyEntity.spawnPiece(h.getLevel(), WoodPiece.whole(Direction.Axis.X, true, false, WoodPiece.OAK).split(Direction.Axis.Z, 8, 0)[0],
+                new Vector3d(a.getX() + 1, a.getY() + 1, a.getZ() + 3), new Vector3d(), new Vector3d());
+        double surface = h.absolutePos(new BlockPos(0, 1, 0)).getY() + 8 / 9.0;   // верх джерела води
+        double[] low = { 1e9 };
+        for (int t = 0; t < 740; t += 5) h.runAfterDelay(t + 1, () -> { if (!log.isRemoved()) low[0] = Math.min(low[0], log.body.aabb()[1]); });
+        h.runAfterDelay(740, () -> {
+            double[] bb = log.body.aabb();
+            double above = bb[4] - surface, below = surface - bb[1];
+            double[] pb = piece.isRemoved() ? null : piece.body.aabb();
+            LOG.info("[тест] logFloats: колода фізична {}, у воді {}, над водою {} / під водою {} (найнижче {} під водою), спить {}; шматок фізичний {}, над водою {}",
+                    !log.isRemoved(), log.body.inWater, above, below, surface - low[0], log.body.asleep, !piece.isRemoved(), pb == null ? -1 : pb[4] - surface);
+            boolean ok = !log.isRemoved() && log.body.inWater && above > 0.15 && above < 0.6 && !piece.isRemoved() && pb[4] - surface > 0;
+            log.discard();
+            piece.discard();
+            for (int x = 2; x <= 12; x++) for (int z = 2; z <= 12; z++) for (int y = 0; y <= 1; y++)
+                h.setBlock(new BlockPos(x, y, z), Blocks.STONE);
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(ok, "колода не пливе або стала блоками: над водою " + above);
+            h.succeed();
+        });
+    }
+
+    // 14. Fij (21.11): «повідцем фізичне дерево можна прив'язати до коня» — кінь іде 6 бл., колода (3 бл.) волочиться за ним,
+    //     мотузка не довша за 3 бл. (з запасом), кінь повільніший; відв'язав — повідець назад, кінь знову швидкий
+    @GameTest(template = "arena", batch = "phys_rope", timeoutTicks = 200)
+    public static void horseDragsLog(GameTestHelper h) {
+        TestWorld.calm(h);
+        var lvl = h.getLevel();
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(lvl, new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("rope".getBytes()), "rope_tester"));
+        BlockPos a = h.absolutePos(new BlockPos(2, 2, 7));
+        var log = Physics.spawnLog(lvl, a, 0, 3);
+        var horse = h.spawn(net.minecraft.world.entity.EntityType.HORSE, new BlockPos(7, 2, 7));
+        horse.setNoAi(true);
+        double baseSpeed = horse.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+        ItemStack lead = new ItemStack(Items.LEAD, 2);
+        Vector3d knot = new Vector3d(2.9, 0.5, 0.5);                       // торець колоди, ближчий до коня
+        com.gigongibus.hungrycows.phys.Rope.tie(log, horse, knot, p, lead);
+        double startX = log.body.comWorld(new Vector3d()).x;
+        double[] worst = { 0 }, slowSpeed = { 0 };
+        for (int t = 0; t < 120; t++) {
+            final int k = t;
+            h.runAfterDelay(t + 2, () -> {
+                if (k < 80) horse.setPos(horse.getX() + 0.075, horse.getY(), horse.getZ());   // кінь іде 1,5 бл./с, 6 бл.
+                if (k > 10) {
+                    Vector3d kw = log.body.toWorld(knot.x, knot.y, knot.z, new Vector3d());
+                    Vector3d hw = com.gigongibus.hungrycows.phys.Rope.hitch(horse, new Vector3d());
+                    worst[0] = Math.max(worst[0], kw.distance(hw));
+                }
+                if (k == 40) slowSpeed[0] = horse.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+            });
+        }
+        h.runAfterDelay(125, () -> {
+            double moved = log.body.comWorld(new Vector3d()).x - startX;
+            boolean physical = !log.isRemoved();
+            int leadsBefore = lead.getCount();
+            p.getInventory().clearContent();
+            com.gigongibus.hungrycows.phys.Rope.untie(log, p);
+            boolean gotLead = p.getInventory().countItem(Items.LEAD) == 1;
+            double after = horse.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
+            LOG.info("[тест] horseDragsLog: колода проїхала {} бл. (кінь 6), мотузка найдовша {}, швидкість коня {} → {} → {}, повідців у руці лишилось {}, відв'язав — повідець {}, фізична {}",
+                    moved, worst[0], baseSpeed, slowSpeed[0], after, leadsBefore, gotLead, physical);
+            log.discard();
+            horse.discard();
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(moved > 4.5, "колода не тягнеться: " + moved);
+            h.assertTrue(worst[0] < com.gigongibus.hungrycows.phys.Rope.LENGTH + 0.8, "мотузка розтягнулась: " + worst[0]);
+            h.assertTrue(slowSpeed[0] < baseSpeed * 0.8 && Math.abs(after - baseSpeed) < 1e-6, "кінь не сповільнився / не відновився");
+            h.assertTrue(leadsBefore == 1 && gotLead && physical, "повідець не забрало / не повернуло");
+            h.succeed();
+        });
+    }
+
+    // 13. Fij (21.11): «фізичне дерево не можна розрубити» → «рубається фізичним»: колода-тіло (4 бл.) упоперек — два тіла,
+    //     окрема колода вздовж — дві половинки, слабкий удар — засічка, тіло одне
+    @GameTest(template = "arena", batch = "phys", timeoutTicks = 120)
+    public static void chopPhysicalLog(GameTestHelper h) {
+        TestWorld.calm(h);
+        var lvl = h.getLevel();
+        var p = net.minecraftforge.common.util.FakePlayerFactory.get(lvl, new com.mojang.authlib.GameProfile(java.util.UUID.nameUUIDFromBytes("bodychop".getBytes()), "bodychop_tester"));
+        p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_AXE));
+        BlockPos a = h.absolutePos(new BlockPos(3, 2, 3));
+        p.moveTo(a.getX() + 2, a.getY(), a.getZ() + 2.5);
+        var log = Physics.spawnLog(lvl, a, 0, 4);
+        BlockPos b = h.absolutePos(new BlockPos(3, 2, 9));
+        var single = Physics.spawnLog(lvl, b, 0, 1);
+        h.runAfterDelay(20, () -> {
+            AABB area = new AABB(h.absolutePos(new BlockPos(0, 0, 0)), h.absolutePos(new BlockPos(14, 8, 14)));   // лише свій майданчик
+            // 1) упоперек волокон (вісь X — уздовж колоди) посередині другої колоди, повна сила
+            var r1 = com.gigongibus.hungrycows.phys.BodyChop.chop(lvl, p, log, 1, Direction.Axis.X, 8, 1F);
+            int afterAcross = lvl.getEntitiesOfClass(WoodBodyEntity.class, new AABB(a).inflate(5, 2, 1.5)).size();
+            // 2) окрема колода — уздовж волокон (вісь Z) посередині
+            p.moveTo(b.getX() + 0.5, b.getY(), b.getZ() + 2);
+            var r2 = com.gigongibus.hungrycows.phys.BodyChop.chop(lvl, p, single, 0, Direction.Axis.Z, 8, 1F);
+            var near = lvl.getEntitiesOfClass(WoodBodyEntity.class, new AABB(b).inflate(2));
+            // 3) слабкий удар по половинці — засічка, тіло одне
+            var half = near.isEmpty() ? null : near.get(0);
+            var r3 = half == null ? null : com.gigongibus.hungrycows.phys.BodyChop.chop(lvl, p, half, 0, Direction.Axis.X, 8, 0.2F);
+            var afterStuck = lvl.getEntitiesOfClass(WoodBodyEntity.class, new AABB(b).inflate(2));
+            boolean notch = afterStuck.stream().anyMatch(e -> e.body.parts.stream().anyMatch(q -> !q.gone && q.piece != null && q.piece.notch > 0));
+            LOG.info("[тест] chopPhysicalLog: упоперек {} → тіл {} (старе зникло {}); уздовж {} → тіл {}; слабко {} → тіл {}, засічка {}",
+                    r1, afterAcross, log.isRemoved(), r2, near.size(), r3, afterStuck.size(), notch);
+            lvl.getEntitiesOfClass(WoodBodyEntity.class, area).forEach(e -> e.discard());
+            HungryCowFellTests.clear(h, 0);
+            h.assertTrue(r1 == com.gigongibus.hungrycows.chop.Chopping.Result.CLEAN && afterAcross == 2 && log.isRemoved(), "упоперек не розпалось на 2: " + afterAcross);
+            h.assertTrue(r2 != com.gigongibus.hungrycows.chop.Chopping.Result.NONE && near.size() == 2, "уздовж не дві половинки: " + near.size());
+            h.assertTrue(r3 == com.gigongibus.hungrycows.chop.Chopping.Result.STUCK && notch && afterStuck.size() == 2, "засічки немає");
             h.succeed();
         });
     }

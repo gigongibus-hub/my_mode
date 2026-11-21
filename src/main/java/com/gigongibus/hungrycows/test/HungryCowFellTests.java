@@ -95,7 +95,12 @@ public class HungryCowFellTests {
                 var s = h.getBlockState(new BlockPos(x, y, z));
                 if (s.is(Blocks.OAK_LOG)) { where.append(" ").append(x).append(",").append(y).append(",").append(z); if (s.getValue(RotatedPillarBlock.AXIS) == Direction.Axis.Y) standing++; else lying++; }
                 if (s.is(Blocks.OAK_LEAVES)) leaves++;
-                if (s.is(Chopping.WOOD_PILE.get())) piles++;
+                if (s.is(Chopping.WOOD_PILE.get())) {
+                    piles++;
+                    if (h.getBlockEntity(new BlockPos(x, y, z)) instanceof com.gigongibus.hungrycows.chop.WoodPileBlockEntity pe)
+                        for (var w : pe.pieces()) where.append(" купа ").append(x).append(",").append(y).append(",").append(z)
+                                .append(" ").append(w.sx).append("x").append(w.sy).append("x").append(w.sz).append(" волокна ").append(w.grain);
+                }
             }
             int fences = 0;
             for (int dz = -3; dz <= 3; dz++) if (h.getBlockState(fence.offset(0, 0, dz)).is(Blocks.OAK_FENCE)) fences++;

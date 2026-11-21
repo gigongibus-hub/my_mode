@@ -39,7 +39,7 @@ public final class Physics {
     }
 
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    public static final double PUNCH_LOG = 1.2;      // ЛКМ по поваленій колоді (без сокири): поштовх (маса × бл./с)
+    public static final double PUNCH_LOG = 0.5;      // ЛКМ по поваленій колоді (без сокири): поштовх (маса × бл./с; Fij «важче»: було 1,2)
     public static final int WAKE_LEAF_STEPS = 2;     // разом з колодами прокидається листя до 2 кроків від них
     public static final int WAKE_MAX = 300;
 

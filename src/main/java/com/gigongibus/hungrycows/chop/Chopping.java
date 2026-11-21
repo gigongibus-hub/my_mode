@@ -235,31 +235,46 @@ public final class Chopping {
         }
         if (!halves.isEmpty()) flyApart(level, pos, halves, axis, power, r == Result.HARD, player);
         // видно й чути
-        double cx = pos.getX() + (target.x + target.sx / 2.0) / 16, cy = pos.getY() + (target.y + target.sy / 2.0) / 16,
-                cz = pos.getZ() + (target.z + target.sz / 2.0) / 16;
-        var chips = new BlockParticleOption(ParticleTypes.BLOCK, WoodPiece.block(target.wood, true).defaultBlockState());
+        effects(level, new Vec3(pos.getX() + (target.x + target.sx / 2.0) / 16, pos.getY() + (target.y + target.sy / 2.0) / 16,
+                pos.getZ() + (target.z + target.sz / 2.0) / 16), target.wood, r, player);
+        return r;
+    }
+
+    /** Звук, тріски, помах і знос сокири після удару (і по колоді, і по фізичному тілу) */
+    public static void effects(ServerLevel level, Vec3 at, String wood, Result r, Player player) {
+        BlockPos pos = BlockPos.containing(at);
+        var chips = new BlockParticleOption(ParticleTypes.BLOCK, WoodPiece.block(wood, true).defaultBlockState());
         switch (r) {
             case STUCK -> {
                 level.playSound(null, pos, SoundEvents.AXE_STRIP, SoundSource.BLOCKS, 0.8F, 0.6F);
-                level.sendParticles(chips, cx, cy, cz, 3, 0.05, 0.05, 0.05, 0.02);
+                level.sendParticles(chips, at.x, at.y, at.z, 3, 0.05, 0.05, 0.05, 0.02);
             }
             case CLEAN -> {
                 level.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 1F, 1.1F);
-                level.sendParticles(chips, cx, cy, cz, 8, 0.1, 0.1, 0.1, 0.05);
+                level.sendParticles(chips, at.x, at.y, at.z, 8, 0.1, 0.1, 0.1, 0.05);
             }
             case HARD -> {
                 level.playSound(null, pos, SoundEvents.WOOD_BREAK, SoundSource.BLOCKS, 1F, 0.7F);
                 level.playSound(null, pos, SoundEvents.AXE_STRIP, SoundSource.BLOCKS, 1F, 1.4F);
-                level.sendParticles(chips, cx, cy, cz, 24, 0.2, 0.2, 0.2, 0.12);
+                level.sendParticles(chips, at.x, at.y, at.z, 24, 0.2, 0.2, 0.2, 0.12);
             }
             default -> {
+                return;
             }
         }
         player.swing(InteractionHand.MAIN_HAND, true);
         if (!player.getAbilities().instabuild)
             player.getMainHandItem().hurtAndBreak(AXE_WEAR + (r == Result.HARD ? HARD_EXTRA_WEAR : 0), player,
                     pl -> pl.broadcastBreakEvent(EquipmentSlot.MAINHAND));
-        return r;
+    }
+
+    /** Ціла колода (блок) як шматок для розрубки; null — не рубається */
+    public static WoodPiece pieceOfLog(BlockState s) {
+        String wood = woodOf(s);
+        if (wood == null) return null;
+        Direction.Axis axis = s.hasProperty(RotatedPillarBlock.AXIS) ? s.getValue(RotatedPillarBlock.AXIS) : Direction.Axis.Y;
+        String id = net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(s.getBlock()).getPath();
+        return WoodPiece.whole(axis, !id.startsWith("stripped_"), id.endsWith("_wood"), wood);
     }
 
     // Fij (20.11: «відскакує занадто сильно») — було 1 + 1,5 × сила, угору 0,8, обертання 3

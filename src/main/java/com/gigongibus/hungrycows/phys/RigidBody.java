@@ -27,6 +27,7 @@ public final class RigidBody {
 
     // сон: лежить нерухомо — не рахується
     public boolean asleep;
+    public boolean inWater;                             // хоч трохи у воді (рахує PhysicsWorld раз на тік)
     public int still, asleepTicks;
 
     // шарнір (дерево хилиться на пні): точка pivot (світ) нерухома, обертання лише довкола axis

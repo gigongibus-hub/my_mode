@@ -5,6 +5,10 @@ import com.gigongibus.hungrycows.ModNetwork;
 import com.gigongibus.hungrycows.chop.ChopPacket;
 import com.gigongibus.hungrycows.chop.Chopping;
 import com.gigongibus.hungrycows.chop.WoodPiece;
+import com.gigongibus.hungrycows.phys.BodyChop;
+import com.gigongibus.hungrycows.phys.BodyCollision;
+import com.gigongibus.hungrycows.phys.ChopBodyPacket;
+import com.gigongibus.hungrycows.phys.WoodBodyEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -49,6 +53,8 @@ public final class ChopClient {
     private static Direction face;
     private static Direction.Axis axis;
     private static float power;
+    // фізичне тіло (Fij, 21.11: «рубається фізичним»): котре тіло й котра частина; рамка й осі — у системі тіла
+    private static int bodyId = -1, bodyPart;
 
     /** Затиснута ЛКМ на тому, що можна рубати, — не ламати й не махати рукою */
     @SubscribeEvent
@@ -56,10 +62,33 @@ public final class ChopClient {
         if (!e.isAttack()) return;
         Minecraft mc = Minecraft.getInstance();
         BlockPos pos = lookedPos(mc);
-        if (charging || (pos != null && mc.player != null && Chopping.canChop(mc.level, mc.player, pos))) {
+        if (charging || mc.player != null && bodyTarget(mc) != null
+                || (pos != null && mc.player != null && Chopping.canChop(mc.level, mc.player, pos))) {
             e.setCanceled(true);
             e.setSwingHand(false);
         }
+    }
+
+    /**
+     * Фізичне тіло під прицілом (ближче за блок, на який дивишся): {id тіла, частина, грань}; null — немає або не сокира.
+     */
+    private static int[] bodyTarget(Minecraft mc) {
+        if (mc.player == null || mc.level == null || !Chopping.holdsAxe(mc.player) || mc.player.isShiftKeyDown()) return null;
+        Vec3 eye = mc.player.getEyePosition(), look = mc.player.getLookAngle();
+        double limit = Chopping.REACH;
+        if (mc.hitResult instanceof BlockHitResult bh && bh.getType() == HitResult.Type.BLOCK) limit = Math.min(limit, bh.getLocation().distanceTo(eye));
+        int[] best = null;
+        for (WoodBodyEntity e : BodyCollision.near(mc.level, mc.player.getBoundingBox().inflate(Chopping.REACH))) {
+            int[] hit = BodyChop.pick(e.body, eye, look, limit);
+            if (hit == null) continue;
+            limit = hit[2] / 1000.0;
+            best = new int[]{ e.getId(), hit[0], hit[1] };
+        }
+        return best;
+    }
+
+    private static WoodBodyEntity body(Minecraft mc) {
+        return bodyId >= 0 && mc.level != null && mc.level.getEntity(bodyId) instanceof WoodBodyEntity e && !e.isRemoved() ? e : null;
     }
 
     private static BlockPos lookedPos(Minecraft mc) {
@@ -74,6 +103,22 @@ public final class ChopClient {
         boolean down = mc.options.keyAttack.isDown();
         if (!charging) {
             BlockPos pos = lookedPos(mc);
+            int[] bt = down ? bodyTarget(mc) : null;
+            if (bt != null) {                                              // фізичне тіло ближче — рубати його
+                WoodBodyEntity be = mc.level.getEntity(bt[0]) instanceof WoodBodyEntity x ? x : null;
+                WoodPiece p = be == null ? null : BodyChop.pieceOf(be.body.parts.get(bt[1]));
+                if (p == null) return;
+                bodyId = bt[0];
+                bodyPart = bt[1];
+                target = null;
+                index = 0;
+                face = Direction.from3DDataValue(bt[2]);
+                if (!startAxis(p)) { charging = false; bodyId = -1; return; }
+                charging = true;
+                power = 0;
+                return;
+            }
+            bodyId = -1;
             if (!down || pos == null || !Chopping.canChop(mc.level, mc.player, pos)) return;
             List<WoodPiece> pieces = Chopping.targetPieces(mc.level, pos);
             int[] hit = pieces == null ? null : Chopping.pick(pieces, pos, mc.player.getEyePosition(), mc.player.getLookAngle());
@@ -83,17 +128,7 @@ public final class ChopClient {
             index = hit[0];
             face = Direction.from3DDataValue(hit[1]);
             WoodPiece p = pieces.get(index);
-            // спершу — уздовж волокон (розколоти), рамка посередині
-            axis = null;
-            for (Direction.Axis a : Direction.Axis.values()) if (a != face.getAxis() && a != p.grain && p.size(a) >= 2) { axis = a; break; }
-            if (axis == null) for (Direction.Axis a : Direction.Axis.values()) if (a != face.getAxis() && p.size(a) >= 2) { axis = a; break; }
-            if (axis == null) { charging = false; return; }
-            at = p.size(axis) / 2;
-            // є засічка (сокира застрягла) — рамка одразу на ній, щоб удар доповнив
-            if (p.notchAxis >= 0 && p.notchAxis != face.getAxis().ordinal()) {
-                axis = Direction.Axis.values()[p.notchAxis];
-                at = p.notchAt;
-            }
+            if (!startAxis(p)) { charging = false; return; }
             // стовбур дерева (Fij): лише горизонтально; рамка — там, де вже є зарубка, або низько
             if (com.gigongibus.hungrycows.fell.Felling.isTrunk(mc.level, pos)) {
                 axis = Direction.Axis.Y;
@@ -109,12 +144,31 @@ public final class ChopClient {
             power = Math.min(1, power + 1F / Chopping.GAUGE_TICKS);
             return;
         }
-        ModNetwork.CHANNEL.sendToServer(new ChopPacket(target, index, axis.ordinal(), at, power));
+        if (bodyId >= 0) ModNetwork.CHANNEL.sendToServer(new ChopBodyPacket(bodyId, bodyPart, axis.ordinal(), at, power));
+        else ModNetwork.CHANNEL.sendToServer(new ChopPacket(target, index, axis.ordinal(), at, power));
         mc.player.swing(InteractionHand.MAIN_HAND);
         charging = false;
     }
 
+    /** Спершу — уздовж волокон (розколоти), рамка посередині; є засічка (сокира застрягла) — рамка одразу на ній */
+    private static boolean startAxis(WoodPiece p) {
+        axis = null;
+        for (Direction.Axis a : Direction.Axis.values()) if (a != face.getAxis() && a != p.grain && p.size(a) >= 2) { axis = a; break; }
+        if (axis == null) for (Direction.Axis a : Direction.Axis.values()) if (a != face.getAxis() && p.size(a) >= 2) { axis = a; break; }
+        if (axis == null) return false;
+        at = p.size(axis) / 2;
+        if (p.notchAxis >= 0 && p.notchAxis != face.getAxis().ordinal()) {
+            axis = Direction.Axis.values()[p.notchAxis];
+            at = p.notchAt;
+        }
+        return true;
+    }
+
     private static WoodPiece current(Minecraft mc) {
+        if (bodyId >= 0) {
+            WoodBodyEntity e = body(mc);
+            return e == null || bodyPart >= e.body.parts.size() ? null : BodyChop.pieceOf(e.body.parts.get(bodyPart));
+        }
         if (target == null) return null;
         List<WoodPiece> pieces = Chopping.targetPieces(mc.level, target);
         return pieces == null || index >= pieces.size() ? null : pieces.get(index);
@@ -128,7 +182,7 @@ public final class ChopClient {
         WoodPiece p = current(mc);
         if (p == null || mc.player == null) return;
         int k = e.getKey();
-        boolean trunk = com.gigongibus.hungrycows.fell.Felling.isTrunk(mc.level, target);
+        boolean trunk = bodyId < 0 && com.gigongibus.hungrycows.fell.Felling.isTrunk(mc.level, target);
         if (trunk && mc.level.getBlockEntity(target) instanceof com.gigongibus.hungrycows.fell.FellingCutBlockEntity) return;   // зарубку вже почато
         if (trunk && k != GLFW.GLFW_KEY_LEFT && k != GLFW.GLFW_KEY_RIGHT) return;   // стовбур — лише горизонтально, висоту стрілками ←/→
         if (trunk) {
@@ -147,6 +201,15 @@ public final class ChopClient {
 
     /** Чи «праворуч» на екрані — це «більше» по осі */
     private static int screenSign(Minecraft mc, Direction.Axis a) {
+        WoodBodyEntity be = body(mc);
+        if (be != null) {                                     // вісь тіла — куди вона у світі
+            org.joml.Vector3d w = be.body.rot.transform(new org.joml.Vector3d(a == Direction.Axis.X ? 1 : 0, a == Direction.Axis.Y ? 1 : 0, a == Direction.Axis.Z ? 1 : 0));
+            Vec3 look = mc.player.getLookAngle();
+            double r = -look.z * w.x + look.x * w.z;
+            if (Math.abs(r) > 0.3) return r > 0 ? 1 : -1;
+            if (Math.abs(w.y) > 0.5) return w.y > 0 ? 1 : -1;
+            return look.x * w.x + look.y * w.y + look.z * w.z >= 0 ? 1 : -1;
+        }
         if (a == Direction.Axis.Y) return 1;                  // по висоті: → — вище
         Vec3 look = mc.player.getLookAngle();
         Vec3 right = new Vec3(-look.z, 0, look.x);
@@ -169,6 +232,23 @@ public final class ChopClient {
         double pad = 0.15;
         for (int i = 0; i < 3; i++) if (i != a) { mn[i] -= pad; mx[i] += pad; }
         Vec3 cam = e.getCamera().getPosition();
+        WoodBodyEntity be = body(mc);
+        if (be != null) {                                     // рамка в системі тіла, повернута з ним
+            org.joml.Vector3d cell = BodyChop.cellOf(be.body.parts.get(bodyPart));
+            float pt = e.getPartialTick();
+            Vec3 o = be.getPosition(pt);
+            PoseStack pose = e.getPoseStack();
+            pose.pushPose();
+            pose.translate(o.x - cam.x, o.y - cam.y, o.z - cam.z);
+            pose.mulPose(new org.joml.Quaternionf(be.prevQ).slerp(be.curQ, pt));
+            AABB box = new AABB(cell.x + mn[0] / 16, cell.y + mn[1] / 16, cell.z + mn[2] / 16, cell.x + mx[0] / 16, cell.y + mx[1] / 16, cell.z + mx[2] / 16);
+            MultiBufferSource.BufferSource buf = mc.renderBuffers().bufferSource();
+            LevelRenderer.renderLineBox(pose, buf.getBuffer(RenderType.lines()), box, LINE_R, LINE_G, LINE_B, LINE_A);
+            buf.endBatch(RenderType.lines());
+            pose.popPose();
+            return;
+        }
+        if (target == null) return;
         AABB box = new AABB(target.getX() + mn[0] / 16, target.getY() + mn[1] / 16, target.getZ() + mn[2] / 16,
                 target.getX() + mx[0] / 16, target.getY() + mx[1] / 16, target.getZ() + mx[2] / 16).move(-cam.x, -cam.y, -cam.z);
         PoseStack pose = e.getPoseStack();

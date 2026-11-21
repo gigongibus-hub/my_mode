@@ -53,20 +53,28 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
     public static final int TREE_REST_TICKS = 400;     // дерево лежить нерухомо 20 с — стає блоками
     public static final int PIECE_REST_TICKS = 30;     // шматок — 1,5 с, і стає купою (рубати далі; було 3 с)
     public static final int THUD_GAP = 6;              // гупає не частіше раз на 0,3 с
-    public static final double HEAVY = 40;             // така вага — найсильніше тремтіння землі
-    public static final double PUNCH = 1.5;            // ЛКМ по шматку: поштовх (маса × бл./с; половинка — ~3 бл./с)
+    public static final double HEAVY = 20;             // така вага — найсильніше тремтіння землі (Fij «важче, гупає»: було 40)
+    public static final double PUNCH = 0.9;            // ЛКМ по шматку: поштовх (маса × бл./с; Fij «важче»: було 1,5)
     public static final int CREAK_EVERY = 9;           // поки хилиться на пні — тріщить
     public static final double LEAF_SHED = 0.25;       // листя обривається в польоті: частинок за тік на рад/с
     public static final int MAX_AGE = 20 * 120;        // 2 хв і досі рухається — однаково стає блоками
     public static final byte TREE = 0, PIECE = 1;
+    public static final double SPLASH_SPEED = 1.5;     // упало у воду швидше — сплеск і бризки
 
     private static final EntityDataAccessor<Quaternionf> DATA_Q = SynchedEntityData.defineId(WoodBodyEntity.class, EntityDataSerializers.QUATERNION);
     private static final EntityDataAccessor<CompoundTag> DATA_GONE = SynchedEntityData.defineId(WoodBodyEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<Integer> DATA_THUD = SynchedEntityData.defineId(WoodBodyEntity.class, EntityDataSerializers.INT);
+    // мотузка до коня (`Rope`): гравцю — id коня й вузол у системі тіла (−1 — немає)
+    private static final EntityDataAccessor<CompoundTag> DATA_ROPE = SynchedEntityData.defineId(WoodBodyEntity.class, EntityDataSerializers.COMPOUND_TAG);
+
+    public java.util.UUID ropeHorse;                   // сервер: до якого коня прив'язана
+    public int ropeHorseId = -1;
+    public final Vector3d ropeLocal = new Vector3d();  // вузол на колоді (система тіла)
 
     public RigidBody body = new RigidBody();
     public byte kind = TREE;
     private long lastThud = -100;
+    private boolean wasInWater;
     private int thudSeq;
     private boolean thudded, shook;
     // гравцю: попередній і теперішній поворот (плавно між тіками)
@@ -96,10 +104,28 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         entityData.define(DATA_Q, new Quaternionf());
         entityData.define(DATA_GONE, new CompoundTag());
         entityData.define(DATA_THUD, 0);
+        entityData.define(DATA_ROPE, new CompoundTag());
     }
 
     private void syncQ() {
         entityData.set(DATA_Q, new Quaternionf((float) body.q.x, (float) body.q.y, (float) body.q.z, (float) body.q.w));
+    }
+
+    void syncRope() {
+        CompoundTag t = new CompoundTag();
+        t.putInt("H", ropeHorse == null ? -1 : ropeHorseId);
+        t.putDouble("X", ropeLocal.x);
+        t.putDouble("Y", ropeLocal.y);
+        t.putDouble("Z", ropeLocal.z);
+        entityData.set(DATA_ROPE, t);
+    }
+
+    /** Гравцю: id коня, до якого прив'язана (−1 — ні), і вузол */
+    public int ropeHorseClient(Vector3d knotLocal) {
+        CompoundTag t = entityData.get(DATA_ROPE);
+        if (!t.contains("H")) return -1;
+        knotLocal.set(t.getDouble("X"), t.getDouble("Y"), t.getDouble("Z"));
+        return t.getInt("H");
     }
 
     public void partsChanged() {
@@ -168,10 +194,13 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
                 if (++b.still >= PhysicsWorld.SLEEP_TICKS) { b.asleep = true; b.v.zero(); b.w.zero(); }
             } else b.still = 0;
         }
+        if (b.inWater && !wasInWater && b.v.length() > SPLASH_SPEED) splash(level);
+        wasInWater = b.inWater;
         setPos(b.pos.x, b.pos.y, b.pos.z);
         world.entities(this);
         b.asleepTicks = b.asleep ? b.asleepTicks + 1 : 0;
-        if (b.asleepTicks >= (kind == TREE ? TREE_REST_TICKS : PIECE_REST_TICKS) || tickCount > MAX_AGE) { toBlocks(); return; }
+        // на воді — завжди фізичне (Fij, 21.11): пливе, гойдається, тече за водою; блоками не стає
+        if (!b.inWater && ropeHorse == null && (b.asleepTicks >= (kind == TREE ? TREE_REST_TICKS : PIECE_REST_TICKS) || tickCount > MAX_AGE)) { toBlocks(); return; }
         if (b.pos.y < level.getMinBuildHeight() - 32) { discard(); return; }
         setPos(b.pos.x, b.pos.y, b.pos.z);
         syncQ();
@@ -197,7 +226,7 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             if (!g.isAir()) level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, g), at.x, at.y, at.z,
                     (int) Math.min(30, 3 + energy / 4), 0.3, 0.05, 0.3, 0.1);
         }
-        float vol = (float) Math.min(3, 0.3 + energy / 40);
+        float vol = (float) Math.min(3, 0.3 + energy / 25);           // Fij «гупає» (було / 40)
         if (body.mass >= 3) {
             level.playSound(null, pos, SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, SoundSource.BLOCKS, vol, 0.45F);
             level.playSound(null, pos, SoundEvents.GENERIC_BIG_FALL, SoundSource.BLOCKS, vol, 0.5F);
@@ -210,6 +239,20 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
         // земля здригається один раз — від першого великого удару (Fij: «екран бігає вгору-вниз» — раніше від кожного підскоку)
         if (body.mass >= 4 && energy > 20 && !shook && (shook = true))
             entityData.set(DATA_THUD, ++thudSeq * 1000 + (int) Math.min(100, body.mass / HEAVY * 100 * Math.min(1, speed / 8)));
+    }
+
+    /** Упало у воду: сплеск (гучніше від важчого) і бризки вздовж частин, що у воді */
+    private void splash(ServerLevel level) {
+        float vol = (float) Math.min(2, 0.4 + body.mass / 10);
+        level.playSound(null, blockPosition(), SoundEvents.GENERIC_SPLASH, SoundSource.BLOCKS, vol, body.mass > 3 ? 0.6F : 1.1F);
+        Vector3d c = new Vector3d();
+        int n = 0;
+        for (Part p : body.parts) {
+            if (p.gone || p.wet <= 0 || n++ > 24) continue;
+            body.toWorld(p.c.x, p.c.y, p.c.z, c);
+            level.sendParticles(ParticleTypes.SPLASH, c.x, c.y + 0.5, c.z, 12, 0.4, 0.1, 0.4, 0.2);
+            level.sendParticles(ParticleTypes.BUBBLE, c.x, c.y, c.z, 4, 0.3, 0.2, 0.3, 0.05);
+        }
     }
 
     // ---------- стати блоками ----------
@@ -404,6 +447,10 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
                     b.axis.x, b.axis.y, b.axis.z, b.fallDir.x, b.fallDir.y, b.fallDir.z, b.hingeRelease, b.kickOmega });
         }
         tag.putBoolean("Asleep", b.asleep);
+        if (ropeHorse != null) {
+            tag.putUUID("RopeHorse", ropeHorse);
+            putD(tag, "RopeKnot", new double[]{ ropeLocal.x, ropeLocal.y, ropeLocal.z });
+        }
         tag.putInt("AsleepTicks", b.asleepTicks);
     }
 
@@ -443,6 +490,11 @@ public class WoodBodyEntity extends Entity implements IEntityAdditionalSpawnData
             b.kickOmega = h[13];
         }
         b.asleep = tag.getBoolean("Asleep");
+        if (tag.hasUUID("RopeHorse")) {
+            ropeHorse = tag.getUUID("RopeHorse");
+            double[] k = getD(tag, "RopeKnot");
+            if (k.length == 3) ropeLocal.set(k[0], k[1], k[2]);
+        }
         b.asleepTicks = tag.getInt("AsleepTicks");
         b.recompute();
         body = b;

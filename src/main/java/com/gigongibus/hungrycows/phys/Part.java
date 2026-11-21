@@ -24,6 +24,8 @@ public final class Part {
     public final double mass;
     public final boolean leaf;            // листок (і ліана): м'який, ламається
     public boolean gone;                  // відламався / розчавлено
+    /** Скільки бруска у воді (0…1) і куди тече вода там (бл./с) — рахує `PhysicsWorld` раз на тік, не зберігається */
+    public double wet, flowX, flowZ;
     /** Точки дотику (у системі тіла), що не всередині сусідніх частин; null — ще не пораховано */
     double[] samples;
 

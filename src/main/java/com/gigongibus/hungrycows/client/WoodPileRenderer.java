@@ -86,6 +86,32 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
         }
     }
 
+    /**
+     * Розруб на одному шматку (фізичне тіло, Fij 21.11): чорна лінія по краю граней розрубу й темна риска засічки — як у купі,
+     * інакше розколота навпіл колода в тілі виглядала цілою.
+     */
+    public static void drawCuts(WoodPiece w, PoseStack pose, MultiBufferSource buf) {
+        if (w.cut == 0 && w.notchAxis < 0) return;
+        VertexConsumer lines = buf.getBuffer(RenderType.lines());
+        for (Direction d : Direction.values()) {
+            if ((w.cut >> d.get3DDataValue() & 1) == 0) continue;
+            int a = d.getAxis().ordinal();
+            double[] mn = { w.x, w.y, w.z }, mx = { w.x + w.sx, w.y + w.sy, w.z + w.sz };
+            mn[a] = mx[a] = d.getAxisDirection() == Direction.AxisDirection.POSITIVE ? mx[a] : mn[a];
+            for (int k = 0; k < 3; k++) if (k != a) { mn[k] -= SEAM_OUT; mx[k] += SEAM_OUT; }
+            net.minecraft.client.renderer.LevelRenderer.renderLineBox(pose, lines,
+                    mn[0] / 16, mn[1] / 16, mn[2] / 16, mx[0] / 16, mx[1] / 16, mx[2] / 16, SEAM_DARK, SEAM_DARK, SEAM_DARK, 1F);
+        }
+        if (w.notchAxis >= 0) {
+            double[] mn = { w.x, w.y, w.z }, mx = { w.x + w.sx, w.y + w.sy, w.z + w.sz };
+            int a = w.notchAxis;
+            mn[a] = mx[a] = new int[]{ w.x, w.y, w.z }[a] + w.notchAt;
+            for (int i = 0; i < 3; i++) if (i != a) { mn[i] -= NOTCH_OUT; mx[i] += NOTCH_OUT; }
+            net.minecraft.client.renderer.LevelRenderer.renderLineBox(pose, lines,
+                    mn[0] / 16, mn[1] / 16, mn[2] / 16, mx[0] / 16, mx[1] / 16, mx[2] / 16, 0.12F, 0.08F, 0.05F, 1F);
+        }
+    }
+
     private static final ResourceLocation STRING = new ResourceLocation("minecraft", "block/white_wool");
     public static final float STRING_WIDTH = 0.8F;   // ширина нитки (пікс.)
     public static final float STRING_OUT = 0.05F;    // нитка над поверхнею шматка (пікс.)
@@ -96,11 +122,19 @@ public class WoodPileRenderer implements BlockEntityRenderer<WoodPileBlockEntity
      */
     /** Один шматок (для фізичного тіла): грані з текстурами його дерева, як у купі */
     public static void drawPiece(WoodPiece w, VertexConsumer vc, PoseStack.Pose p, int light) {
+        drawPiece(w, vc, p, light, true);
+    }
+
+    /**
+     * shaded = false — без «запеченого» затінення граней (фізичне тіло, Fij: «обрубок темний»): світло там і так рахує гра за
+     * поворотом, а колоди тіла теж малюються без нього — шматок виходив удвічі темнішим за колоди поруч.
+     */
+    public static void drawPiece(WoodPiece w, VertexConsumer vc, PoseStack.Pose p, int light, boolean shaded) {
         var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
         ResourceLocation[] rl = tex(w.wood);
         TextureAtlasSprite[] tex = { atlas.apply(rl[0]), atlas.apply(rl[1]), atlas.apply(rl[2]) };
         for (Direction d : Direction.values())
-            face(vc, p, d, w, tex[Math.max(0, Math.min(2, w.faces[d.get3DDataValue()]))], shade(d), light);
+            face(vc, p, d, w, tex[Math.max(0, Math.min(2, w.faces[d.get3DDataValue()]))], shaded ? shade(d) : 1F, light);
     }
 
     private static void strings(WoodPileBlockEntity be, VertexConsumer vc, PoseStack.Pose p, int light) {

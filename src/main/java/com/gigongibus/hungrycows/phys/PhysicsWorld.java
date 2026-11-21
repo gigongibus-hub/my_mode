@@ -2,6 +2,8 @@ package com.gigongibus.hungrycows.phys;
 
 import com.gigongibus.hungrycows.fell.Felling;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -40,7 +42,7 @@ import java.util.WeakHashMap;
  */
 public final class PhysicsWorld {
     // ================= ТАБЛИЦЯ ЧИСЕЛ =================
-    public static final double GRAVITY = 12;          // бл./с² (справжнє 9,8; трохи більше — гра не тягнеться)
+    public static final double GRAVITY = 15;          // бл./с² (Fij 21.11 «важче»: було 12; справжнє 9,8 — у грі так тягнеться)
     public static final double LOG_MASS = 1.0;        // колода (блок деревини); шматок — частка
     public static final double LEAF_MASS = 0.06;      // листок
     public static final int MIN_SUBSTEPS = 4, MAX_SUBSTEPS = 20;
@@ -54,13 +56,18 @@ public final class PhysicsWorld {
     public static final double SLOP = 0.005;          // таке занурення не виправляється (не тремтить)
     public static final double MAX_BIAS = 3;          // виштовхує не швидше 3 бл./с
     public static final double AIR_DRAG = 0.02;       // опір повітря (за с)
-    public static final double LEAF_DRAG = 1.2;       // крона гальмує в повітрі: × частка маси листя
+    // ВОДА (Fij, 21.11: «дерево на воді не повинно тонути й лишатися завжди фізичним»)
+    public static final double WOOD_DENSITY = 0.65;   // деревина легша за воду: пливе, занурена на ~2/3
+    public static final double WATER_DRAG = 2.5;      // опір води (за с, × частка в воді) — колода гойдається й швидко вгамовується
+    public static final double WATER_SPIN_DRAG = 1.5; // і обертання у воді гасне
+    public static final double CURRENT = 1.2;         // течія несе зі швидкістю до 1,2 бл./с
+    public static final double LEAF_DRAG = 0.5;       // крона гальмує в повітрі: × частка маси листя (Fij «важче»: було 1,2)
     public static final double LEAF_R = 0.3;          // листок торкається землі нижче свого центру
     public static final double LEAF_HOLD = 1.5;       // листок тримає не більше такої сили (сам важить ~0,7; крона не тримає стовбур) …
     public static final double LEAF_CRUSH = 0.35;     // … втиснутий глибше — розчавлено
     public static final double LEAF_SNAP = 6.0;       // удар листком швидше 6 бл./с — ламається
-    public static final double BREAK_BASE = 2;        // зламати блок коштує енергії удару: 2 + 6 × міцність (паркан 14, скло 4) …
-    public static final double BREAK_PER_HARDNESS = 6;  // … (енергія = ½ × маса, що «припадає» на точку удару × швидкість²)
+    public static final double BREAK_BASE = 1.5;     // Fij «сильніше б'є» (було 2);        // зламати блок коштує енергії удару: 2 + 6 × міцність (паркан 14, скло 4) …
+    public static final double BREAK_PER_HARDNESS = 4;  // (було 6)  // … (енергія = ½ × маса, що «припадає» на точку удару × швидкість²)
     public static final double JOINT_CHECK = 1.5;     // згин на стиках рахується лише від поштовху сильніше за цей
     public static final double JOINT_STRENGTH = 6000; // міцність стику колод гранню (згин; Fij «баг»: стовбур розпадався на окремі колоди — було 2200) …
     public static final double JOINT_WEAK = 0.35;     // … навскіс (гілка) — частка від неї
@@ -72,13 +79,13 @@ public final class PhysicsWorld {
     public static final double SLEEP_V = 0.08, SLEEP_W = 0.1;   // повільніше — «майже стоїть»
     public static final int SLEEP_TICKS = 15;         // стільки тіків майже стоїть — засинає
     public static final int SUPPORT_CHECK = 10;       // сплячі раз на 0,5 с перевіряють, чи є опора
-    public static final double HIT_MIN = 2.5;         // повільніше — не б'є
-    public static final double HIT_PER_SPEED = 1.1;   // шкода: 1,1 × швидкість × √(вага/5) …
+    public static final double HIT_MIN = 2.0;         // (Fij «сильніше б'є»: було 2,5)         // повільніше — не б'є
+    public static final double HIT_PER_SPEED = 1.8;   // (було 1,1)   // шкода: 1,1 × швидкість × √(вага/5) …
     public static final double HIT_MAX = 40;
     public static final double LEAF_HIT = 0.2;        // листя б'є слабше
     public static final int HIT_COOLDOWN = 10;        // ту саму істоту — не частіше раз на 0,5 с
-    public static final double ENTITY_DENSITY = 0.17; // маса істоти: об'єм рамки × 0,17 (гравець ≈ 0,11 колоди)
-    public static final double PUSHABLE_MASS = 1.5;   // легші тіла (шматки, колода) істота штовхає ногою; дерево — ні
+    public static final double ENTITY_DENSITY = 0.1;  // (Fij «важче штовхнути»: було 0,17) // маса істоти: об'єм рамки × 0,17 (гравець ≈ 0,11 колоди)
+    public static final double PUSHABLE_MASS = 0.6;   // легші тіла (шматки до ~половинки) істота штовхає ногою; колоду й дерево — ні (Fij «важче»: було 1,5)
     public static final double THUD_SPEED = 3.0;      // удар швидше — гупає (звук, пил)
     public static final double ACTIVE_RANGE = 96;     // далі від усіх гравців — не рахується (спить)
     public static final int MAX_BODIES = 300;         // більше — найстаріші сплячі стають блоками
@@ -184,6 +191,7 @@ public final class PhysicsWorld {
     // ---------- крок світу ----------
 
     private final Set<RigidBody> brokeThisTick = new HashSet<>();
+    private final Map<RigidBody, Vector3d[]> ropes = new HashMap<>();
 
     public void tick() {
         shapes.clear();
@@ -197,6 +205,7 @@ public final class PhysicsWorld {
             if (b.dirty) b.recompute();
             if (b.mass <= 0) continue;
             if (!noPlayers && level.getNearestPlayer(e, ACTIVE_RANGE) == null) continue;
+            if (water(b) && (b.asleep && flowing(b))) b.asleep = false;          // течія несе — не спить
             if (b.asleep && (time + e.getId()) % SUPPORT_CHECK == 0 && !supported(b)) b.asleep = false;
             active.add(e);
         }
@@ -205,6 +214,15 @@ public final class PhysicsWorld {
         for (WoodBodyEntity e : active) {
             RigidBody b = e.body;
             if (!b.asleep) maxSpeed = Math.max(maxSpeed, b.v.length() + b.w.length() * b.radius + GRAVITY * 0.05);
+        }
+        // мотузки до коней (`Rope`): де кінь цього тіку
+        ropes.clear();
+        for (WoodBodyEntity e : active) {
+            Vector3d to = Rope.anchor(level, e);
+            if (to == null) continue;
+            ropes.put(e.body, new Vector3d[]{ new Vector3d(e.ropeLocal), to });
+            Vector3d knot = e.body.toWorld(e.ropeLocal.x, e.ropeLocal.y, e.ropeLocal.z, new Vector3d());
+            if (knot.distance(to) > Rope.LENGTH) { e.body.asleep = false; e.body.still = 0; }
         }
         int sub = (int) Math.max(MIN_SUBSTEPS, Math.min(MAX_SUBSTEPS, Math.ceil(maxSpeed * 0.05 / MAX_MOVE)));
         double dt = 0.05 / sub;
@@ -221,13 +239,79 @@ public final class PhysicsWorld {
         }
         if (bodies.size() > MAX_BODIES) {
             WoodBodyEntity oldest = null;
-            for (WoodBodyEntity e : bodies) if (e.body.asleep && (oldest == null || e.tickCount > oldest.tickCount)) oldest = e;
+            for (WoodBodyEntity e : bodies) if (e.body.asleep && !e.body.inWater && (oldest == null || e.tickCount > oldest.tickCount)) oldest = e;
             if (oldest != null) oldest.toBlocks();
         }
     }
 
+    /**
+     * Скільки кожного бруска у воді й куди там тече вода (раз на тік). Повертає true, якщо тіло хоч трохи у воді.
+     */
+    boolean water(RigidBody b) {
+        boolean any = false;
+        Vector3d c = new Vector3d();
+        BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
+        for (Part p : b.parts) {
+            p.wet = 0; p.flowX = 0; p.flowZ = 0;
+            if (p.gone) continue;
+            b.toWorld(p.c.x, p.c.y, p.c.z, c);
+            double ey = Math.abs(b.rot.get(0, 1)) * p.hx + Math.abs(b.rot.get(1, 1)) * p.hy + Math.abs(b.rot.get(2, 1)) * p.hz;
+            // рівень води над низом бруска (плавно — інакше колода вічно гойдалась би між «сходинками» й не засинала)
+            double bottom = c.y - ey, top = c.y + ey, surface = Double.NaN;
+            bp.set(c.x, bottom, c.z);
+            boolean found = false;
+            for (int k = 0; k < 5 && bp.getY() <= top + 1; k++, bp.move(0, 1, 0)) {
+                FluidState fs = level.getFluidState(bp);
+                if (!fs.is(FluidTags.WATER)) {
+                    if (found) break;                                       // вище води — повітря
+                    continue;                                               // низ бруска в дні (у землі) — шукати воду вище
+                }
+                if (!found) {
+                    found = true;
+                    Vec3 f = fs.getFlow(level, bp);
+                    p.flowX = f.x * CURRENT;
+                    p.flowZ = f.z * CURRENT;
+                }
+                surface = bp.getY() + fs.getHeight(level, bp);
+                if (fs.getHeight(level, bp) < 0.85F) break;                 // не повний блок води — вище вже повітря
+            }
+            if (Double.isNaN(surface) || surface <= bottom) { p.flowX = p.flowZ = 0; continue; }
+            p.wet = Math.min(1, (surface - bottom) / Math.max(1e-3, top - bottom));
+            any = true;
+        }
+        b.inWater = any;
+        return any;
+    }
+
+    /** Вода: виштовхує кожен брусок угору за часткою в воді (у його середині — тож колода сама вирівнюється), гальмує й несе течією */
+    private static void buoyancy(RigidBody b, double dt) {
+        Vector3d cw = b.comWorld(new Vector3d()), c = new Vector3d(), vp = new Vector3d();
+        double wetMass = 0;
+        for (Part p : b.parts) {
+            if (p.gone || p.wet <= 0) continue;
+            b.toWorld(p.c.x, p.c.y, p.c.z, c);
+            b.velAt(c, cw, vp);
+            double up = p.wet * p.mass / WOOD_DENSITY * GRAVITY * dt;
+            double k = Math.min(1, WATER_DRAG * p.wet * dt) * p.mass;   // опір — до повної зупинки бруска за підкрок
+            Vector3d j = new Vector3d((p.flowX - vp.x) * k, up - vp.y * k, (p.flowZ - vp.z) * k);
+            b.impulse(j, c, cw);
+            wetMass += p.wet * p.mass;
+        }
+        if (wetMass > 0) b.w.mul(Math.max(0, 1 - WATER_SPIN_DRAG * wetMass / b.mass * dt));
+    }
+
+    private static boolean flowing(RigidBody b) {
+        for (Part p : b.parts) if (!p.gone && p.wet > 0 && p.flowX * p.flowX + p.flowZ * p.flowZ > 0.01) return true;
+        return false;
+    }
+
     /** Під сплячим тілом є на чому лежати */
     private boolean supported(RigidBody b) {
+        if (b.inWater) {                                          // пливе — вода тримає
+            double lift = 0;
+            for (Part p : b.parts) if (!p.gone) lift += p.wet * p.mass / WOOD_DENSITY;
+            if (lift >= b.mass * 0.95) return true;
+        }
         List<Contact> cs = new ArrayList<>();
         worldContacts(b, cs);
         for (WoodBodyEntity o : bodies) if (o.body != b) bodyContacts(b, o.body, cs);
@@ -247,6 +331,9 @@ public final class PhysicsWorld {
             b.v.mul(Math.max(0, 1 - drag * dt));
             b.w.mul(Math.max(0, 1 - drag * dt));
             b.updateWorld();
+            if (b.inWater) buoyancy(b, dt);
+            Vector3d[] rope = ropes.get(b);
+            if (rope != null) Rope.pull(b, rope[0], rope[1], dt);
         }
         // дотики
         List<Contact> cs = new ArrayList<>();
@@ -611,6 +698,9 @@ public final class PhysicsWorld {
             if (i == root || disc[i] < 0 || low[i] <= disc[par[i]]) continue;     // не місток
             int lo = disc[i], hi = disc[i] + size[i];
             Part pc = b.parts.get(i), pp = b.parts.get(par[i]);
+            // обрубок над зарубкою — та сама деревина, що й колода над ним (Fij, 21.11: обрубок відламувався, падав окремо й
+            // лягав «стоячи» купою біля стовбура): цей стик не ламається
+            if (pc.kind == Part.PIECE && pp.kind == Part.BLOCK && !pp.leaf || pp.kind == Part.PIECE && pc.kind == Part.BLOCK && !pc.leaf) continue;
             Vector3d joint = b.toWorld((pc.c.x + pp.c.x) / 2, (pc.c.y + pp.c.y) / 2, (pc.c.z + pp.c.z) / 2, new Vector3d());
             Vector3d dL = new Vector3d();
             for (int k = 0; k < n; k++) {
