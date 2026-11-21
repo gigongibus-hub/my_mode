@@ -1,0 +1,454 @@
+{
+ "multipart": [
+  {
+   "when": {
+    "campfire": "none"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_campfire_lit"
+   }
+  },
+  {
+   "when": {
+    "campfire": "unlit"
+   },
+   "apply": {
+    "model": "minecraft:block/campfire_off"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "1",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_1"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "1",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_1"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "2",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "2",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "3",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_3"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "3",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_3"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "4",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_4"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "4",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_4"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "5",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_5"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "5",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_5"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "6",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_6"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "6",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_6"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "7",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_7"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "7",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_7"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "8",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_8"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "8",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_8"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "9",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_9"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "9",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_9"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "10",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_raw_10"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "10",
+    "roasted": "false"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_raw_10"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "1",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_1"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "1",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_1"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "2",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "2",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "3",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_3"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "3",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_3"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "4",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_4"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "4",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_4"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "5",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_5"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "5",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_5"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "6",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_6"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "6",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_6"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "7",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_7"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "7",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_7"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "8",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_8"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "8",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_8"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "9",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_9"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "9",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_9"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "fill": "10",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_roasted_10"
+   }
+  },
+  {
+   "when": {
+    "campfire": "lit|unlit",
+    "fill": "10",
+    "roasted": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_fire_roasted_10"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "stack": "2|3"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_stack_2"
+   }
+  },
+  {
+   "when": {
+    "campfire": "none",
+    "stack": "3"
+   },
+   "apply": {
+    "model": "hungrycows:block/salt_pan_stack_3"
+   }
+  }
+ ]
+}

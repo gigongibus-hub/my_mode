@@ -1,0 +1,240 @@
+package com.gigongibus.hungrycows.test;
+
+import com.gigongibus.hungrycows.HungryCow;
+import com.gigongibus.hungrycows.HungryCowsMod;
+import com.gigongibus.hungrycows.ModEntities;
+import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Бики (ідеї Fij 12–13). Стать корови випадкова й задається при появі, тож тест створює кілька корів і бере потрібних.
+ * Ігрова логіка не змінюється.
+ */
+@GameTestHolder(HungryCowsMod.MODID)
+@PrefixGameTestTemplate(false)
+public class HungryCowBullTests {
+    private static final org.slf4j.Logger LOG = LogUtils.getLogger();
+
+    // ================= ТАБЛИЦЯ ЧИСЕЛ =================
+    private static final String ARENA = "arena";
+    private static final String BATCH = "bulls";
+    private static final int TRIES = 24;                 // скільки корів створити, щоб знайти потрібну стать
+    private static final int ZOMBIE_TIMEOUT = 600;       // 30 с, щоб хоч один бик ударив зомбі
+    private static final float LOOP_DEG = 420F;          // «петля» в тесті зигзагу (лише в журнал)
+    private static final double ZIGZAG_DIRECT = 39;      // зигзаг: напряму ≈ 39 бл. ...
+    private static final double ZIGZAG_MAX_RATIO = 1.4;  // ... кружляє — якщо пробіг більше ніж у 1,4 раза
+
+    static List<HungryCow> spawnSex(GameTestHelper h, boolean bulls, int count, BlockPos... at) {
+        List<HungryCow> out = new ArrayList<>();
+        for (int i = 0; i < TRIES && out.size() < count; i++) {
+            HungryCow c = h.spawn(ModEntities.HUNGRY_COW.get(), at[out.size() % at.length]);
+            c.setAge(0);
+            if (c.repro.isFemale() == !bulls) out.add(c);
+            else c.discard();
+        }
+        return out;
+    }
+
+    // 0. Fij «великий бик»: для гри 1,4 × 1,95 (× розмір), їсть мордою (попереду), а не тим, що під животом
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = 40)
+    public static void bullIsBigAndEatsWithMouth(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(7, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.setNoAi(true);
+        h.runAtTickTime(5, () -> {
+            float s = bull.sizeScale();
+            double w = bull.getBbWidth(), hh = bull.getBbHeight();
+            net.minecraft.world.phys.Vec3 mouth = bull.mouthPos();
+            net.minecraft.world.phys.Vec3 back = bull.position().add(bull.position().subtract(mouth));   // так само далеко позаду
+            boolean front = bull.reachesFood(mouth.x, bull.getY(), mouth.z);
+            boolean behind = bull.reachesFood(back.x, bull.getY(), back.z);
+            LOG.info("[тест] bullIsBigAndEatsWithMouth: розмір {} → {} × {}, морда попереду {} бл.: дістає {} / позаду {}",
+                    s, w, hh, mouth.distanceTo(bull.position()), front, behind);
+            bull.discard();
+            h.assertTrue(Math.abs(w - HungryCow.BULL_WIDTH * s) < 0.01 && Math.abs(hh - HungryCow.BULL_HEIGHT * s) < 0.01, "бик не великий: " + w + " × " + hh);
+            h.assertTrue(front && !behind, "бик їсть не мордою (попереду " + front + ", позаду " + behind + ")");
+            h.succeed();
+        });
+    }
+
+    // 1. Шанс «бий або тікай»: бик більше за корову, теля 0
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = 100)
+    public static void fightChanceBullOverCow(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        Zombie z = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 12));
+        z.setNoAi(true);
+        List<HungryCow> bulls = spawnSex(h, true, 3, new BlockPos(3, 2, 3));
+        List<HungryCow> cows = spawnSex(h, false, 3, new BlockPos(11, 2, 3));
+        HungryCow calf = h.spawn(ModEntities.HUNGRY_COW.get(), new BlockPos(7, 2, 3));
+        calf.setAge(-24000);
+        double bull = bulls.stream().mapToDouble(c -> c.fightChance(z)).average().orElse(-1);
+        double cow = cows.stream().mapToDouble(c -> c.fightChance(z)).average().orElse(-1);
+        LOG.info("[тест] fightChanceBullOverCow: бик {}, корова {}, теля {}", String.format("%.2f", bull), String.format("%.2f", cow), calf.fightChance(z));
+        h.assertTrue(bulls.size() == 3 && cows.size() == 3, "не вийшло створити 3 биків і 3 корів");
+        h.assertTrue(bull > cow, "бик не сміливіший за корову: " + bull + " / " + cow);
+        h.assertTrue(calf.fightChance(z) == 0, "теля нападає");
+        h.assertTrue(bulls.get(0).isBull() && !cows.get(0).isBull(), "isBull плутає стать");
+        bulls.forEach(HungryCow::discard);
+        cows.forEach(HungryCow::discard);
+        calf.discard();
+        z.discard();
+        h.succeed();
+    }
+
+    // 2. Бики поруч із зомбі: хоч один не тікає, а б'є його
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = ZOMBIE_TIMEOUT)
+    public static void bullsRamZombie(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 3, new BlockPos(5, 2, 7), new BlockPos(7, 2, 5), new BlockPos(9, 2, 7));
+        Zombie z = h.spawn(EntityType.ZOMBIE, new BlockPos(7, 2, 9));
+        z.setNoAi(true);   // зомбі стоїть: тест перевіряє бика
+        float full = z.getHealth();
+        h.runAfterDelay(ZOMBIE_TIMEOUT - 1, () -> { bulls.forEach(HungryCow::discard); z.discard(); });
+        h.succeedWhen(() -> {
+            h.assertTrue(bulls.size() == 3, "не вийшло створити 3 биків");
+            h.assertTrue(!z.isAlive() || z.getHealth() < full, "жоден бик не вдарив зомбі (здоров'я зомбі " + z.getHealth() + ")");
+            LOG.info("[тест] bullsRamZombie: зомбі {} -> {} за {} с", full, z.isAlive() ? z.getHealth() : 0, String.format("%.1f", h.getTick() / 20.0));
+            bulls.forEach(HungryCow::discard);
+            z.discard();
+        });
+    }
+
+    // 3. Бійка двох биків: обидва живі, хтось програв і тікає, переможець домінантніший
+    private static final int FIGHT_TIMEOUT = 600;
+
+    @GameTest(template = ARENA, batch = BATCH, timeoutTicks = FIGHT_TIMEOUT)
+    public static void bullsFightUntilOneYields(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 2, new BlockPos(4, 2, 7), new BlockPos(10, 2, 7));
+        h.assertTrue(bulls.size() == 2, "не вийшло створити 2 биків");
+        HungryCow a = bulls.get(0), b = bulls.get(1);
+        int domA = a.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+        int domB = b.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+        float fullA = a.getHealth(), fullB = b.getHealth();
+        com.gigongibus.hungrycows.ai.BullFightGoal.startFight(a, b);
+        h.runAfterDelay(FIGHT_TIMEOUT - 1, () -> bulls.forEach(HungryCow::discard));
+        h.succeedWhen(() -> {
+            h.assertTrue(a.isAlive() && b.isAlive(), "бик загинув у бійці");
+            h.assertTrue(a.fightRival == null && b.fightRival == null, "ще б'ються");
+            h.assertTrue(a.retreating() || b.retreating(), "бійка скінчилась, але ніхто не тікає");
+            HungryCow winner = a.retreating() ? b : a, loser = winner == a ? b : a;
+            int domW = winner.character.get(com.gigongibus.hungrycows.CowCharacter.Trait.DOMINANCE);
+            int before = winner == a ? domA : domB;
+            LOG.info("[тест] bullsFightUntilOneYields: за {} с; {} {} -> {}, {} {} -> {}; переміг {} (домінантність {} -> {})",
+                    String.format("%.1f", h.getTick() / 20.0), a.family.name, fullA, a.getHealth(), b.family.name, fullB, b.getHealth(),
+                    winner.family.name, before, domW);
+            h.assertTrue(a.getHealth() < fullA || b.getHealth() < fullB, "у бійці ніхто не отримав удару");
+            h.assertTrue(domW >= before, "переможець не став домінантнішим");
+            bulls.forEach(HungryCow::discard);
+        });
+    }
+
+    // 4. Fij «бики тікають, крутячи кола»: бик біжить (швидкість втечі) до точки ПОЗАДУ себе — має розвернутись і добігти, а не кружляти
+    @GameTest(template = ARENA, batch = "bulls_turn", timeoutTicks = 200)
+    public static void bullTurnsAndRunsNotCircles(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(3, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.goalSelector.removeAllGoals(g -> true);   // лише для тесту: бика веде тест
+        bull.setYRot(90F); bull.setYBodyRot(90F); bull.setYHeadRot(90F);   // дивиться на захід, ціль — на сході (позаду)
+        net.minecraft.world.phys.Vec3 t = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(new BlockPos(12, 2, 7)));
+        double[] walked = { 0 };
+        net.minecraft.world.phys.Vec3[] last = { null };
+        h.runAfterDelay(199, bull::discard);
+        h.onEachTick(() -> {
+            if (h.getTick() % 5 == 1) bull.getNavigation().moveTo(t.x, t.y, t.z, 2.2);   // як FearGoal: раз на 5 тіків, страх ~100
+            if (last[0] != null) walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
+            last[0] = bull.position();
+        });
+        double[] atArrival = { -1 };
+        h.succeedWhen(() -> {
+            double d = Math.hypot(bull.getX() - t.x, bull.getZ() - t.z);
+            if (atArrival[0] < 0 && d < 1.5) {
+                atArrival[0] = walked[0];
+                LOG.info("[тест] bullTurnsAndRunsNotCircles: добіг за {} с, пробіг {} бл. (напряму 9)",
+                        String.format("%.1f", h.getTick() / 20.0), String.format("%.1f", walked[0]));
+            }
+            h.assertTrue(atArrival[0] >= 0, String.format("не добіг: до цілі %.2f бл., пробіг %.1f бл.", d, walked[0]));
+            if (atArrival[0] >= 18) h.fail(String.format("бик кружляв: пробіг %.1f бл. замість 9 (до виправлення 60)", atArrival[0]));
+            bull.discard();
+        });
+    }
+
+    // 5. Fij «бики все одно часто намотують кола»: бик біжить зигзагом через 5 точок (як утеча, що часто міняє напрям);
+    //    петля = за 4 с тулуб повернувся в один бік більш ніж на 420° (більше за повне коло; два чесні розвороти поспіль в один бік —
+    //    до 360°: з межею 300° тест хибно рахував їх петлею)
+    @GameTest(template = ARENA, batch = "bulls_turn", timeoutTicks = 500)
+    public static void bullZigzagNoLoops(GameTestHelper h) {
+        h.getLevel().setDayTime(6000);
+        TestWorld.calm(h);
+        List<HungryCow> bulls = spawnSex(h, true, 1, new BlockPos(3, 2, 7));
+        h.assertTrue(bulls.size() == 1, "не знайшли бика");
+        HungryCow bull = bulls.get(0);
+        bull.goalSelector.removeAllGoals(g -> true);
+        // повороти по черзі вліво-вправо: маршрут, що весь повертає в один бік, сам набирав «300° за 4 с» без жодної петлі
+        BlockPos[] pts = { new BlockPos(11, 2, 3), new BlockPos(4, 2, 6), new BlockPos(11, 2, 9), new BlockPos(4, 2, 12), new BlockPos(11, 2, 12) };
+        int[] next = { 0 }, loops = { 0 };
+        java.util.ArrayDeque<Float> turns = new java.util.ArrayDeque<>();
+        float[] lastYaw = { bull.getYRot() };
+        double[] walked = { 0 };
+        net.minecraft.world.phys.Vec3[] last = { bull.position() };
+        int[] loopCooldown = { 0 };
+        StringBuilder trace = new StringBuilder();
+        h.runAfterDelay(499, bull::discard);
+        h.onEachTick(() -> {
+            if (next[0] >= pts.length) return;
+            net.minecraft.world.phys.Vec3 t = h.absoluteVec(net.minecraft.world.phys.Vec3.atBottomCenterOf(pts[next[0]]));
+            if (Math.hypot(bull.getX() - t.x, bull.getZ() - t.z) < 1.5) { next[0]++; return; }
+            if (h.getTick() % 5 == 1) bull.getNavigation().moveTo(t.x, t.y, t.z, 2.2);
+            float d = net.minecraft.util.Mth.wrapDegrees(bull.getYRot() - lastYaw[0]);
+            lastYaw[0] = bull.getYRot();
+            turns.addLast(d);
+            if (turns.size() > 80) turns.removeFirst();
+            double sum = 0;
+            for (float x : turns) sum += x;
+            if (loopCooldown[0] > 0) loopCooldown[0]--;
+            else if (Math.abs(sum) > LOOP_DEG) { loops[0]++; loopCooldown[0] = 80; turns.clear(); }
+            walked[0] += Math.hypot(bull.getX() - last[0].x, bull.getZ() - last[0].z);
+            last[0] = bull.position();
+            if (h.getTick() % 4 == 0 && trace.length() < 6000) {
+                net.minecraft.world.phys.Vec3 o = h.absoluteVec(net.minecraft.world.phys.Vec3.ZERO);
+                var path = bull.getNavigation().getPath();
+                String node = "-";
+                if (path != null && !path.isDone()) {
+                    net.minecraft.world.phys.Vec3 n = path.getEntityPosAtNode(bull, path.getNextNodeIndex());
+                    node = String.format("%d/%d(%.1f,%.1f)", path.getNextNodeIndex(), path.getNodeCount(), n.x - o.x, n.z - o.z);
+                }
+                trace.append(String.format("%d:(%.1f,%.1f)y%.0f v%.2f %s; ", h.getTick(), bull.getX() - o.x, bull.getZ() - o.z,
+                        net.minecraft.util.Mth.wrapDegrees(bull.getYRot()), bull.getSpeed(), node));
+            }
+        });
+        h.succeedWhen(() -> {
+            if (h.getTick() == 498 || (next[0] >= pts.length && walked[0] >= ZIGZAG_DIRECT * ZIGZAG_MAX_RATIO)) LOG.info("[тест] bullZigzagNoLoops слід: {}", trace);
+            h.assertTrue(next[0] >= pts.length, String.format("не пробіг усі точки: %d з %d, петель %d, пробіг %.1f бл.", next[0], pts.length, loops[0], walked[0]));
+            LOG.info("[тест] bullZigzagNoLoops: за {} с, петель {}, пробіг {} бл. (напряму ≈ 39)",
+                    String.format("%.1f", h.getTick() / 20.0), loops[0], String.format("%.1f", walked[0]));
+            // кола видно з довжини: до виправлення до точки за 9 бл. бик пробігав 60; кут (петлі) — лише в журналі: на цьому маршруті
+            // чесні розвороти часто всі в один бік і набирали «петлю» без жодного кола
+            h.assertTrue(walked[0] < ZIGZAG_DIRECT * ZIGZAG_MAX_RATIO, String.format("бик кружляв: пробіг %.1f бл. (напряму ≈ %.0f), петель %d",
+                    walked[0], ZIGZAG_DIRECT, loops[0]));
+            bull.discard();
+        });
+    }
+}

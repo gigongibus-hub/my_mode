@@ -1,0 +1,22 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "NSN",
+  "PPP"
+ ],
+ "key": {
+  "P": {
+   "tag": "minecraft:planks"
+  },
+  "N": {
+   "item": "minecraft:iron_nugget"
+  },
+  "S": {
+   "item": "minecraft:stick"
+  }
+ },
+ "result": {
+  "item": "hungrycows:tub_lid"
+ }
+}

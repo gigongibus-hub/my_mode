@@ -1,0 +1,20 @@
+{
+  "mappings": {
+    "com/gigongibus/hungrycows/mixin/EntityMixin": {
+      "collide": "Lnet/minecraft/world/entity/Entity;m_20272_(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"
+    },
+    "com/gigongibus/hungrycows/mixin/ServerGamePacketListenerMixin": {
+      "noBlocksAround": "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;m_9793_(Lnet/minecraft/world/entity/Entity;)Z"
+    }
+  },
+  "data": {
+    "searge": {
+      "com/gigongibus/hungrycows/mixin/EntityMixin": {
+        "collide": "Lnet/minecraft/world/entity/Entity;m_20272_(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"
+      },
+      "com/gigongibus/hungrycows/mixin/ServerGamePacketListenerMixin": {
+        "noBlocksAround": "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;m_9793_(Lnet/minecraft/world/entity/Entity;)Z"
+      }
+    }
+  }
+}

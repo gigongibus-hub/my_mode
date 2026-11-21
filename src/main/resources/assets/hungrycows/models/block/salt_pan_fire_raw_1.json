@@ -1,0 +1,31 @@
+{
+ "textures": {
+  "salt": "hungrycows:block/salt/salt_pan_layer_raw",
+  "particle": "hungrycows:block/salt/salt_pan_layer_raw"
+ },
+ "elements": [
+  {
+   "from": [
+    1,
+    8,
+    1
+   ],
+   "to": [
+    15,
+    8.36,
+    15
+   ],
+   "faces": {
+    "up": {
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ],
+     "texture": "#salt"
+    }
+   }
+  }
+ ]
+}

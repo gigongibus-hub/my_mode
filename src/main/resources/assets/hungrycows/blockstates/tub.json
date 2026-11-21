@@ -1,0 +1,97 @@
+{
+ "multipart": [
+  {
+   "apply": {
+    "model": "hungrycows:block/tub"
+   }
+  },
+  {
+   "when": {
+    "lid": "true"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_lid"
+   }
+  },
+  {
+   "when": {
+    "level": "1"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_1"
+   }
+  },
+  {
+   "when": {
+    "level": "2"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_2"
+   }
+  },
+  {
+   "when": {
+    "level": "3"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_3"
+   }
+  },
+  {
+   "when": {
+    "level": "4"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_4"
+   }
+  },
+  {
+   "when": {
+    "level": "5"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_5"
+   }
+  },
+  {
+   "when": {
+    "level": "6"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_6"
+   }
+  },
+  {
+   "when": {
+    "level": "7"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_7"
+   }
+  },
+  {
+   "when": {
+    "level": "8"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_8"
+   }
+  },
+  {
+   "when": {
+    "level": "9"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_9"
+   }
+  },
+  {
+   "when": {
+    "level": "10"
+   },
+   "apply": {
+    "model": "hungrycows:block/tub_liquid_10"
+   }
+  }
+ ]
+}

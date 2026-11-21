@@ -1,0 +1,32 @@
+{
+ "parent": "minecraft:item/generated",
+ "textures": {
+  "layer0": "hungrycows:item/chop/log"
+ },
+ "overrides": [
+  {
+   "predicate": {
+    "hungrycows:size": 0.25
+   },
+   "model": "hungrycows:item/wood_piece_half"
+  },
+  {
+   "predicate": {
+    "hungrycows:size": 0.5
+   },
+   "model": "hungrycows:item/wood_piece_quarter"
+  },
+  {
+   "predicate": {
+    "hungrycows:size": 0.75
+   },
+   "model": "hungrycows:item/wood_piece_billet"
+  },
+  {
+   "predicate": {
+    "hungrycows:size": 1.0
+   },
+   "model": "hungrycows:item/wood_piece_splinter"
+  }
+ ]
+}

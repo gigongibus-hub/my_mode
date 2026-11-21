@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "PPP",
+  "NIN",
+  "PPP"
+ ],
+ "key": {
+  "P": {
+   "tag": "minecraft:planks"
+  },
+  "N": {
+   "item": "minecraft:iron_nugget"
+  },
+  "I": {
+   "item": "minecraft:iron_ingot"
+  }
+ },
+ "result": {
+  "item": "hungrycows:tub"
+ }
+}

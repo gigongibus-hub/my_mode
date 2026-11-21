@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "stage=fresh": {
+   "model": "hungrycows:block/wicker_bundle_fresh"
+  },
+  "stage=wilted": {
+   "model": "hungrycows:block/wicker_bundle_wilted"
+  },
+  "stage=dry": {
+   "model": "hungrycows:block/wicker_bundle_dry"
+  },
+  "stage=wet": {
+   "model": "hungrycows:block/wicker_bundle_wet"
+  },
+  "stage=rotten": {
+   "model": "hungrycows:block/wicker_bundle_rotten"
+  }
+ }
+}

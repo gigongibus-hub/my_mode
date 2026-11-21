@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [ { "item": "hungrycows:mortar" }, { "item": "minecraft:soul_sand" } ],
+  "result": { "item": "hungrycows:soul_sand_pinch", "count": 9 }
+}

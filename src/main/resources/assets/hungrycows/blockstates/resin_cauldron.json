@@ -1,0 +1,58 @@
+{
+ "variants": {
+  "level=1,melt=0,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_1_solid"
+  },
+  "level=1,melt=0,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_1_molten"
+  },
+  "level=1,melt=1,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_1_melt_1"
+  },
+  "level=1,melt=1,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_1_molten"
+  },
+  "level=1,melt=2,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_1_melt_2"
+  },
+  "level=1,melt=2,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_1_molten"
+  },
+  "level=2,melt=0,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_2_solid"
+  },
+  "level=2,melt=0,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_2_molten"
+  },
+  "level=2,melt=1,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_2_melt_1"
+  },
+  "level=2,melt=1,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_2_molten"
+  },
+  "level=2,melt=2,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_2_melt_2"
+  },
+  "level=2,melt=2,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_2_molten"
+  },
+  "level=3,melt=0,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_3_solid"
+  },
+  "level=3,melt=0,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_3_molten"
+  },
+  "level=3,melt=1,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_3_melt_1"
+  },
+  "level=3,melt=1,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_3_molten"
+  },
+  "level=3,melt=2,molten=false": {
+   "model": "hungrycows:block/resin_cauldron_3_melt_2"
+  },
+  "level=3,melt=2,molten=true": {
+   "model": "hungrycows:block/resin_cauldron_3_molten"
+  }
+ }
+}

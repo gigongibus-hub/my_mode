@@ -1,0 +1,20 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "category": "misc",
+ "pattern": [
+  "DDD",
+  "DND",
+  "DDD"
+ ],
+ "key": {
+  "D": {
+   "item": "hungrycows:wicker_bundle_dry"
+  },
+  "N": {
+   "item": "hungrycows:knitting_needle"
+  }
+ },
+ "result": {
+  "item": "hungrycows:burlap"
+ }
+}
