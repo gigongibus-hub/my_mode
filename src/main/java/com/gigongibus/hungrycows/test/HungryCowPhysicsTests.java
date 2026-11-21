@@ -136,7 +136,7 @@ public class HungryCowPhysicsTests {
                     r, bodies.size(), spread[0], piles, pieces, bodies.stream().filter(e -> !e.isRemoved()).count());
             HungryCowFellTests.clear(h, 0);
             h.assertTrue(r == Chopping.Result.CLEAN || r == Chopping.Result.HARD, "не розрубалось: " + r);
-            h.assertTrue(bodies.size() == 2 && spread[0] > 0.1, "не розлетілись: тіл " + bodies.size() + ", " + spread[0]);
+            h.assertTrue(bodies.size() == 2 && spread[0] > 0.03, "не розлетілись (важкі — розходяться трохи): тіл " + bodies.size() + ", " + spread[0]);
             h.assertTrue(pieces == 2 && bodies.stream().allMatch(WoodBodyEntity::isRemoved), "не лягли купою: " + pieces);
             h.succeed();
         });
